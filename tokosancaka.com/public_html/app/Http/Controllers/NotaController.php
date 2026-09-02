@@ -13,38 +13,29 @@ use App\Exports\NotaExport;
 
 class NotaController extends Controller
 {
-    /**
-     * 1. INDEX: Menampilkan riwayat nota
-     */
     public function index()
     {
-        /* Gunakan eager loading 'items' agar query lebih cepat */
         $notas = Nota::with('items')->orderBy('created_at', 'desc')->paginate(10);
         return view('nota.index', compact('notas'));
     }
 
-    /**
-     * 2. CREATE: Menampilkan form tambah nota
-     */
     public function create()
     {
         $no_nota = 'NOTA-' . date('Ymd') . '-' . rand(1000, 9999);
         return view('nota.create', compact('no_nota'));
     }
 
-    /**
-     * 3. STORE: Menyimpan nota baru ke database
-     */
     public function store(Request $request)
     {
         $request->validate([
-            'no_nota'      => 'required|unique:notas',
-            'kepada'       => 'required|string|max:255',
-            'tanggal'      => 'required|date',
-            'nama_pembeli' => 'required|string|max:255',
-            'nama_penjual' => 'required|string|max:255',
-            'ttd_pembeli'  => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
-            'ttd_penjual'  => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
+            'no_nota'       => 'required|unique:notas',
+            'kepada'        => 'required|string|max:255',
+            'tanggal'       => 'required|date',
+            'nama_pembeli'  => 'required|string|max:255',
+            'no_hp_pembeli' => 'required|string|min:9|max:20', // Tambahan No HP
+            'nama_penjual'  => 'required|string|max:255',
+            'ttd_pembeli'   => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
+            'ttd_penjual'   => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
             'barang.*.nama'      => 'required|string',
             'barang.*.banyaknya' => 'required|numeric|min:1',
             'barang.*.harga'     => 'required|numeric|min:0',
@@ -53,25 +44,23 @@ class NotaController extends Controller
         try {
             DB::beginTransaction();
 
-            /* Handle Upload TTD */
             $path_ttd_pembeli = $request->hasFile('ttd_pembeli') ? $request->file('ttd_pembeli')->store('uploads/ttd', 'public') : null;
             $path_ttd_penjual = $request->hasFile('ttd_penjual') ? $request->file('ttd_penjual')->store('uploads/ttd', 'public') : null;
 
-            /* Simpan Header Nota */
             $nota = Nota::create([
-                'no_nota'      => $request->no_nota,
-                'kepada'       => $request->kepada,
-                'tanggal'      => $request->tanggal,
-                'nama_pembeli' => $request->nama_pembeli,
-                'nama_penjual' => $request->nama_penjual,
-                'ttd_pembeli'  => $path_ttd_pembeli,
-                'ttd_penjual'  => $path_ttd_penjual,
-                'total_harga'  => 0, 
+                'no_nota'       => $request->no_nota,
+                'kepada'        => $request->kepada,
+                'tanggal'       => $request->tanggal,
+                'nama_pembeli'  => $request->nama_pembeli,
+                'no_hp_pembeli' => $request->no_hp_pembeli, // Simpan No HP
+                'nama_penjual'  => $request->nama_penjual,
+                'ttd_pembeli'   => $path_ttd_pembeli,
+                'ttd_penjual'   => $path_ttd_penjual,
+                'total_harga'   => 0,
             ]);
 
             $total_harga = 0;
 
-            /* Simpan Detail Item */
             foreach ($request->barang as $item) {
                 $jumlah = $item['banyaknya'] * $item['harga'];
                 $total_harga += $jumlah;
@@ -85,13 +74,14 @@ class NotaController extends Controller
                 ]);
             }
 
-            /* Update Grand Total */
             $nota->update(['total_harga' => $total_harga]);
 
             DB::commit();
-            // Redirect kembali ke halaman create, sambil membawa ID nota yang baru saja dibuat
+
+            // Tambahkan success_nota_no untuk kebutuhan Link URL di frontend
             return back()
-                ->with('success', 'Nota berhasil dibuat dan disimpan!')
+                ->with('success', 'Nota berhasil dibuat! Kirim link pembayaran kepada customer.')
+                ->with('success_nota_no', $nota->no_nota)
                 ->with('success_nota_id', $nota->id);
 
         } catch (\Exception $e) {
@@ -100,36 +90,28 @@ class NotaController extends Controller
         }
     }
 
-    /**
-     * 4. SHOW: Menampilkan detail nota
-     */
     public function show($id)
     {
         $nota = Nota::with('items')->findOrFail($id);
-        return view('nota.show', compact('nota')); 
+        return view('nota.show', compact('nota'));
     }
 
-    /**
-     * 5. EDIT: Menampilkan form edit nota
-     */
     public function edit($id)
     {
         $nota = Nota::with('items')->findOrFail($id);
         return view('nota.edit', compact('nota'));
     }
 
-    /**
-     * 6. UPDATE: Menyimpan perubahan nota
-     */
     public function update(Request $request, $id)
     {
         $request->validate([
-            'kepada'       => 'required|string|max:255',
-            'tanggal'      => 'required|date',
-            'nama_pembeli' => 'required|string|max:255',
-            'nama_penjual' => 'required|string|max:255',
-            'ttd_pembeli'  => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
-            'ttd_penjual'  => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
+            'kepada'        => 'required|string|max:255',
+            'tanggal'       => 'required|date',
+            'nama_pembeli'  => 'required|string|max:255',
+            'no_hp_pembeli' => 'required|string|min:9|max:20', // Tambahan No HP
+            'nama_penjual'  => 'required|string|max:255',
+            'ttd_pembeli'   => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
+            'ttd_penjual'   => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
             'barang.*.nama'      => 'required|string',
             'barang.*.banyaknya' => 'required|numeric|min:1',
             'barang.*.harga'     => 'required|numeric|min:0',
@@ -139,26 +121,23 @@ class NotaController extends Controller
             DB::beginTransaction();
             $nota = Nota::findOrFail($id);
 
-            /* Handle Update TTD Pembeli */
             if ($request->hasFile('ttd_pembeli')) {
                 if ($nota->ttd_pembeli) Storage::disk('public')->delete($nota->ttd_pembeli);
                 $nota->ttd_pembeli = $request->file('ttd_pembeli')->store('uploads/ttd', 'public');
             }
 
-            /* Handle Update TTD Penjual */
             if ($request->hasFile('ttd_penjual')) {
                 if ($nota->ttd_penjual) Storage::disk('public')->delete($nota->ttd_penjual);
                 $nota->ttd_penjual = $request->file('ttd_penjual')->store('uploads/ttd', 'public');
             }
 
-            /* Update Field Header */
             $nota->kepada = $request->kepada;
             $nota->tanggal = $request->tanggal;
             $nota->nama_pembeli = $request->nama_pembeli;
+            $nota->no_hp_pembeli = $request->no_hp_pembeli; // Update No HP
             $nota->nama_penjual = $request->nama_penjual;
             $nota->save();
 
-            /* Reset dan Masukkan Item Baru */
             $nota->items()->delete();
 
             $total_harga = 0;
@@ -186,27 +165,17 @@ class NotaController extends Controller
         }
     }
 
-    /**
-     * 7. DESTROY: Menghapus nota beserta gambarnya
-     */
     public function destroy($id)
     {
         $nota = Nota::findOrFail($id);
 
-        /* Hapus file gambar secara fisik dari storage */
         if ($nota->ttd_pembeli) Storage::disk('public')->delete($nota->ttd_pembeli);
         if ($nota->ttd_penjual) Storage::disk('public')->delete($nota->ttd_penjual);
 
         $nota->delete();
 
-        return redirect()->route('nota.index')->with('success', 'Nota beserta data gambarnya berhasil dihapus!');
+        return redirect()->route('nota.index')->with('success', 'Nota berhasil dihapus!');
     }
-
-    /**
-     * =========================================
-     * BAGIAN EXPORT (PDF & EXCEL)
-     * =========================================
-     */
 
     public function exportPdf()
     {
@@ -220,19 +189,206 @@ class NotaController extends Controller
         return Excel::download(new NotaExport, 'Laporan_Riwayat_Nota.xlsx');
     }
 
-    /**
-     * DOWNLOAD: Mengunduh PDF untuk 1 Nota Spesifik (Lengkap dengan TTD)
-     */
     public function downloadNota($id)
     {
         $nota = Nota::with('items')->findOrFail($id);
-        
-        // Memuat view khusus untuk cetak 1 nota
-        $pdf = Pdf::loadView('nota.receipt_pdf', compact('nota'));
-        
-        // Mengatur ukuran kertas (A5 portrait biasanya cocok untuk nota)
-        $pdf->setPaper('A5', 'portrait');
-        
+        $pdf = Pdf::loadView('nota.receipt_pdf', compact('nota'))->setPaper('A5', 'portrait');
         return $pdf->download('Nota_' . $nota->no_nota . '.pdf');
+    }
+
+    public function paymentPage($no_nota)
+    {
+        $nota = Nota::with('items')->where('no_nota', $no_nota)->firstOrFail();
+
+        // 1. Ekstraksi 4 angka terakhir untuk PIN
+        $hpPembeli = preg_replace('/[^0-9]/', '', $nota->no_hp_pembeli);
+        $pinRahasia = substr($hpPembeli, -4);
+        if (strlen($pinRahasia) < 4) $pinRahasia = str_pad($pinRahasia, 4, '0', STR_PAD_LEFT);
+
+        // 2. Kisi-kisi bintang untuk frontend
+        $panjangHp = strlen($hpPembeli);
+        $tampilDepan = substr($hpPembeli, 0, 7);
+        $jumlahBintang = $panjangHp > 7 ? $panjangHp - 7 : 4;
+        $kisiKisiHp = $tampilDepan . str_repeat('*', $jumlahBintang);
+
+        // 3. Ambil data Tripay Channels dari API/Cache (Sama seperti CheckoutController)
+        $currentMode = \App\Models\Api::getValue('TRIPAY_MODE', 'global', 'sandbox');
+        $cacheKey = 'tripay_channels_list_' . $currentMode;
+
+        $tripayChannels = \Illuminate\Support\Facades\Cache::remember($cacheKey, 60 * 24, function () use ($currentMode) {
+            if ($currentMode === 'production') {
+                $baseUrl = 'https://tripay.co.id/api';
+                $apiKey  = \App\Models\Api::getValue('TRIPAY_API_KEY', 'production');
+            } else {
+                $baseUrl = 'https://tripay.co.id/api-sandbox';
+                $apiKey  = \App\Models\Api::getValue('TRIPAY_API_KEY', 'sandbox');
+            }
+            try {
+                $response = \Illuminate\Support\Facades\Http::withToken($apiKey)->timeout(10)->get($baseUrl . '/merchant/payment-channel');
+                if ($response->successful()) { return $response->json()['data'] ?? []; }
+            } catch (\Exception $e) {}
+            return [];
+        });
+
+        return view('nota.payment_page', compact('nota', 'pinRahasia', 'kisiKisiHp', 'tripayChannels'));
+    }
+
+    /**
+     * FUNGSI BARU: Memproses Pilihan Pembayaran dari Halaman Nota
+     */
+    public function prosesBayar(Request $request, $no_nota)
+    {
+        $request->validate(['payment_method' => 'required|string']);
+
+        $nota = Nota::where('no_nota', $no_nota)->firstOrFail();
+
+        $gateway = $request->input('payment_method');
+
+        // Simpan pilihan bank/ewallet customer ke DB
+        $nota->payment_method = $gateway;
+        $nota->save();
+
+        $totalTagihan = $nota->total_harga;
+        $paymentUrl = null;
+
+        // URL KEMBALIAN AGAR DOKU/PAYPAL/TRIPAY BALIK KE HALAMAN NOTA INI
+        $returnUrl = url('/nota/pay/' . $nota->no_nota);
+
+        try {
+            // 1. JIKA PILIH DOKU
+            if ($gateway === 'DOKU_JOKUL') {
+                $dokuService = new \App\Services\DokuJokulService();
+
+                $customerData = [
+                    'name'  => $nota->nama_pembeli,
+                    'email' => 'customer@tokosancaka.com',
+                    'phone' => $nota->no_hp_pembeli
+                ];
+
+                $resDoku = $dokuService->createSpecificCheckoutPayment(
+                    $nota->no_nota,
+                    $totalTagihan,
+                    $customerData,
+                    'DOKU_JOKUL',
+                    null,
+                    $returnUrl
+                );
+
+                if (isset($resDoku['success']) && $resDoku['success'] === true) {
+                    $paymentUrl = $resDoku['payment_url'];
+                } else {
+                    return back()->with('error', 'Gagal membuat tagihan DOKU: ' . ($resDoku['message'] ?? 'Unknown Error'));
+                }
+            }
+            // 2. JIKA PILIH BCA QRIS
+            elseif ($gateway === 'BCA_QRIS') {
+                $bcaService = app(\App\Http\Controllers\BcaController::class);
+                $bcaReference = date('Ymd', strtotime($nota->tanggal)) . str_pad($nota->id, 8, '0', STR_PAD_LEFT);
+                $bcaResponse = $bcaService->generateQrisMpm([
+                    'partnerReferenceNo' => $bcaReference,
+                    'amount'             => $totalTagihan,
+                    'merchantId'         => '123456789',
+                    'terminalId'         => 'A1234567',
+                    'qrOption'           => 'A'
+                ]);
+                if (!empty($bcaResponse) && ($bcaResponse['responseCode'] ?? '') === '2004700') {
+                    $paymentUrl = $returnUrl; // Refresh halaman
+                    $nota->payment_url = $bcaResponse['qrContent'];
+                }
+            }
+            // 3. JIKA PILIH PAYPAL
+            elseif ($gateway === 'PAYPAL') {
+                $mode = \App\Models\Api::getValue('PAYPAL_MODE', 'global', 'sandbox');
+                $clientId = \App\Models\Api::getValue('PAYPAL_CLIENT_ID', $mode);
+                $secret = \App\Models\Api::getValue('PAYPAL_SECRET', $mode);
+                $baseUrl = $mode === 'production' ? 'https://api-m.paypal.com' : 'https://api-m.sandbox.paypal.com';
+
+                $usdAmount = round($totalTagihan / 15000, 2);
+
+                $response = \Illuminate\Support\Facades\Http::withBasicAuth($clientId, $secret)
+                    ->asForm()->post($baseUrl . '/v1/oauth2/token', ['grant_type' => 'client_credentials']);
+
+                if ($response->successful()) {
+                    $token = $response->json()['access_token'];
+                    $orderRes = \Illuminate\Support\Facades\Http::withToken($token)->post($baseUrl . '/v2/checkout/orders', [
+                        'intent' => 'CAPTURE',
+                        'purchase_units' => [[
+                            'reference_id' => $nota->no_nota,
+                            'amount' => ['currency_code' => 'USD', 'value' => (string) $usdAmount]
+                        ]],
+                        'payment_source' => [
+                            'paypal' => [
+                                'experience_context' => [
+                                    'return_url' => $returnUrl,
+                                    'cancel_url' => $returnUrl
+                                ]
+                            ]
+                        ]
+                    ]);
+
+                    if ($orderRes->successful()) {
+                        foreach ($orderRes->json()['links'] as $link) {
+                            if ($link['rel'] === 'payer-action' || $link['rel'] === 'approve') {
+                                $paymentUrl = $link['href'];
+                                break;
+                            }
+                        }
+                    } else {
+                        return back()->with('error', 'Gagal memproses PayPal: ' . $orderRes->body());
+                    }
+                } else {
+                    return back()->with('error', 'Kredensial PayPal tidak valid atau belum diatur di sistem.');
+                }
+            }
+            // 4. JIKA PILIH DANA REGULER BINDING
+            elseif ($gateway === 'DANA') {
+                return redirect()->route('dana.payment.create', $nota->no_nota);
+            }
+            // 5. JIKA PILIH TRIPAY (OVO, DANA, VA MANDIRI, BNI, DLL)
+            else {
+                $mode = \App\Models\Api::getValue('TRIPAY_MODE', 'global', 'sandbox');
+                $apiKey = \App\Models\Api::getValue('TRIPAY_API_KEY', $mode);
+                $privateKey = \App\Models\Api::getValue('TRIPAY_PRIVATE_KEY', $mode);
+                $merchantCode = \App\Models\Api::getValue('TRIPAY_MERCHANT_CODE', $mode);
+                $baseUrl = $mode === 'production' ? 'https://tripay.co.id/api/transaction/create' : 'https://tripay.co.id/api-sandbox/transaction/create';
+
+                $payload = [
+                    'method' => $gateway,
+                    'merchant_ref' => $nota->no_nota,
+                    'amount' => $totalTagihan,
+                    'customer_name' => $nota->nama_pembeli,
+                    'customer_email' => 'customer+'.\Illuminate\Support\Str::random(5).'@tokosancaka.com',
+                    'customer_phone' => $nota->no_hp_pembeli,
+                    'order_items' => [['sku' => 'NOTA', 'name' => 'Pembayaran Nota ' . $nota->no_nota, 'price' => $totalTagihan, 'quantity' => 1]],
+                    'return_url' => $returnUrl,
+                    'expired_time' => time() + (24 * 60 * 60),
+                    'signature' => hash_hmac('sha256', $merchantCode . $nota->no_nota . $totalTagihan, $privateKey),
+                ];
+
+                $response = \Illuminate\Support\Facades\Http::withHeaders(['Authorization' => 'Bearer ' . $apiKey])->post($baseUrl, $payload);
+                $resData = $response->json();
+
+                if (isset($resData['success']) && $resData['success'] === true) {
+                    $paymentUrl = $resData['data']['checkout_url'];
+                } else {
+                    return back()->with('error', 'Gagal memproses metode pembayaran ini: ' . ($resData['message'] ?? 'Unknown Error'));
+                }
+            }
+
+            // Simpan Link Pembayaran & Redirect Customer
+            if ($paymentUrl) {
+                if ($gateway !== 'BCA_QRIS') {
+                    $nota->payment_url = $paymentUrl;
+                }
+                $nota->save();
+                return redirect()->away($paymentUrl);
+            }
+
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error("Nota Payment Error: " . $e->getMessage());
+            return back()->with('error', 'Terjadi kesalahan sistem saat memuat metode pembayaran.');
+        }
+
+        return back()->with('error', 'Gagal mengarahkan ke halaman pembayaran.');
     }
 }

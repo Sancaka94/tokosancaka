@@ -9,10 +9,10 @@ class Nota extends Model
 {
     use HasFactory;
 
-    // Menentukan nama tabel secara spesifik (sangat disarankan jika buat tabel manual)
+    // Menentukan nama tabel secara spesifik
     protected $table = 'notas';
 
-    // Menentukan primary key (opsional jika namanya 'id')
+    // Menentukan primary key
     protected $primaryKey = 'id';
 
     // Kolom-kolom yang diizinkan untuk diisi secara massal (Mass Assignment)
@@ -21,10 +21,14 @@ class Nota extends Model
         'kepada',
         'tanggal',
         'nama_pembeli',
+        'no_hp_pembeli',   // <-- TAMBAHAN BARU
         'nama_penjual',
         'ttd_pembeli',
         'ttd_penjual',
         'total_harga',
+        'payment_method',  // <-- TAMBAHAN BARU
+        'payment_url',     // <-- TAMBAHAN BARU
+        'status',          // <-- TAMBAHAN BARU
     ];
 
     /**
@@ -33,7 +37,6 @@ class Nota extends Model
      */
     public function items()
     {
-        // hasMany(NamaModelTarget, 'foreign_key_di_tabel_target', 'local_key')
         return $this->hasMany(NotaItem::class, 'nota_id', 'id');
     }
 }
