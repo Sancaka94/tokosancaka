@@ -488,4 +488,87 @@ class NotaController extends Controller
             \Illuminate\Support\Facades\Log::error("❌ [NOTA] Gagal memproses callback: " . $e->getMessage());
         }
     }
+
+    /**
+     * FUNGSI BARU: Mengirim ulang / mengirim manual link tagihan nota via Ajax dari daftar tabel
+     */
+    public function sendEmailInvoiceAjax(Request $request)
+    {
+        $request->validate([
+            'no_nota' => 'required|string',
+            'email'   => 'required|email'
+        ]);
+
+        try {
+            $nota = Nota::where('no_nota', $request->no_nota)->firstOrFail();
+            
+            // Perbarui email pelanggan di tabel Nota sekalian
+            $nota->email_pembeli = $request->email;
+            $nota->save();
+
+            $paymentLink = url('/nota/pay/' . $nota->no_nota);
+            $subject = "Tagihan Pembayaran Nota #" . $nota->no_nota . " - SANCAKA EXPRESS";
+
+            // Ekstraksi PIN
+            $hpPembeli = preg_replace('/[^0-9]/', '', $nota->no_hp_pembeli);
+            $pinRahasia = substr($hpPembeli, -4);
+            if (strlen($pinRahasia) < 4) $pinRahasia = str_pad($pinRahasia, 4, '0', STR_PAD_LEFT);
+
+            // Desain Email HTML (Sama seperti yang ada di fungsi store)
+            $bodyHtml = "
+            <div style='font-family: Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.1); border: 1px solid #e5e7eb;'>
+                <div style='background: #111827; padding: 20px; text-align: center;'>
+                    <h2 style='color: #ffffff; margin: 0; font-size: 20px;'>SANCAKA EXPRESS</h2>
+                </div>
+                <div style='padding: 30px;'>
+                    <p style='color: #374151; font-size: 16px;'>Halo <strong>{$nota->nama_pembeli}</strong>,</p>
+                    <p style='color: #4b5563; line-height: 1.5;'>Berikut adalah link akses untuk melihat dan memproses tagihan Anda dengan nomor nota <strong>{$nota->no_nota}</strong>.</p>
+                    
+                    <div style='background-color: #f3f4f6; padding: 20px; border-radius: 8px; text-align: center; margin: 25px 0;'>
+                        <p style='margin: 0; color: #6b7280; font-size: 14px;'>Total Tagihan</p>
+                        <p style='margin: 5px 0 0 0; color: #dc2626; font-size: 24px; font-weight: bold;'>Rp " . number_format($nota->total_harga, 0, ',', '.') . "</p>
+                    </div>
+
+                    <div style='text-align: center; margin: 30px 0;'>
+                        <a href='{$paymentLink}' target='_blank' style='background-color: #10b981; color: #ffffff; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px; display: inline-block;'>Lihat & Bayar Tagihan</a>
+                    </div>
+
+                    <div style='background-color: #fffbeb; border-left: 4px solid #f59e0b; padding: 15px; border-radius: 4px;'>
+                        <p style='margin: 0; color: #92400e; font-size: 14px;'><strong>PENTING:</strong> Halaman tagihan diamankan menggunakan PIN.</p>
+                        <p style='margin: 5px 0 0 0; color: #b45309; font-size: 14px;'>Gunakan <strong>4 Angka Terakhir Nomor HP Anda</strong> ({$pinRahasia}) untuk membuka tagihan.</p>
+                    </div>
+                </div>
+                <div style='background-color: #f9fafb; padding: 15px; text-align: center; border-top: 1px solid #e5e7eb;'>
+                    <p style='margin: 0; color: #9ca3af; font-size: 12px;'>Terima kasih telah mempercayakan layanan Sancaka Express.</p>
+                </div>
+            </div>";
+
+            // Eksekusi Kirim Email
+            \Illuminate\Support\Facades\Mail::html($bodyHtml, function ($message) use ($request, $subject) {
+                $message->to($request->email)
+                        ->subject($subject)
+                        ->from(config('mail.from.address', 'admin@tokosancaka.com'), config('mail.from.name', 'Admin Sancaka'));
+            });
+
+            // LOG LOG: Simpan riwayat email terkirim agar masuk di Dashboard Email
+            \App\Models\Email::create([
+                'user_id'      => \Illuminate\Support\Facades\Auth::id(),
+                'folder'       => 'sent',
+                'from_name'    => config('mail.from.name', 'Admin Sancaka'),
+                'from_address' => config('mail.from.address', 'admin@tokosancaka.com'),
+                'to_address'   => $request->email,
+                'subject'      => $subject,
+                'body'         => $bodyHtml,
+                'is_starred'   => false,
+                'read_at'      => now(),
+            ]);
+
+            return response()->json(['success' => true, 'message' => 'Tagihan berhasil dikirim ke Email pelanggan.']);
+
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error("Gagal kirim tagihan manual via Ajax: " . $e->getMessage());
+            return response()->json(['success' => false, 'message' => $e->getMessage()]);
+        }
+    }
+    
 }
