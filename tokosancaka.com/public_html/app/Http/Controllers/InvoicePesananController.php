@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\Pesanan;
+use App\Models\PesananAutokirim; // Tambahkan ini
+use App\Models\AutoKirim; // Tambahkan ini
 use App\Models\Api;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
@@ -13,19 +15,29 @@ class InvoicePesananController extends Controller
 {
     public function show($nomor_invoice)
     {
-        // 🔥 PERBAIKAN: Cari berdasarkan invoice ATAU resi ATAU resi aktual
+        // 1. CARI DI PESANAN REGULER DULU
         $pesanan = Pesanan::where('nomor_invoice', $nomor_invoice)
             ->orWhere('resi', $nomor_invoice)
             ->orWhere('resi_aktual', $nomor_invoice)
-            ->firstOrFail();
+            ->first();
+
+        // 2. JIKA TIDAK KETEMU, CARI DI PESANAN AUTOKIRIM
+        $isAutokirim = false;
+        if (!$pesanan) {
+            $pesanan = PesananAutokirim::where('order_id', $nomor_invoice)
+                ->orWhere('awb_number', $nomor_invoice)
+                ->firstOrFail(); // Jika di Autokirim juga tidak ada, baru 404
+
+            $isAutokirim = true;
+        }
 
         // Tentukan status lunas atau belum
-        $statusLunas = in_array(strtoupper($pesanan->status_pesanan), [
-            'PAID', 'LUNAS', 'SELESAI', 'TERKIRIM',
+        $statusLunas = in_array(strtoupper($isAutokirim ? $pesanan->status : $pesanan->status_pesanan), [
+            'PAID', 'LUNAS', 'SELESAI', 'TERKIRIM', 'BOOKING_CREATED',
             'MENUNGGU PICKUP', 'PESANAN DIBUAT', 'DIPROSES', 'SEDANG DIKIRIM'
         ]);
 
-        // Tarik daftar Tripay Channels (Virtual Account, E-Wallet, Alfamart, dll)
+        // Tarik daftar Tripay Channels
         $tripayChannels = [];
         if (!$statusLunas && empty($pesanan->payment_url) && !in_array($pesanan->payment_method, ['COD', 'CODBARANG', 'Cash', 'Potong Saldo'])) {
             $mode = Api::getValue('TRIPAY_MODE', 'global', 'sandbox');
@@ -33,7 +45,7 @@ class InvoicePesananController extends Controller
             $baseUrl = $mode === 'production' ? 'https://tripay.co.id/api/merchant/payment-channel' : 'https://tripay.co.id/api-sandbox/merchant/payment-channel';
 
             try {
-                $response = Http::withToken($apiKey)->get($baseUrl);
+                $response = Http::withToken($apiKey)->timeout(10)->get($baseUrl);
                 if ($response->successful()) {
                     $tripayChannels = $response->json()['data'] ?? [];
                 }
@@ -49,34 +61,70 @@ class InvoicePesananController extends Controller
     {
         $request->validate(['payment_method' => 'required|string']);
 
-        // 🔥 PERBAIKAN: Samakan juga di sini agar saat proses bayar tidak 404
+        // 1. CARI DI PESANAN REGULER DULU
         $pesanan = Pesanan::where('nomor_invoice', $nomor_invoice)
             ->orWhere('resi', $nomor_invoice)
             ->orWhere('resi_aktual', $nomor_invoice)
-            ->firstOrFail();
+            ->first();
+
+        // 2. JIKA TIDAK KETEMU, CARI DI PESANAN AUTOKIRIM
+        $isAutokirim = false;
+        if (!$pesanan) {
+            $pesanan = PesananAutokirim::where('order_id', $nomor_invoice)
+                ->orWhere('awb_number', $nomor_invoice)
+                ->firstOrFail(); // Jika di Autokirim juga tidak ada, baru 404
+
+            $isAutokirim = true;
+        }
 
         $gateway = $request->input('payment_method');
         $pesanan->payment_method = $gateway; // Simpan pilihan bank/ewallet customer ke DB
         $pesanan->save();
 
-        $totalTagihan = $pesanan->price; // Gunakan total final yang sudah dikalkulasi sistem
+        // NORMALISASI VARIABEL KARENA NAMA KOLOMNYA BEDA
+        $totalTagihan = $isAutokirim ? $pesanan->grand_total : $pesanan->price;
+        $receiverName = $isAutokirim ? $pesanan->penerima_nama : $pesanan->receiver_name;
+        $receiverPhone = $isAutokirim ? $pesanan->penerima_hp : $pesanan->receiver_phone;
+        $tanggalPesanan = $isAutokirim ? $pesanan->created_at : $pesanan->tanggal_pesanan;
+        $nomorInvoiceFix = $isAutokirim ? $pesanan->order_id : $pesanan->nomor_invoice;
+        $pesananId = $pesanan->id;
+
         $paymentUrl = null;
 
         // INI URL KEMBALIAN AGAR DOKU/PAYPAL BALIK KE HALAMAN INVOICE
-        $returnUrl = route('invoice.show', ['nomor_invoice' => $pesanan->nomor_invoice]);
+        $returnUrl = route('invoice.show', ['nomor_invoice' => $nomorInvoiceFix]);
 
         // ====================================================
-        // INTERCEPTOR: KHUSUS METODE CASH (HANYA ADMIN ID 4)
+        // INTERCEPTOR: KHUSUS METODE CASH (HANYA ADMIN)
         // ====================================================
         if (strtolower($gateway) === 'cash') {
-            if (auth()->check() && (auth()->id() == 4 || auth()->user()->id_pengguna == 4 || strtolower(auth()->user()->role) == 'admin')) {
-                // Update status agar dianggap LUNAS
-                $pesanan->status = 'booking_created';
-                $pesanan->status_pesanan = 'PAID';
+            if (auth()->check() && (auth()->id() == 4 || optional(auth()->user())->id_pengguna == 4 || strtolower(optional(auth()->user())->role) == 'admin')) {
+
+                if ($isAutokirim) {
+                    try {
+                        $origin = AutoKirim::where('zip', $pesanan->pengirim_kodepos)->first();
+                        $destination = AutoKirim::where('zip', $pesanan->penerima_kodepos)->first();
+                        $autokirimCtrl = new \App\Http\Controllers\PesananAutokirimController();
+
+                        $awbResult = $autokirimCtrl->_executeAutokirimApi($pesanan, $origin, $destination, null);
+
+                        $pesanan->awb_number = $awbResult['awb'] ?? null;
+                        $pesanan->tlc_code = $awbResult['reff_2'] ?? null;
+                        $pesanan->reff_1 = $awbResult['reff_1'] ?? null;
+                        $pesanan->pickup_point_code = $awbResult['pickup'] ?? null;
+                        $pesanan->status = 'booking_created';
+                    } catch (\Exception $e) {
+                        return back()->with('error', 'Gagal memproses API Logistik Pusat: ' . $e->getMessage());
+                    }
+                } else {
+                    $pesanan->status = 'booking_created';
+                    $pesanan->status_pesanan = 'PAID';
+                }
+
                 $pesanan->payment_method = 'Cash / Tunai';
                 $pesanan->save();
 
-                return redirect($returnUrl)->with('success', 'Pembayaran tunai berhasil diverifikasi oleh Admin. Silakan sync/edit order jika resi autokirim belum terbit.');
+                return redirect($returnUrl)->with('success', 'Pembayaran tunai berhasil diverifikasi oleh Admin & Resi diterbitkan.');
             } else {
                 return back()->with('error', 'Akses ditolak! Metode Cash hanya dapat digunakan oleh Admin.');
             }
@@ -84,19 +132,18 @@ class InvoicePesananController extends Controller
         // ====================================================
 
         try {
-            // 1. JIKA PILIH DOKU (Menggunakan createSpecificCheckoutPayment agar support Return URL)
+            // 1. JIKA PILIH DOKU
             if ($gateway === 'DOKU_JOKUL') {
                 $dokuService = new \App\Services\DokuJokulService();
 
                 $customerData = [
-                    'name' => $pesanan->receiver_name,
+                    'name' => $receiverName,
                     'email' => 'customer@tokosancaka.com',
-                    'phone' => $pesanan->receiver_phone
+                    'phone' => $receiverPhone
                 ];
 
-                // Parameter ke-6 adalah $returnUrl untuk kembalian otomatis
                 $resDoku = $dokuService->createSpecificCheckoutPayment(
-                    $pesanan->nomor_invoice,
+                    $nomorInvoiceFix,
                     $totalTagihan,
                     $customerData,
                     'DOKU_JOKUL',
@@ -113,7 +160,7 @@ class InvoicePesananController extends Controller
             // 2. JIKA PILIH BCA QRIS
             elseif ($gateway === 'BCA_QRIS') {
                 $bcaService = app(\App\Http\Controllers\BcaController::class);
-                $bcaReference = date('Ymd', strtotime($pesanan->tanggal_pesanan)) . str_pad($pesanan->id, 8, '0', STR_PAD_LEFT);
+                $bcaReference = date('Ymd', strtotime($tanggalPesanan)) . str_pad($pesananId, 8, '0', STR_PAD_LEFT);
                 $bcaResponse = $bcaService->generateQrisMpm([
                     'partnerReferenceNo' => $bcaReference,
                     'amount'             => $totalTagihan,
@@ -122,7 +169,9 @@ class InvoicePesananController extends Controller
                     'qrOption'           => 'A'
                 ]);
                 if (!empty($bcaResponse) && ($bcaResponse['responseCode'] ?? '') === '2004700') {
-                    $pesanan->shipping_ref = $bcaResponse['referenceNo'];
+                    if (!$isAutokirim) {
+                        $pesanan->shipping_ref = $bcaResponse['referenceNo'];
+                    }
                     $paymentUrl = $returnUrl; // Refresh halaman
                     $pesanan->payment_url = $bcaResponse['qrContent'];
                 }
@@ -134,28 +183,25 @@ class InvoicePesananController extends Controller
                 $secret = Api::getValue('PAYPAL_SECRET', $mode);
                 $baseUrl = $mode === 'production' ? 'https://api-m.paypal.com' : 'https://api-m.sandbox.paypal.com';
 
-                // Konversi Rupiah ke USD (Estimasi kurs 15.000)
                 $usdAmount = round($totalTagihan / 15000, 2);
 
-                // Minta Access Token PayPal
                 $response = Http::withBasicAuth($clientId, $secret)
                     ->asForm()->post($baseUrl . '/v1/oauth2/token', ['grant_type' => 'client_credentials']);
 
                 if ($response->successful()) {
                     $token = $response->json()['access_token'];
 
-                    // Buat Pesanan di PayPal
                     $orderRes = Http::withToken($token)->post($baseUrl . '/v2/checkout/orders', [
                         'intent' => 'CAPTURE',
                         'purchase_units' => [[
-                            'reference_id' => $pesanan->nomor_invoice,
+                            'reference_id' => $nomorInvoiceFix,
                             'amount' => ['currency_code' => 'USD', 'value' => (string) $usdAmount]
                         ]],
                         'payment_source' => [
                             'paypal' => [
                                 'experience_context' => [
-                                    'return_url' => $returnUrl, // KEMBALI KE INVOICE BILA SUKSES
-                                    'cancel_url' => $returnUrl  // KEMBALI KE INVOICE BILA BATAL
+                                    'return_url' => $returnUrl,
+                                    'cancel_url' => $returnUrl
                                 ]
                             ]
                         ]
@@ -177,7 +223,7 @@ class InvoicePesananController extends Controller
             }
             // 4. JIKA PILIH DANA REGULER BINDING
             elseif ($gateway === 'DANA') {
-                return redirect()->route('dana.payment.create', $pesanan->nomor_invoice);
+                return redirect()->route('dana.payment.create', $nomorInvoiceFix);
             }
             // 5. JIKA PILIH TRIPAY (OVO, DANA, VA MANDIRI, BNI, DLL)
             else {
@@ -189,15 +235,15 @@ class InvoicePesananController extends Controller
 
                 $payload = [
                     'method' => $gateway,
-                    'merchant_ref' => $pesanan->nomor_invoice,
+                    'merchant_ref' => $nomorInvoiceFix,
                     'amount' => $totalTagihan,
-                    'customer_name' => $pesanan->receiver_name,
+                    'customer_name' => $receiverName,
                     'customer_email' => 'customer+'.Str::random(5).'@tokosancaka.com',
-                    'customer_phone' => $pesanan->receiver_phone,
+                    'customer_phone' => $receiverPhone,
                     'order_items' => [['sku' => 'SHIPPING', 'name' => 'Ongkos Kirim & Layanan', 'price' => $totalTagihan, 'quantity' => 1]],
                     'return_url' => $returnUrl, // KEMBALI KE INVOICE BILA SUKSES
                     'expired_time' => time() + (24 * 60 * 60),
-                    'signature' => hash_hmac('sha256', $merchantCode . $pesanan->nomor_invoice . $totalTagihan, $privateKey),
+                    'signature' => hash_hmac('sha256', $merchantCode . $nomorInvoiceFix . $totalTagihan, $privateKey),
                 ];
 
                 $response = Http::withHeaders(['Authorization' => 'Bearer ' . $apiKey])->post($baseUrl, $payload);
