@@ -446,7 +446,7 @@
                 <!-- KIRI: Riwayat Transaksi -->
                 <div class="w-full md:w-3/4 flex flex-col">
                     <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-4 border-b border-gray-100 pb-2">Riwayat Transaksi</p>
-                    
+
                     <!-- Tambahkan flex-1 agar kotak tabel merentang maksimal -->
                     <div class="border border-gray-200 rounded-lg overflow-hidden flex-1 flex flex-col">
                         <table class="w-full text-[13px] text-left h-full flex-1">
@@ -577,13 +577,42 @@
                         <div class="flex flex-col"><span class="text-[13px] font-bold text-black">PayPal / CC</span><span class="text-[11px] text-gray-500">Pembayaran USD</span></div>
                     </li>
 
+                    {{-- ========================================================== --}}
+                    {{-- TRIPAY (SEMUA METODE OTOMATIS) DENGAN BIAYA ADMIN --}}
+                    {{-- ========================================================== --}}
                     @if(isset($tripayChannels) && count($tripayChannels) > 0)
+                        <li class="col-span-full pt-4 pb-1 text-[11px] font-bold text-gray-400 uppercase tracking-widest border-b border-gray-200">Payment Gateway Otomatis (Tripay)</li>
                         @foreach($tripayChannels as $channel)
                             @if($channel['active'])
-                            <li class="payment-option cursor-pointer flex items-center p-3 border border-gray-200 rounded-xl bg-white hover:border-black hover:shadow-md transition-all group" data-value="{{ $channel['code'] }}" data-label="{{ $channel['name'] }}" data-img="{{ $channel['icon_url'] }}">
-                                <img src="{{ $channel['icon_url'] }}" class="w-12 h-auto mr-4 object-contain" onerror="this.src='https://placehold.co/40x40/EFEFEF/AAAAAA?text=IMG'">
-                                <div class="flex flex-col"><span class="text-[13px] font-bold text-black">{{ $channel['name'] }}</span></div>
-                            </li>
+                                @php
+                                    // Menghitung Biaya Admin Tripay (Bisa Flat / Persen)
+                                    $feeFlat = $channel['total_fee']['flat'] ?? 0;
+                                    $feePercent = $channel['total_fee']['percent'] ?? 0;
+                                    $feeText = '';
+
+                                    if ($feeFlat > 0 && $feePercent > 0) {
+                                        $feeText = 'Rp ' . number_format($feeFlat, 0, ',', '.') . ' + ' . $feePercent . '%';
+                                    } elseif ($feeFlat > 0) {
+                                        $feeText = 'Rp ' . number_format($feeFlat, 0, ',', '.');
+                                    } elseif ($feePercent > 0) {
+                                        $feeText = $feePercent . '%';
+                                    } else {
+                                        $feeText = 'Gratis';
+                                    }
+                                @endphp
+
+                                <li class="payment-option cursor-pointer flex items-center p-3 border border-gray-200 rounded-xl bg-white hover:border-black hover:shadow-md transition-all group"
+                                    data-value="{{ $channel['code'] }}"
+                                    data-label="{{ $channel['name'] }}"
+                                    data-img="{{ $channel['icon_url'] }}">
+
+                                    <img src="{{ $channel['icon_url'] }}" alt="{{ $channel['name'] }}" class="w-12 h-auto mr-4 object-contain" onerror="this.src='https://placehold.co/40x40/EFEFEF/AAAAAA?text=IMG'">
+
+                                    <div class="flex flex-col">
+                                        <span class="text-[13px] font-bold text-black">{{ $channel['name'] }}</span>
+                                        <span class="text-[11px] text-gray-500 mt-0.5">Biaya Admin: <strong class="text-red-600">{{ $feeText }}</strong></span>
+                                    </div>
+                                </li>
                             @endif
                         @endforeach
                     @endif
