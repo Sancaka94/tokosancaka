@@ -1,63 +1,4 @@
-<?php
-
-namespace App\Http\Controllers;
-
-use App\Models\Pesanan;
-use App\Models\PesananAutokirim; // Tambahkan ini
-use App\Models\AutoKirim; // Tambahkan ini
-use App\Models\Api;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Str;
-
-class InvoicePesananController extends Controller
-{
-    public function show($nomor_invoice)
-    {
-        // 1. CARI DI PESANAN REGULER DULU
-        $pesanan = Pesanan::where('nomor_invoice', $nomor_invoice)
-            ->orWhere('resi', $nomor_invoice)
-            ->orWhere('resi_aktual', $nomor_invoice)
-            ->first();
-
-        // 2. JIKA TIDAK KETEMU, CARI DI PESANAN AUTOKIRIM
-        $isAutokirim = false;
-        if (!$pesanan) {
-            $pesanan = PesananAutokirim::where('order_id', $nomor_invoice)
-                ->orWhere('awb_number', $nomor_invoice)
-                ->firstOrFail(); // Jika di Autokirim juga tidak ada, baru 404
-
-            $isAutokirim = true;
-        }
-
-        // Tentukan status lunas atau belum
-        $statusLunas = in_array(strtoupper($isAutokirim ? $pesanan->status : $pesanan->status_pesanan), [
-            'PAID', 'LUNAS', 'SELESAI', 'TERKIRIM', 'BOOKING_CREATED',
-            'MENUNGGU PICKUP', 'PESANAN DIBUAT', 'DIPROSES', 'SEDANG DIKIRIM'
-        ]);
-
-        // Tarik daftar Tripay Channels
-        $tripayChannels = [];
-        if (!$statusLunas && empty($pesanan->payment_url) && !in_array($pesanan->payment_method, ['COD', 'CODBARANG', 'Cash', 'Potong Saldo'])) {
-            $mode = Api::getValue('TRIPAY_MODE', 'global', 'sandbox');
-            $apiKey = Api::getValue('TRIPAY_API_KEY', $mode);
-            $baseUrl = $mode === 'production' ? 'https://tripay.co.id/api/merchant/payment-channel' : 'https://tripay.co.id/api-sandbox/merchant/payment-channel';
-
-            try {
-                $response = Http::withToken($apiKey)->timeout(10)->get($baseUrl);
-                if ($response->successful()) {
-                    $tripayChannels = $response->json()['data'] ?? [];
-                }
-            } catch (\Exception $e) {
-                Log::error("Gagal load channel Tripay di Invoice: " . $e->getMessage());
-            }
-        }
-
-        return view('invoice_pesanan.show', compact('pesanan', 'statusLunas', 'tripayChannels'));
-    }
-
-    public function prosesPembayaran(Request $request, $nomor_invoice)
+public function prosesPembayaran(Request $request, $nomor_invoice)
     {
         $request->validate(['payment_method' => 'required|string']);
 
@@ -78,7 +19,13 @@ class InvoicePesananController extends Controller
         }
 
         $gateway = $request->input('payment_method');
-        $pesanan->payment_method = $gateway; // Simpan pilihan bank/ewallet customer ke DB
+
+        // 🔥 PERBAIKAN: Pisahkan penamaan kolom berdasarkan jenis tabel
+        if ($isAutokirim) {
+            $pesanan->metode_pembayaran = $gateway;
+        } else {
+            $pesanan->payment_method = $gateway;
+        }
         $pesanan->save();
 
         // NORMALISASI VARIABEL KARENA NAMA KOLOMNYA BEDA
@@ -113,15 +60,18 @@ class InvoicePesananController extends Controller
                         $pesanan->reff_1 = $awbResult['reff_1'] ?? null;
                         $pesanan->pickup_point_code = $awbResult['pickup'] ?? null;
                         $pesanan->status = 'booking_created';
+                        // 🔥 Gunakan metode_pembayaran
+                        $pesanan->metode_pembayaran = 'cash';
                     } catch (\Exception $e) {
                         return back()->with('error', 'Gagal memproses API Logistik Pusat: ' . $e->getMessage());
                     }
                 } else {
                     $pesanan->status = 'booking_created';
                     $pesanan->status_pesanan = 'PAID';
+                    // 🔥 Gunakan payment_method
+                    $pesanan->payment_method = 'Cash / Tunai';
                 }
 
-                $pesanan->payment_method = 'Cash / Tunai';
                 $pesanan->save();
 
                 return redirect($returnUrl)->with('success', 'Pembayaran tunai berhasil diverifikasi oleh Admin & Resi diterbitkan.');
@@ -171,9 +121,14 @@ class InvoicePesananController extends Controller
                 if (!empty($bcaResponse) && ($bcaResponse['responseCode'] ?? '') === '2004700') {
                     if (!$isAutokirim) {
                         $pesanan->shipping_ref = $bcaResponse['referenceNo'];
+                        $pesanan->payment_url = $bcaResponse['qrContent'];
+                    } else {
+                        // Cek apakah tabel autokirim punya kolom payment_url agar tidak error 1054 lagi
+                        if (\Illuminate\Support\Facades\Schema::hasColumn('pesanan_autokirims', 'payment_url')) {
+                            $pesanan->payment_url = $bcaResponse['qrContent'];
+                        }
                     }
                     $paymentUrl = $returnUrl; // Refresh halaman
-                    $pesanan->payment_url = $bcaResponse['qrContent'];
                 }
             }
             // 3. JIKA PILIH PAYPAL
@@ -259,7 +214,11 @@ class InvoicePesananController extends Controller
             // Simpan Link Pembayaran & Redirect Customer
             if ($paymentUrl) {
                 if ($gateway !== 'BCA_QRIS') {
-                    $pesanan->payment_url = $paymentUrl;
+                    if (!$isAutokirim) {
+                        $pesanan->payment_url = $paymentUrl;
+                    } elseif (\Illuminate\Support\Facades\Schema::hasColumn('pesanan_autokirims', 'payment_url')) {
+                        $pesanan->payment_url = $paymentUrl;
+                    }
                 }
                 $pesanan->save();
                 return redirect()->away($paymentUrl);
@@ -272,4 +231,3 @@ class InvoicePesananController extends Controller
 
         return back()->with('error', 'Gagal mengarahkan ke halaman pembayaran.');
     }
-}
