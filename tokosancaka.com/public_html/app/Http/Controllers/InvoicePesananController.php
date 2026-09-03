@@ -235,9 +235,142 @@ class InvoicePesananController extends Controller
                     return back()->with('error', 'Kredensial PayPal tidak valid atau belum diatur di sistem.');
                 }
             }
-            // 4. JIKA PILIH DANA REGULER BINDING
+            // 4. JIKA PILIH DANA REGULER BINDING (API DIRECT SEPERTI TOPUP CONTROLLER)
             elseif ($gateway === 'DANA') {
-                return redirect()->route('dana.payment.create', $nomorInvoiceFix);
+                Log::info('DANA START for Invoice Table: ' . $nomorInvoiceFix);
+
+                $danaSignature = app(\App\Services\DanaSignatureService::class);
+
+                // Set config dinamis DANA agar signature dan request tidak gagal
+                $danaMode = Api::getValue('dana_production_mode', 'global', '0');
+                $isProduction = ($danaMode == '1');
+
+                if ($isProduction) {
+                    $merchantIdConf = Api::getValue('dana_prod_merchant_id', 'production', env('DANA_PROD_MERCHANT_ID'));
+                    $partnerIdConf  = Api::getValue('dana_prod_client_id', 'production', env('DANA_PROD_CLIENT_ID'));
+                    $baseUrl        = 'https://api.saas.dana.id';
+
+                    config([
+                        'services.dana.merchant_id'   => $merchantIdConf,
+                        'services.dana.x_partner_id'  => $partnerIdConf,
+                        'services.dana.private_key'   => Api::getValue('dana_prod_private_key', 'production', env('DANA_PROD_PRIVATE_KEY')),
+                        'services.dana.client_secret' => Api::getValue('dana_prod_client_secret', 'production', env('DANA_PROD_CLIENT_SECRET')),
+                        'services.dana.base_url'      => $baseUrl,
+                        'services.dana.dana_env'      => 'PRODUCTION'
+                    ]);
+                } else {
+                    $merchantIdConf = Api::getValue('dana_sandbox_merchant_id', 'sandbox', env('DANA_MERCHANT_ID'));
+                    $partnerIdConf  = Api::getValue('dana_sandbox_client_id', 'sandbox', env('DANA_X_PARTNER_ID'));
+                    $baseUrl        = 'https://api.sandbox.dana.id';
+
+                    config([
+                        'services.dana.merchant_id'   => $merchantIdConf,
+                        'services.dana.x_partner_id'  => $partnerIdConf,
+                        'services.dana.private_key'   => Api::getValue('dana_sandbox_private_key', 'sandbox', env('DANA_PRIVATE_KEY')),
+                        'services.dana.client_secret' => Api::getValue('dana_sandbox_client_secret', 'sandbox', env('DANA_CLIENT_SECRET')),
+                        'services.dana.base_url'      => $baseUrl,
+                        'services.dana.dana_env'      => 'SANDBOX'
+                    ]);
+                }
+
+                $timestamp = \Carbon\Carbon::now('Asia/Jakarta')->format('Y-m-d\TH:i:sP');
+                $expiryTime = \Carbon\Carbon::now('Asia/Jakarta')->addMinutes(30)->format('Y-m-d\TH:i:sP');
+
+                $amountValue = number_format((float)$totalTagihan, 2, '.', '');
+
+                $user = auth()->user();
+                $userId = $user ? (string) $user->id_pengguna : 'GUEST' . rand(100, 999);
+                $nickname = $user ? substr(preg_replace('/[^a-zA-Z0-9 ]/', '', $user->nama_lengkap), 0, 40) : 'Customer Sancaka';
+
+                $bodyArray = [
+                    "partnerReferenceNo" => (string) $nomorInvoiceFix,
+                    "merchantId"         => $merchantIdConf,
+                    "amount"             => [
+                        "value"    => $amountValue,
+                        "currency" => "IDR"
+                    ],
+                    "validUpTo"          => $expiryTime,
+                    "urlParams"          => [
+                        [
+                            "url"        => $returnUrl, // KEMBALI KE INVOICE BILA SUKSES
+                            "type"       => "PAY_RETURN",
+                            "isDeeplink" => "N"
+                        ],
+                        [
+                            "url"        => url('/dana/notify'),
+                            "type"       => "NOTIFICATION",
+                            "isDeeplink" => "N"
+                        ]
+                    ],
+                    "additionalInfo"     => [
+                        "mcc"     => "5732",
+                        "envInfo" => [
+                            "sourcePlatform"    => "IPG",
+                            "terminalType"      => "SYSTEM",
+                            "orderTerminalType" => "WEB"
+                        ],
+                        "order"   => [
+                            "orderTitle"        => "Pembayaran " . $nomorInvoiceFix,
+                            "scenario"          => "REDIRECT",
+                            "merchantTransType" => "01",
+                            "buyer"             => [
+                                "externalUserId"   => $userId,
+                                "externalUserType" => "MERCHANT_USER",
+                                "nickname"         => $nickname
+                            ],
+                            "goods"             => [
+                                [
+                                    "name"            => "Pembayaran Pesanan",
+                                    "merchantGoodsId" => "ITEM" . $nomorInvoiceFix,
+                                    "description"     => "Pembayaran Tagihan Invoice",
+                                    "category"        => "DIGITAL_GOODS",
+                                    "price"           => [
+                                        "value"    => $amountValue,
+                                        "currency" => "IDR"
+                                    ],
+                                    "unit"            => "pcs",
+                                    "quantity"        => "1"
+                                ]
+                            ]
+                        ]
+                    ]
+                ];
+
+                $jsonBody = json_encode($bodyArray, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+
+                $accessToken = $danaSignature->getAccessToken();
+                $path = '/payment-gateway/v1.0/debit/payment-host-to-host.htm';
+                $signature = $danaSignature->generateSignature('POST', $path, $jsonBody, $timestamp);
+
+                $headers = [
+                    'Authorization' => 'Bearer ' . $accessToken,
+                    'X-PARTNER-ID'  => $partnerIdConf,
+                    'X-EXTERNAL-ID' => Str::random(32),
+                    'X-TIMESTAMP'   => $timestamp,
+                    'X-SIGNATURE'   => $signature,
+                    'Content-Type'  => 'application/json',
+                    'CHANNEL-ID'    => '95221',
+                    'ORIGIN'        => url('/'),
+                ];
+
+                $response = Http::withHeaders($headers)
+                    ->withBody($jsonBody, 'application/json')
+                    ->post($baseUrl . $path);
+
+                $result = $response->json();
+                Log::info('DANA Create Payment Result (Invoice):', $result ?? []);
+
+                if (isset($result['responseCode']) && $result['responseCode'] == '2005400') {
+                    $redirectUrl = $result['webRedirectUrl'] ?? $result['appLinkUrl'] ?? null;
+                    if ($redirectUrl) {
+                        $paymentUrl = $redirectUrl;
+                    } else {
+                        return back()->with('error', 'Gagal memproses DANA: URL Pembayaran tidak diterbitkan.');
+                    }
+                } else {
+                    $errorCode = $result['responseCode'] ?? 'N/A';
+                    return back()->with('error', 'Gagal dari DANA: ' . ($result['responseMessage'] ?? 'Unknown Error') . ' (Code: ' . $errorCode . ')');
+                }
             }
             // 5. JIKA PILIH TRIPAY (OVO, DANA, VA MANDIRI, BNI, DLL)
             else {
