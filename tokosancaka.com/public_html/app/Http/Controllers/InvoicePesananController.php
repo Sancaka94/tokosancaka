@@ -106,12 +106,46 @@ class InvoicePesananController extends Controller
         if (strtolower($gateway) === 'cash') {
             if (auth()->check() && (auth()->id() == 4 || optional(auth()->user())->id_pengguna == 4 || strtolower(optional(auth()->user())->role) == 'admin')) {
 
-                if ($isAutokirim) {
+               if ($isAutokirim) {
                     try {
-                        $origin = AutoKirim::where('zip', $pesanan->pengirim_kodepos)->first();
-                        $destination = AutoKirim::where('zip', $pesanan->penerima_kodepos)->first();
-                        $autokirimCtrl = new \App\Http\Controllers\PesananAutokirimController();
+                        // ========================================================
+                        // 1. CARI DATA ORIGIN (PENGIRIM)
+                        // ========================================================
+                        $origin = AutoKirim::where('zip', trim($pesanan->pengirim_kodepos))->first();
 
+                        // Fallback: Jika kodepos tidak akurat, cari ID Kecamatan dari riwayat Kontak
+                        if (!$origin) {
+                            $kontakPengirim = \App\Models\Kontak::where('no_hp', $pesanan->pengirim_hp)->first();
+                            if ($kontakPengirim && $kontakPengirim->district_id) {
+                                $origin = AutoKirim::where('district_id', $kontakPengirim->district_id)->first();
+                            }
+                        }
+
+                        // ========================================================
+                        // 2. CARI DATA DESTINATION (PENERIMA)
+                        // ========================================================
+                        $destination = AutoKirim::where('zip', trim($pesanan->penerima_kodepos))->first();
+
+                        // Fallback: Jika kodepos tidak akurat, cari ID Kecamatan dari riwayat Kontak
+                        if (!$destination) {
+                            $kontakPenerima = \App\Models\Kontak::where('no_hp', $pesanan->penerima_hp)->first();
+                            if ($kontakPenerima && $kontakPenerima->district_id) {
+                                $destination = AutoKirim::where('district_id', $kontakPenerima->district_id)->first();
+                            }
+                        }
+
+                        // ========================================================
+                        // 3. VALIDASI FINAL (Cegah Crash "Attempt to read property")
+                        // ========================================================
+                        if (!$origin) {
+                            throw new \Exception("Kodepos Pengirim ({$pesanan->pengirim_kodepos}) tidak dikenali server logistik. Solusi: Buka menu Edit Pesanan, ketik ulang dan pilih Kecamatan Pengirim dari dropdown, lalu Simpan.");
+                        }
+                        if (!$destination) {
+                            throw new \Exception("Kodepos Penerima ({$pesanan->penerima_kodepos}) tidak dikenali server logistik. Solusi: Buka menu Edit Pesanan, ketik ulang dan pilih Kecamatan Penerima dari dropdown, lalu Simpan.");
+                        }
+
+                        // Jika aman, eksekusi API Autokirim
+                        $autokirimCtrl = new \App\Http\Controllers\PesananAutokirimController();
                         $awbResult = $autokirimCtrl->_executeAutokirimApi($pesanan, $origin, $destination, null);
 
                         $pesanan->awb_number = $awbResult['awb'] ?? null;
@@ -119,10 +153,13 @@ class InvoicePesananController extends Controller
                         $pesanan->reff_1 = $awbResult['reff_1'] ?? null;
                         $pesanan->pickup_point_code = $awbResult['pickup'] ?? null;
                         $pesanan->status = 'booking_created';
+
                         // 🔥 Gunakan metode_pembayaran
                         $pesanan->metode_pembayaran = 'cash';
+
                     } catch (\Exception $e) {
-                        return back()->with('error', 'Gagal memproses API Logistik Pusat: ' . $e->getMessage());
+                        // Menangkap error dengan rapi tanpa membuat halaman blank
+                        return back()->with('error', 'Gagal memproses API: ' . $e->getMessage());
                     }
                 } else {
                     $pesanan->status = 'booking_created';
