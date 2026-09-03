@@ -586,15 +586,24 @@
                     </li>
 
                     @if($hasDanaBinding)
-                        <li class="payment-option cursor-pointer flex items-center p-3 border border-gray-400 rounded-xl bg-slate-100 hover:border-black hover:shadow-md transition-all group" data-value="DANA_BINDING" data-label="DANA Auto-Debit" data-img="{{ asset('public/assets/dana.webp') }}">
-                            <img src="{{ asset('public/assets/dana.webp') }}" class="w-12 h-auto mr-4 object-contain" onerror="this.src='https://upload.wikimedia.org/wikipedia/commons/7/72/Logo_dana_blue.svg'">
-                            <div class="flex flex-col flex-1"><span class="text-[13px] font-bold text-black">DANA Auto-Debit</span><span class="text-[11px] text-gray-600 font-medium">Saldo: Rp{{ number_format($userDanaBalance, 0, ',', '.') }}</span></div>
-                            <span class="bg-black text-white text-[10px] font-semibold px-2 py-1 rounded">Tersambung</span>
+                        <li class="payment-option md:col-span-2 lg:col-span-2 cursor-pointer flex items-center p-3 border border-gray-400 rounded-xl bg-slate-100 hover:border-black hover:shadow-md transition-all group" data-value="DANA_BINDING" data-label="DANA Auto-Debit" data-img="{{ asset('public/assets/dana.webp') }}">
+                            <img src="{{ asset('public/assets/dana.webp') }}" class="w-12 h-auto mr-4 object-contain shrink-0" onerror="this.src='https://upload.wikimedia.org/wikipedia/commons/7/72/Logo_dana_blue.svg'">
+                            <div class="flex flex-col flex-1 min-w-0">
+                                <span class="text-[13px] font-bold text-black whitespace-nowrap">DANA Auto-Debit</span>
+                                <span class="text-[11px] text-gray-600 font-medium mt-0.5 truncate">Saldo: Rp{{ number_format($userDanaBalance, 0, ',', '.') }}</span>
+                            </div>
+                            <span class="bg-black text-white text-[10px] font-semibold px-2 py-1 rounded shrink-0 ml-2">Tersambung</span>
                         </li>
                     @else
-                        <li class="col-span-1 flex items-center p-3 border border-dashed border-gray-300 rounded-xl bg-slate-100 justify-between">
-                            <div class="flex items-center"><img src="{{ asset('public/assets/dana.webp') }}" class="w-12 h-auto mr-4 object-contain opacity-60" onerror="this.src='https://upload.wikimedia.org/wikipedia/commons/7/72/Logo_dana_blue.svg'"><div class="flex flex-col"><span class="text-[13px] font-bold text-gray-500">DANA Auto-Debit</span></div></div>
-                            <a href="{{ url('/dana/start-binding') }}" class="bg-white border border-gray-300 text-black hover:border-black text-[11px] font-semibold px-3 py-1.5 rounded transition-colors shadow-sm">Hubungkan</a>
+                        <li class="md:col-span-2 lg:col-span-2 flex items-center p-3 border border-dashed border-gray-300 rounded-xl bg-slate-100 justify-between">
+                            <div class="flex items-center min-w-0">
+                                <img src="{{ asset('public/assets/dana.webp') }}" class="w-12 h-auto mr-4 object-contain opacity-60 shrink-0" onerror="this.src='https://upload.wikimedia.org/wikipedia/commons/7/72/Logo_dana_blue.svg'">
+                                <div class="flex flex-col min-w-0">
+                                    <span class="text-[13px] font-bold text-gray-500 whitespace-nowrap">DANA Auto-Debit</span>
+                                    <span class="text-[11px] text-gray-400 mt-0.5 truncate">Bayar instan 1-klik</span>
+                                </div>
+                            </div>
+                            <a href="{{ url('/dana/start-binding') }}" class="bg-white border border-gray-300 text-black hover:border-black text-[11px] font-semibold px-3 py-1.5 rounded transition-colors shadow-sm shrink-0 ml-2">Hubungkan</a>
                         </li>
                     @endif
 
