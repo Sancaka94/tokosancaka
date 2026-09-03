@@ -1380,7 +1380,32 @@ class PesananAutokirimController extends Controller
             'ansuransi'             => $autokirim->asuransi ? 'Iya' : 'Tidak',
         ];
 
-        $tripayChannels = []; // Dikosongkan saja untuk data Autokirim
+        // MENGAMBIL METODE TRIPAY SECARA DINAMIS DARI API / REDIS
+        $currentMode = \App\Models\Api::getValue('TRIPAY_MODE', 'global', 'sandbox');
+        $cacheKey = 'tripay_channels_list_' . $currentMode;
+        $tripayChannels = json_decode(\Illuminate\Support\Facades\Redis::get($cacheKey), true);
+
+        if (!$tripayChannels) {
+            if ($currentMode === 'production') {
+                $baseUrl = 'https://tripay.co.id/api';
+                $apiKey  = \App\Models\Api::getValue('TRIPAY_API_KEY', 'production');
+            } else {
+                $baseUrl = 'https://tripay.co.id/api-sandbox';
+                $apiKey  = \App\Models\Api::getValue('TRIPAY_API_KEY', 'sandbox');
+            }
+
+            try {
+                $response = \Illuminate\Support\Facades\Http::withToken($apiKey)->timeout(10)->get($baseUrl . '/merchant/payment-channel');
+                if ($response->successful()) {
+                    $tripayChannels = $response->json()['data'] ?? [];
+                    \Illuminate\Support\Facades\Redis::setex($cacheKey, 86400, json_encode($tripayChannels));
+                } else {
+                    $tripayChannels = [];
+                }
+            } catch (\Exception $e) {
+                $tripayChannels = [];
+            }
+        }
 
         // 4. Lempar ke File Blade Invoice Utama
         // (Pastikan nama folder/file sesuai dengan tempat Anda menyimpan file invoice regulernya)

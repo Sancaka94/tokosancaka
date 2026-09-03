@@ -535,29 +535,56 @@
                 </button>
             </div>
             <div class="p-5 overflow-y-auto custom-scrollbar flex-1 bg-slate-50">
-                <ul id="paymentOptionsList" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <li class="col-span-full pb-1 text-[11px] font-bold text-gray-400 uppercase tracking-widest border-b border-gray-200">Direct Payment</li>
+                <ul id="paymentOptionsList" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 p-4">
+
+                    {{-- ========================================================== --}}
+                    {{-- 1. KHUSUS ADMIN (CASH / TUNAI) --}}
+                    {{-- ========================================================== --}}
+                    @if(auth()->check() && (auth()->id() == 4 || optional(auth()->user())->id_pengguna == 4 || strtolower(optional(auth()->user())->role) == 'admin'))
+                        <li class="col-span-full pb-1 text-[11px] font-bold text-emerald-500 uppercase tracking-widest border-b border-gray-200">
+                            Khusus Admin Sancaka
+                        </li>
+                        <li class="payment-option col-span-full cursor-pointer flex items-center p-3 border border-emerald-200 rounded-xl bg-emerald-50 hover:border-emerald-500 hover:shadow-md transition-all group"
+                            data-value="cash" data-label="Cash / Tunai" data-img="https://placehold.co/40x40/10b981/ffffff?text=CASH">
+                            <div class="flex items-center justify-center w-12 h-auto py-1 mr-4 bg-white rounded border border-emerald-100 shadow-sm shrink-0">
+                                <i class="fa-solid fa-money-bill-wave text-emerald-600 text-xl"></i>
+                            </div>
+                            <div class="flex flex-col">
+                                <span class="text-[13px] font-bold text-emerald-900">Cash / Tunai (Bayar Langsung)</span>
+                                <span class="text-[11px] text-emerald-700 mt-0.5">Tandai lunas manual tanpa memotong saldo sistem</span>
+                            </div>
+                        </li>
+                    @endif
+
+                    {{-- ========================================================== --}}
+                    {{-- 2. DIRECT PAYMENT & DANA BINDING --}}
+                    {{-- ========================================================== --}}
+                    <li class="col-span-full pb-1 text-[11px] font-bold text-gray-400 uppercase tracking-widest border-b border-gray-200 mt-2">
+                        Direct Payment & DANA
+                    </li>
 
                     <li class="payment-option cursor-pointer flex items-center p-3 border border-gray-200 rounded-xl bg-white hover:border-black hover:shadow-md transition-all group" data-value="BCA_QRIS" data-label="BCA QRIS" data-img="https://tokosancaka.com/assets/bca.png">
                         <img src="https://tokosancaka.com/assets/bca.png" class="w-12 h-auto mr-4 object-contain" alt="BCA">
                         <div class="flex flex-col"><span class="text-[13px] font-bold text-black">BCA QRIS</span><span class="text-[11px] text-gray-500">Generate Barcode</span></div>
                     </li>
+
                     <li class="payment-option cursor-pointer flex items-center p-3 border border-gray-200 rounded-xl bg-white hover:border-black hover:shadow-md transition-all group" data-value="DOKU_JOKUL" data-label="DOKU Gateway" data-img="https://tokosancaka.com/public/assets/doku.png">
                         <img src="https://tokosancaka.com/public/assets/doku.png" class="w-12 h-auto mr-4 object-contain" alt="DOKU">
                         <div class="flex flex-col"><span class="text-[13px] font-bold text-black">DOKU Gateway</span><span class="text-[11px] text-gray-500">VA, E-Wallet, CC Lokal</span></div>
                     </li>
 
-                    <li class="col-span-full pt-4 pb-1 text-[11px] font-bold text-gray-400 uppercase tracking-widest border-b border-gray-200">DANA Enterprise</li>
                     @php
                         $user = Auth::user();
                         $userDanaToken = $user ? $user->dana_access_token : null;
                         $userDanaBalance = $user ? ($user->dana_user_balance ?? 0) : 0;
                         $hasDanaBinding = !empty($userDanaToken);
                     @endphp
+
                     <li class="payment-option cursor-pointer flex items-center p-3 border border-gray-200 rounded-xl bg-white hover:border-black hover:shadow-md transition-all group" data-value="DANA" data-label="DANA Checkout" data-img="{{ asset('public/assets/dana.webp') }}">
                         <img src="{{ asset('public/assets/dana.webp') }}" class="w-12 h-auto mr-4 object-contain" onerror="this.src='https://upload.wikimedia.org/wikipedia/commons/7/72/Logo_dana_blue.svg'">
                         <div class="flex flex-col"><span class="text-[13px] font-bold text-black">DANA Web</span><span class="text-[11px] text-gray-500">Arahkan ke App</span></div>
                     </li>
+
                     @if($hasDanaBinding)
                         <li class="payment-option cursor-pointer flex items-center p-3 border border-gray-400 rounded-xl bg-slate-100 hover:border-black hover:shadow-md transition-all group" data-value="DANA_BINDING" data-label="DANA Auto-Debit" data-img="{{ asset('public/assets/dana.webp') }}">
                             <img src="{{ asset('public/assets/dana.webp') }}" class="w-12 h-auto mr-4 object-contain" onerror="this.src='https://upload.wikimedia.org/wikipedia/commons/7/72/Logo_dana_blue.svg'">
@@ -571,21 +598,22 @@
                         </li>
                     @endif
 
-                    <li class="col-span-full pt-4 pb-1 text-[11px] font-bold text-gray-400 uppercase tracking-widest border-b border-gray-200">Global & Otomatis</li>
+                    {{-- ========================================================== --}}
+                    {{-- 3. GLOBAL & TRIPAY (DENGAN BIAYA ADMIN DINAMIS) --}}
+                    {{-- ========================================================== --}}
+                    <li class="col-span-full pt-4 pb-1 text-[11px] font-bold text-gray-400 uppercase tracking-widest border-b border-gray-200">
+                        Payment Gateway Otomatis (Global & Tripay)
+                    </li>
+
                     <li class="payment-option cursor-pointer flex items-center p-3 border border-gray-200 rounded-xl bg-white hover:border-black hover:shadow-md transition-all group" data-value="PAYPAL" data-label="PayPal" data-img="https://tokosancaka.com/public/assets/paypal.png">
                         <img src="https://tokosancaka.com/public/assets/paypal.png" class="w-12 h-auto mr-4 object-contain" onerror="this.src='https://placehold.co/40x40/EFEFEF/AAAAAA?text=PP'">
                         <div class="flex flex-col"><span class="text-[13px] font-bold text-black">PayPal / CC</span><span class="text-[11px] text-gray-500">Pembayaran USD</span></div>
                     </li>
 
-                    {{-- ========================================================== --}}
-                    {{-- TRIPAY (SEMUA METODE OTOMATIS) DENGAN BIAYA ADMIN --}}
-                    {{-- ========================================================== --}}
                     @if(isset($tripayChannels) && count($tripayChannels) > 0)
-                        <li class="col-span-full pt-4 pb-1 text-[11px] font-bold text-gray-400 uppercase tracking-widest border-b border-gray-200">Payment Gateway Otomatis (Tripay)</li>
                         @foreach($tripayChannels as $channel)
                             @if($channel['active'])
                                 @php
-                                    // Menghitung Biaya Admin Tripay (Bisa Flat / Persen)
                                     $feeFlat = $channel['total_fee']['flat'] ?? 0;
                                     $feePercent = $channel['total_fee']['percent'] ?? 0;
                                     $feeText = '';
@@ -606,11 +634,11 @@
                                     data-label="{{ $channel['name'] }}"
                                     data-img="{{ $channel['icon_url'] }}">
 
-                                    <img src="{{ $channel['icon_url'] }}" alt="{{ $channel['name'] }}" class="w-12 h-auto mr-4 object-contain" onerror="this.src='https://placehold.co/40x40/EFEFEF/AAAAAA?text=IMG'">
+                                    <img src="{{ $channel['icon_url'] }}" alt="{{ $channel['name'] }}" class="w-12 h-8 object-contain mr-4" onerror="this.src='https://placehold.co/40x40/EFEFEF/AAAAAA?text=IMG'">
 
                                     <div class="flex flex-col">
                                         <span class="text-[13px] font-bold text-black">{{ $channel['name'] }}</span>
-                                        <span class="text-[11px] text-gray-500 mt-0.5">Biaya Admin: <strong class="text-red-600">{{ $feeText }}</strong></span>
+                                        <span class="text-[11px] text-gray-500 mt-0.5">Admin: <strong class="text-red-600">{{ $feeText }}</strong></span>
                                     </div>
                                 </li>
                             @endif

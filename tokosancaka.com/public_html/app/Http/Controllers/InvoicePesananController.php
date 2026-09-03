@@ -65,6 +65,24 @@ class InvoicePesananController extends Controller
         // INI URL KEMBALIAN AGAR DOKU/PAYPAL BALIK KE HALAMAN INVOICE
         $returnUrl = route('invoice.show', ['nomor_invoice' => $pesanan->nomor_invoice]);
 
+        // ====================================================
+        // INTERCEPTOR: KHUSUS METODE CASH (HANYA ADMIN ID 4)
+        // ====================================================
+        if (strtolower($gateway) === 'cash') {
+            if (auth()->check() && (auth()->id() == 4 || auth()->user()->id_pengguna == 4 || strtolower(auth()->user()->role) == 'admin')) {
+                // Update status agar dianggap LUNAS
+                $pesanan->status = 'booking_created';
+                $pesanan->status_pesanan = 'PAID';
+                $pesanan->payment_method = 'Cash / Tunai';
+                $pesanan->save();
+
+                return redirect($returnUrl)->with('success', 'Pembayaran tunai berhasil diverifikasi oleh Admin. Silakan sync/edit order jika resi autokirim belum terbit.');
+            } else {
+                return back()->with('error', 'Akses ditolak! Metode Cash hanya dapat digunakan oleh Admin.');
+            }
+        }
+        // ====================================================
+
         try {
             // 1. JIKA PILIH DOKU (Menggunakan createSpecificCheckoutPayment agar support Return URL)
             if ($gateway === 'DOKU_JOKUL') {
