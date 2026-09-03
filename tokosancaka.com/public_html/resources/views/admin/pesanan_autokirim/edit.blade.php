@@ -501,8 +501,9 @@
                         <span class="text-[10px] font-bold text-black bg-gray-100 px-2 py-1 rounded-sm uppercase tracking-widest flex items-center">
                             Ekspedisi Terpilih
                         </span>
-                        <button type="button" @click="showModal = true" class="bg-red-600 hover:bg-red-700 text-white text-xs font-bold px-3 py-1.5 rounded shadow-sm transition-colors flex items-center gap-1.5">
-                            <i class="fa-solid fa-arrows-rotate"></i> GANTI EKSPEDISI
+                        <button type="button" @click="cekOngkir()" :disabled="isLoading" class="bg-red-600 hover:bg-red-700 text-white text-xs font-bold px-3 py-1.5 rounded shadow-sm transition-colors flex items-center gap-1.5 disabled:opacity-50">
+                            <i class="fa-solid" :class="isLoading ? 'fa-spinner fa-spin' : 'fa-arrows-rotate'"></i>
+                            <span x-text="isLoading ? 'MENGHITUNG...' : 'GANTI EKSPEDISI'"></span>
                         </button>
                     </div>
 
@@ -1003,7 +1004,9 @@ document.addEventListener('alpine:init', () => {
         selectedKurir: '{!! old('kurir_terpilih', $pesanan->kurir) !!}',
         selectedLayanan: '{!! old('layanan_terpilih', $pesanan->layanan) !!}',
         selectedOngkir: {{ old('ongkir_terpilih', $pesanan->ongkir ?? 0) }},
-        selectedServiceCode: '',
+
+        // FIX: Injeksi Layanan agar bisa lolos validasi Submit tanpa harus hitung ulang
+        selectedServiceCode: '{!! old('service_code_terpilih', $pesanan->layanan) !!}',
         selectedLogoUrl: '',
         selectedEtd: '',
 
@@ -1030,6 +1033,13 @@ document.addEventListener('alpine:init', () => {
 
         isGeneratingPickup: false,
         formIsValid: false,
+
+        // FIX: Otomatis validasi saat halaman Edit pertama kali dibuka
+        init() {
+            setTimeout(() => {
+                this.checkFormValidity();
+            }, 500);
+        },
 
         checkFormValidity() {
             if (this.$refs.orderForm) {
