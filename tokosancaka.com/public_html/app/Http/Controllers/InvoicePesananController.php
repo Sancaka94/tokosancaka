@@ -1,4 +1,63 @@
-public function prosesPembayaran(Request $request, $nomor_invoice)
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Models\Pesanan;
+use App\Models\PesananAutokirim; // Tambahkan ini
+use App\Models\AutoKirim; // Tambahkan ini
+use App\Models\Api;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
+
+class InvoicePesananController extends Controller
+{
+    public function show($nomor_invoice)
+    {
+        // 1. CARI DI PESANAN REGULER DULU
+        $pesanan = Pesanan::where('nomor_invoice', $nomor_invoice)
+            ->orWhere('resi', $nomor_invoice)
+            ->orWhere('resi_aktual', $nomor_invoice)
+            ->first();
+
+        // 2. JIKA TIDAK KETEMU, CARI DI PESANAN AUTOKIRIM
+        $isAutokirim = false;
+        if (!$pesanan) {
+            $pesanan = PesananAutokirim::where('order_id', $nomor_invoice)
+                ->orWhere('awb_number', $nomor_invoice)
+                ->firstOrFail(); // Jika di Autokirim juga tidak ada, baru 404
+
+            $isAutokirim = true;
+        }
+
+        // Tentukan status lunas atau belum
+        $statusLunas = in_array(strtoupper($isAutokirim ? $pesanan->status : $pesanan->status_pesanan), [
+            'PAID', 'LUNAS', 'SELESAI', 'TERKIRIM', 'BOOKING_CREATED',
+            'MENUNGGU PICKUP', 'PESANAN DIBUAT', 'DIPROSES', 'SEDANG DIKIRIM'
+        ]);
+
+        // Tarik daftar Tripay Channels
+        $tripayChannels = [];
+        if (!$statusLunas && empty($pesanan->payment_url) && !in_array($pesanan->payment_method, ['COD', 'CODBARANG', 'Cash', 'Potong Saldo'])) {
+            $mode = Api::getValue('TRIPAY_MODE', 'global', 'sandbox');
+            $apiKey = Api::getValue('TRIPAY_API_KEY', $mode);
+            $baseUrl = $mode === 'production' ? 'https://tripay.co.id/api/merchant/payment-channel' : 'https://tripay.co.id/api-sandbox/merchant/payment-channel';
+
+            try {
+                $response = Http::withToken($apiKey)->timeout(10)->get($baseUrl);
+                if ($response->successful()) {
+                    $tripayChannels = $response->json()['data'] ?? [];
+                }
+            } catch (\Exception $e) {
+                Log::error("Gagal load channel Tripay di Invoice: " . $e->getMessage());
+            }
+        }
+
+        return view('invoice_pesanan.show', compact('pesanan', 'statusLunas', 'tripayChannels'));
+    }
+
+   public function prosesPembayaran(Request $request, $nomor_invoice)
     {
         $request->validate(['payment_method' => 'required|string']);
 
@@ -231,3 +290,4 @@ public function prosesPembayaran(Request $request, $nomor_invoice)
 
         return back()->with('error', 'Gagal mengarahkan ke halaman pembayaran.');
     }
+}
