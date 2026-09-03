@@ -828,17 +828,16 @@ class PesananAutokirimController extends Controller
 
                 $paymentUrl = null;
 
-                // ---> TAMBAHKAN LOGIC CUSTOMER PAY DI SINI <---
+                // Di dalam function store() (Pilihan Customer Pay)
                 if ($paymentMethod === 'customer_pay') {
                     \Illuminate\Support\Facades\Log::info("LOG LOG: [CREATE ORDER - CUSTOMER PAY] ($appMode) Order {$localOrderId} dibuat, menunggu customer bayar di link invoice.");
                     $this->notifyExpoOrderBaru($localOrderId, auth()->id());
                     $this->notifyAdminOrderBaru($localOrderId, $request->pengirim_nama, $request->kurir_terpilih, $request->layanan_terpilih);
 
-                    // Arahkan ke halaman Invoice, agar customer bisa milih DANA, DOKU, Tripay dsb.
+                    // Redirect ke fungsi cetakInvoice yang akan mengamankan proses lalu merender view('invoice_pesanan.show')
                     return redirect()->route('admin.pesanan-autokirim.invoice', $pesanan->id)
                         ->with('success', "Berhasil! Silakan share URL Halaman Invoice ini ke pelanggan untuk melakukan pembayaran.");
                 }
-                // ------------------------------------------------
 
                 elseif (in_array($paymentMethod, ['potong_saldo', 'dana_binding', 'cod_barang', 'cod_ongkir', 'cash'])) {
 
