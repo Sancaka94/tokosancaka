@@ -2069,6 +2069,10 @@ Route::middleware(['auth'])->prefix('customer')->name('customer.')->group(functi
         Route::post('/pesanan-autokirim/ajax-pickup', [PesananAutokirimController::class, 'generatePickupPointAjax'])->name('pesanan-autokirim.ajax-pickup');
         // ----------------------------
 
+        // ---> TAMBAHKAN 2 ROUTE INI UNTUK FITUR EDIT <---
+        Route::get('/pesanan-autokirim/{id}/edit', [PesananAutokirimController::class, 'editAdmin'])->name('pesanan-autokirim.edit');
+        Route::put('/pesanan-autokirim/{id}', [PesananAutokirimController::class, 'updateAdmin'])->name('pesanan-autokirim.update');
+
         // TAMBAHAN ROUTE AKSI BARU (Ini bawaan kode asli kamu)
         Route::get('/pesanan-autokirim/{id}/cetak', [PesananAutokirimController::class, 'cetakResi'])->name('pesanan-autokirim.cetak');
         Route::get('/pesanan-autokirim/{id}/invoice', [PesananAutokirimController::class, 'cetakInvoice'])->name('pesanan-autokirim.invoice');

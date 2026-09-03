@@ -77,8 +77,14 @@ class PesananAutokirimController extends Controller
             ]
         ];
 
-        // --- TAMBAHAN KODE: METODE CASH KHUSUS ADMIN ---
+        // --- TAMBAHAN KODE: METODE CASH & CUSTOMER PAY KHUSUS ADMIN ---
         if ($roleType === 'admin') {
+            array_unshift($metodePembayaran, [
+                'id'          => 'customer_pay',
+                'nama'        => 'Customer Pay (Bayar Mandiri via Invoice)',
+                'icon'        => 'fa-solid fa-link text-indigo-600',
+                'deskripsi'   => 'Generate pesanan pending, lalu arahkan ke Invoice agar customer bayar sendiri.'
+            ]);
             array_unshift($metodePembayaran, [
                 'id'          => 'cash',
                 'nama'        => 'Cash / Tunai',
@@ -822,7 +828,19 @@ class PesananAutokirimController extends Controller
 
                 $paymentUrl = null;
 
-                if (in_array($paymentMethod, ['potong_saldo', 'dana_binding', 'cod_barang', 'cod_ongkir', 'cash'])) {
+                // ---> TAMBAHKAN LOGIC CUSTOMER PAY DI SINI <---
+                if ($paymentMethod === 'customer_pay') {
+                    \Illuminate\Support\Facades\Log::info("LOG LOG: [CREATE ORDER - CUSTOMER PAY] ($appMode) Order {$localOrderId} dibuat, menunggu customer bayar di link invoice.");
+                    $this->notifyExpoOrderBaru($localOrderId, auth()->id());
+                    $this->notifyAdminOrderBaru($localOrderId, $request->pengirim_nama, $request->kurir_terpilih, $request->layanan_terpilih);
+
+                    // Arahkan ke halaman Invoice, agar customer bisa milih DANA, DOKU, Tripay dsb.
+                    return redirect()->route('admin.pesanan-autokirim.invoice', $pesanan->id)
+                        ->with('success', "Berhasil! Silakan share URL Halaman Invoice ini ke pelanggan untuk melakukan pembayaran.");
+                }
+                // ------------------------------------------------
+
+                elseif (in_array($paymentMethod, ['potong_saldo', 'dana_binding', 'cod_barang', 'cod_ongkir', 'cash'])) {
 
                     if ($paymentMethod === 'potong_saldo') {
                         // [FITUR IDEMPOTENCY]: Pessimistic Lock untuk mengunci baris user
@@ -2392,6 +2410,247 @@ class PesananAutokirimController extends Controller
         } catch (\Exception $e) {
             \Illuminate\Support\Facades\Log::error('Gagal simpan FCM Token Web: ' . $e->getMessage());
             return response()->json(['success' => false, 'message' => 'Server Error'], 500);
+        }
+    }
+
+    /**
+     * =========================================================================
+     * EDIT & UPDATE PESANAN AUTOKIRIM (HANYA STATUS PENDING)
+     * =========================================================================
+     */
+    public function editAdmin($id)
+    {
+        $pesanan = PesananAutokirim::findOrFail($id);
+
+        if (!in_array($pesanan->status, ['waiting_payment', 'menunggu_pembayaran'])) {
+            return redirect()->route('admin.pesanan-autokirim.index')->with('error', 'Pesanan sudah diproses dan tidak dapat diedit.');
+        }
+
+        // Tampilkan halaman Edit persis seperti halaman Create
+        return $this->_renderEditFormAdmin($pesanan);
+    }
+
+    private function _renderEditFormAdmin($pesanan)
+    {
+        $kategoriBarang = [
+            'Pakaian / Fashion', 'Elektronik & Gadget', 'Dokumen / Surat',
+            'Makanan Kering / Herbal', 'Kosmetik & Kecantikan', 'Aksesoris & Sparepart', 'Lainnya'
+        ];
+
+        $metodePembayaran = [
+            [
+                'id'          => 'customer_pay',
+                'nama'        => 'Customer Pay (Bayar Mandiri via Invoice)',
+                'icon'        => 'fa-solid fa-link text-indigo-600',
+                'deskripsi'   => 'Generate pesanan pending, lalu arahkan ke Invoice agar customer bayar sendiri.'
+            ],
+            [
+                'id'          => 'cash',
+                'nama'        => 'Cash / Tunai',
+                'icon'        => 'fa-solid fa-money-bill-wave text-emerald-600',
+                'deskripsi'   => 'Terima tunai dari pelanggan. Resi (AWB) langsung terbit tanpa potong saldo.'
+            ],
+            [
+                'id'          => 'potong_saldo',
+                'nama'        => 'Potong Saldo Akun / Wallet',
+                'icon'        => 'fa-solid fa-wallet text-blue-600',
+                'deskripsi'   => 'Potong saldo otomatis dari akun Anda (Proses Instan)'
+            ],
+            // Masukkan gateway statis
+            ['id' => 'dana_binding', 'nama' => 'DANA (One-Click Binding)', 'icon' => 'fa-solid fa-mobile-screen-button text-blue-500', 'deskripsi' => 'Bayar instan akun DANA'],
+            ['id' => 'dana_pg', 'nama' => 'DANA Payment Gateway', 'icon' => 'fa-solid fa-qrcode text-blue-400', 'deskripsi' => 'Redirect ke web DANA'],
+            ['id' => 'doku_jokul', 'nama' => 'DOKU Payment Gateway', 'icon' => 'fa-solid fa-shield-halved text-red-600', 'deskripsi' => 'Bayar via DOKU']
+        ];
+
+        // MENGAMBIL METODE TRIPAY SECARA DINAMIS DARI API
+        $currentMode = \App\Models\Api::getValue('TRIPAY_MODE', 'global', 'sandbox');
+        $cacheKey = 'tripay_channels_list_' . $currentMode;
+        $tripayChannels = json_decode(Redis::get($cacheKey), true);
+
+        if (!$tripayChannels) {
+            if ($currentMode === 'production') {
+                $baseUrl = 'https://tripay.co.id/api';
+                $apiKey  = \App\Models\Api::getValue('TRIPAY_API_KEY', 'production');
+            } else {
+                $baseUrl = 'https://tripay.co.id/api-sandbox';
+                $apiKey  = \App\Models\Api::getValue('TRIPAY_API_KEY', 'sandbox');
+            }
+
+            try {
+                $response = \Illuminate\Support\Facades\Http::withToken($apiKey)->timeout(10)->get($baseUrl . '/merchant/payment-channel');
+                if ($response->successful()) {
+                    $tripayChannels = $response->json()['data'] ?? [];
+                    Redis::setex($cacheKey, 86400, json_encode($tripayChannels));
+                } else {
+                    $tripayChannels = [];
+                }
+            } catch (\Exception $e) {
+                $tripayChannels = [];
+            }
+        }
+
+        foreach ($tripayChannels as $channel) {
+            if ($channel['active']) {
+                $metodePembayaran[] = [
+                    'id'        => 'tripay_' . $channel['code'],
+                    'nama'      => $channel['name'],
+                    'icon'      => $channel['icon_url'],
+                    'deskripsi' => 'Biaya Admin Tripay: Rp ' . number_format($channel['total_fee']['flat'] ?? 0, 0, ',', '.')
+                ];
+            }
+        }
+
+        // Anda perlu membuat file view ini dengan me-duplicate create.blade.php menjadi edit.blade.php
+        return view('admin.pesanan_autokirim.edit', compact('pesanan', 'kategoriBarang', 'metodePembayaran'));
+    }
+
+    public function updateAdmin(Request $request, $id)
+    {
+        $appMode = app()->environment('production') ? 'PRODUCTION' : 'DEV';
+        $pesanan = PesananAutokirim::findOrFail($id);
+
+        if (!in_array($pesanan->status, ['waiting_payment', 'menunggu_pembayaran'])) {
+            return redirect()->route('admin.pesanan-autokirim.index')->with('error', 'Hanya pesanan pending yang bisa diedit.');
+        }
+
+        \Illuminate\Support\Facades\Log::info("LOG LOG: [UPDATE ORDER - ADMIN INPUT PAYLOAD] ($appMode)", [
+            'order_id' => $pesanan->order_id,
+            'admin_id' => auth()->id(),
+            'payload'  => $request->all()
+        ]);
+
+        $request->validate([
+            'service_code_terpilih' => 'required',
+            'pengirim_nama'         => 'required|string|max:50',
+            'pengirim_hp'           => 'required|string|min:9|max:15',
+            'pengirim_district_id'  => 'required',
+            'pengirim_kodepos'      => 'required|string',
+            'pengirim_alamat'       => 'required|string|min:15',
+            'penerima_nama'         => 'required|string|max:50',
+            'penerima_hp'           => 'required|string|min:9|max:15',
+            'penerima_district_id'  => 'required',
+            'penerima_kodepos'      => 'required|string',
+            'penerima_alamat'       => 'required|string|min:15',
+            'berat_gram'            => 'required|numeric|min:1',
+            'qty'                   => 'required|numeric|min:1',
+            'is_sender_pp'          => 'required|in:0,1',
+            'metode_pembayaran'     => 'required|string',
+            'ongkir_terpilih'       => 'required|numeric|min:1'
+        ]);
+
+        try {
+            $origin = AutoKirim::where('district_id', $request->pengirim_district_id)->first();
+            $destination = AutoKirim::where('district_id', $request->penerima_district_id)->first();
+
+            if (!$origin || !$destination) {
+                return redirect()->back()->withInput()->with('error', 'Wilayah pengirim atau penerima tidak valid.');
+            }
+
+            $ongkirDasar  = (int) $request->ongkir_terpilih;
+            $paymentMethod = $request->metode_pembayaran;
+
+            $hargaBarangInput = (int) $request->nilai_barang;
+            $finalPrice = $hargaBarangInput > 0 ? $hargaBarangInput : 10000;
+            $isInsurance = $request->has('asuransi');
+            $isCod = in_array(strtolower($paymentMethod), ['cod', 'codbarang', 'cod_barang', 'cod_ongkir']);
+
+            $rateAsuransi = (float) $request->input('rate_asuransi', 0);
+            $rateCod = (float) $request->input('rate_cod', 0);
+            $feeAsuransi = 0; $feeCod = 0;
+
+            if ($isInsurance && $finalPrice > 0) {
+                $feeAsuransi = round($finalPrice * $rateAsuransi);
+            }
+
+            if ($isCod) {
+                $baseCod = $ongkirDasar;
+                if ($paymentMethod === 'cod_barang') {
+                    $baseCod += $finalPrice;
+                }
+                $feeCod = round($baseCod * $rateCod);
+                $minFee = stripos($request->kurir_terpilih, 'sicepat') !== false ? 2000 : 1500;
+                if ($feeCod > 0 && $feeCod < $minFee) {
+                    $feeCod = $minFee;
+                }
+            }
+
+            if ($isCod) {
+                $totalTagihan = $ongkirDasar + $feeAsuransi + $feeCod;
+                if ($paymentMethod === 'cod_barang') { $totalTagihan += $finalPrice; }
+            } else {
+                $totalTagihan = $ongkirDasar + $feeAsuransi;
+            }
+
+            DB::beginTransaction();
+            $rates = DB::table('data_auto_kirims')->get();
+
+            $kalkulasiData = (object) [
+                'kurir' => $request->kurir_terpilih,
+                'layanan' => $request->layanan_terpilih,
+                'metode_pembayaran' => $paymentMethod,
+                'ongkir' => $ongkirDasar
+            ];
+            $profit = $this->hitungProfit($kalkulasiData, $rates);
+
+            // Invoice Number dan Order ID tidak disentuh (Update aman)
+            $pesanan->update([
+                'pengirim_nama'     => $request->pengirim_nama,
+                'pengirim_hp'       => $request->pengirim_hp,
+                'pengirim_alamat'   => $request->pengirim_alamat,
+                'pengirim_kodepos'  => $request->pengirim_kodepos,
+                'penerima_nama'     => $request->penerima_nama,
+                'penerima_hp'       => $request->penerima_hp,
+                'penerima_alamat'   => $request->penerima_alamat,
+                'penerima_kodepos'  => $request->penerima_kodepos,
+                'deskripsi_barang'  => $request->deskripsi_barang,
+                'kategori_barang'   => $request->kategori_barang,
+                'berat_gram'        => $request->berat_gram,
+                'panjang_cm'        => $request->panjang_cm ? (int) $request->panjang_cm : 10,
+                'lebar_cm'          => $request->lebar_cm ? (int) $request->lebar_cm : 10,
+                'tinggi_cm'         => $request->tinggi_cm ? (int) $request->tinggi_cm : 10,
+                'asuransi'          => $isInsurance ? 1 : 0,
+                'nilai_barang'      => $finalPrice,
+                'kurir'             => $request->kurir_terpilih,
+                'layanan'           => $request->layanan_terpilih,
+                'ongkir'            => $ongkirDasar,
+                'grand_total'       => $totalTagihan,
+                'metode_pembayaran' => $paymentMethod,
+                'total_cashback'    => $profit->total_cashback,
+                'laba_sistem'       => $profit->laba_sancaka,
+                'komisi_agen'       => $profit->komisi_agen
+            ]);
+
+            DB::commit();
+
+            // 1. Eksekusi Logistik JIKA diedit menjadi CASH
+            if ($paymentMethod === 'cash') {
+                DB::beginTransaction();
+                $awbResult = $this->_executeAutokirimApi($pesanan, $origin, $destination, $request);
+
+                $pesanan->update([
+                    'awb_number'        => $awbResult['awb'] ?? null,
+                    'tlc_code'          => $awbResult['reff_2'] ?? null,
+                    'reff_1'            => $awbResult['reff_1'] ?? null,
+                    'pickup_point_code' => $awbResult['pickup'] ?? null,
+                    'status'            => 'booking_created'
+                ]);
+                DB::commit();
+
+                \Illuminate\Support\Facades\Log::info("LOG LOG: [UPDATE ORDER - SUCCESS CASH] AWB Terbit: " . ($awbResult['awb'] ?? 'KOSONG'));
+                return redirect()->route('admin.pesanan-autokirim.index')->with('success', "Order Berhasil Diperbarui & AWB Terbit (Metode Cash).");
+            }
+
+            // 2. Arahkan Langsung ke Halaman Invoice untuk semua Pilihan Pembayaran Tertunda Lainnya
+            else {
+                \Illuminate\Support\Facades\Log::info("LOG LOG: [UPDATE ORDER - PENDING / CUSTOMER PAY] Order {$pesanan->order_id} diupdate.");
+                return redirect()->route('admin.pesanan-autokirim.invoice', $pesanan->id)
+                    ->with('success', "Order Berhasil Diupdate! Silakan cek kembali atau bagikan link Invoice ke Customer.");
+            }
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            \Illuminate\Support\Facades\Log::error("LOG LOG: [UPDATE ORDER ERROR] " . $e->getMessage());
+            return redirect()->back()->withInput()->with('error', $e->getMessage());
         }
     }
 
