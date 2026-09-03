@@ -321,6 +321,20 @@
                                         <i class="fa-solid fa-file-invoice-dollar"></i>
                                     </a>
 
+                                    <!-- ========================================== -->
+                                    <!-- TOMBOL EDIT PESANAN (HANYA PENDING)        -->
+                                    <!-- ========================================== -->
+                                    @if(in_array($item->status, ['waiting_payment', 'menunggu_pembayaran']))
+                                        <a href="{{ route('admin.pesanan-autokirim.edit', $item->id) }}" class="bg-yellow-100 hover:bg-yellow-200 text-yellow-700 w-8 h-8 rounded flex items-center justify-center shadow-sm" title="Edit Pesanan">
+                                            <i class="fa-solid fa-pen-to-square"></i>
+                                        </a>
+                                    @else
+                                        <button type="button" disabled class="bg-gray-100 text-gray-400 w-8 h-8 rounded flex items-center justify-center cursor-not-allowed" title="Hanya pesanan pending yang bisa diedit">
+                                            <i class="fa-solid fa-pen-to-square"></i>
+                                        </button>
+                                    @endif
+                                    <!-- ========================================== -->
+
                                     @if(in_array($item->status, ['booking_created', 'menunggu_pembayaran']))
                                         <button type="button" onclick="confirmCancel('{{ route('admin.pesanan-autokirim.cancel', $item->id) }}')" class="bg-orange-100 hover:bg-orange-200 text-orange-700 w-8 h-8 rounded flex items-center justify-center shadow-sm" title="Batalkan Pesanan">
                                             <i class="fa-solid fa-ban"></i>
