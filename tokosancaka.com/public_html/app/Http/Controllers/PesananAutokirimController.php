@@ -789,6 +789,7 @@ class PesananAutokirimController extends Controller
                     'nilai_barang'      => $finalPrice,
                     'kurir'             => $request->kurir_terpilih,
                     'layanan'           => $request->layanan_terpilih,
+                    'service_code'      => $request->service_code_terpilih,
                     'ongkir'            => $ongkirDasar,
                     'grand_total'       => $totalTagihan,
                     'awb_number'        => null,
@@ -2108,7 +2109,7 @@ class PesananAutokirimController extends Controller
         // ==========================================================
         $isSenderPp = $requestData ? (int) $requestData->input('is_sender_pp', 1) : 1;
         $qtyInput = $requestData ? (string) $requestData->input('qty', 1) : "1";
-        $serviceCode = $requestData ? (string) $requestData->service_code_terpilih : (string) $pesanan->layanan;
+        $serviceCode = $requestData ? (string) $requestData->service_code_terpilih : (string) $pesanan->service_code;
 
         $isCod = in_array(strtolower($pesanan->metode_pembayaran), ['cod', 'codbarang', 'cod_barang', 'cod_ongkir']);
         $codValue = $isCod ? ($requestData ? (int) $requestData->grand_total : 0) : 0;
@@ -2640,6 +2641,7 @@ class PesananAutokirimController extends Controller
                 'nilai_barang'      => $finalPrice,
                 'kurir'             => $request->kurir_terpilih,
                 'layanan'           => $request->layanan_terpilih,
+                'service_code'      => $request->service_code_terpilih,
                 'ongkir'            => $ongkirDasar,
                 'grand_total'       => $totalTagihan,
                 'metode_pembayaran' => $paymentMethod,
