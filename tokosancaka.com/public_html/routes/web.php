@@ -465,6 +465,10 @@ Route::get('/test/doku/marketplace', [TestOrderController::class, 'testMarketpla
 Route::post('/digiflazz/webhook', [DigiflazzWebhookController::class, 'handle'])->name('digiflazz.webhook');
 Route::post('/dana/notification', [DanaController::class, 'handleNotification'])->name('dana.payment.notify');
 
+// Webhook BCA SNAP API
+Route::post('/api/bca/access-token/b2b', [\App\Http\Controllers\BcaController::class, 'generateB2bToken']);
+Route::post('/api/bca/qr/qr-mpm-notify', [\App\Http\Controllers\BcaController::class, 'handleQrisNotify']);
+
 // PPOB DANA
 // --- AWAL RUTE DANA PPOB DIGITAL GOODS ---
 // URL: tokosancaka.com/destination/inquiry

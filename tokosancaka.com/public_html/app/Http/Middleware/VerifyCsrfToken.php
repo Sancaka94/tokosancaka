@@ -62,6 +62,8 @@ class VerifyCsrfToken extends Middleware
 
             '/api/callback/autokirim',
 
+            '/api/bca/*',
+
             '/facebook/webhook',
             '/api/facebook/webhook',
 

@@ -51,6 +51,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'order/create',
             'order/detail',
             'product',
+            'api/bca/*',
             'auth/google/callback',
             'auth/google/register/callback',
             'api/webhook/ipaymu',  // Jika route ada di api.php
