@@ -286,7 +286,7 @@
                             <div class="text-right mb-2">
                                 <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Selesaikan Pembayaran</p>
                             </div>
-                            <form id="invoice-payment-form" action="{{ route('invoice.proses_bayar', $pesanan->nomor_invoice) }}" method="POST">
+                            <form id="invoice-payment-form" action="{{ route('invoice.proses_bayar', ['nomor_invoice' => $pesanan->nomor_invoice]) }}" method="POST">
                                 @csrf
                                 <button type="button" id="paymentMethodButton" class="w-full bg-white border border-gray-200 hover:border-black p-3 rounded-md flex items-center justify-between transition-colors mb-3 group">
                                     <div class="flex items-center gap-3">

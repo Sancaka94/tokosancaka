@@ -773,10 +773,12 @@ class PesananAutokirimController extends Controller
                     'pengirim_hp'       => $request->pengirim_hp,
                     'pengirim_alamat'   => $request->pengirim_alamat,
                     'pengirim_kodepos'  => $request->pengirim_kodepos,
+                    'pengirim_district_id' => $request->pengirim_district_id,
                     'penerima_nama'     => $request->penerima_nama,
                     'penerima_hp'       => $request->penerima_hp,
                     'penerima_alamat'   => $request->penerima_alamat,
                     'penerima_kodepos'  => $request->penerima_kodepos,
+                    'penerima_district_id' => $request->penerima_district_id,
                     'deskripsi_barang'  => $request->deskripsi_barang,
                     'kategori_barang'   => $request->kategori_barang,
                     'berat_gram'        => $request->berat_gram,
@@ -1677,8 +1679,8 @@ class PesananAutokirimController extends Controller
             if ($status === 'PAID') {
                 try {
                     // 1. Ambil data origin & destination berdasarkan kode pos
-                    $origin = AutoKirim::where('zip', $pesanan->pengirim_kodepos)->first();
-                    $destination = AutoKirim::where('zip', $pesanan->penerima_kodepos)->first();
+                    $origin = AutoKirim::where('district_id', $pesanan->pengirim_district_id)->orWhere('zip', $pesanan->pengirim_kodepos)->first();
+                    $destination = AutoKirim::where('district_id', $pesanan->penerima_district_id)->orWhere('zip', $pesanan->penerima_kodepos)->first();
 
                     if (!$origin || !$destination) {
                         throw new Exception("Kode Pos origin/destination tidak ditemukan di database.");
@@ -2622,10 +2624,12 @@ class PesananAutokirimController extends Controller
                 'pengirim_hp'       => $request->pengirim_hp,
                 'pengirim_alamat'   => $request->pengirim_alamat,
                 'pengirim_kodepos'  => $request->pengirim_kodepos,
+                'pengirim_district_id' => $request->pengirim_district_id,
                 'penerima_nama'     => $request->penerima_nama,
                 'penerima_hp'       => $request->penerima_hp,
                 'penerima_alamat'   => $request->penerima_alamat,
                 'penerima_kodepos'  => $request->penerima_kodepos,
+                'penerima_district_id' => $request->penerima_district_id,
                 'deskripsi_barang'  => $request->deskripsi_barang,
                 'kategori_barang'   => $request->kategori_barang,
                 'berat_gram'        => $request->berat_gram,
