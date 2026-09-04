@@ -108,31 +108,25 @@ class InvoicePesananController extends Controller
 
                if ($isAutokirim) {
                     try {
-                        // ========================================================
+                       // ========================================================
                         // 1. CARI DATA ORIGIN (PENGIRIM)
                         // ========================================================
-                        $origin = AutoKirim::where('zip', trim($pesanan->pengirim_kodepos))->first();
+                        \Illuminate\Support\Facades\Log::info("LOG LOG: [INVOICE - CASH] Mencari Origin. District ID: {$pesanan->pengirim_district_id}, Kodepos: {$pesanan->pengirim_kodepos}");
 
-                        // Fallback: Jika kodepos tidak akurat, cari ID Kecamatan dari riwayat Kontak
-                        if (!$origin) {
-                            $kontakPengirim = \App\Models\Kontak::where('no_hp', $pesanan->pengirim_hp)->first();
-                            if ($kontakPengirim && $kontakPengirim->district_id) {
-                                $origin = AutoKirim::where('district_id', $kontakPengirim->district_id)->first();
-                            }
-                        }
+                        $origin = AutoKirim::where('district_id', $pesanan->pengirim_district_id)
+                                    ->orWhere('zip', trim($pesanan->pengirim_kodepos))
+                                    ->first();
 
                         // ========================================================
                         // 2. CARI DATA DESTINATION (PENERIMA)
                         // ========================================================
-                        $destination = AutoKirim::where('zip', trim($pesanan->penerima_kodepos))->first();
+                        \Illuminate\Support\Facades\Log::info("LOG LOG: [INVOICE - CASH] Mencari Destination. District ID: {$pesanan->penerima_district_id}, Kodepos: {$pesanan->penerima_kodepos}");
 
-                        // Fallback: Jika kodepos tidak akurat, cari ID Kecamatan dari riwayat Kontak
-                        if (!$destination) {
-                            $kontakPenerima = \App\Models\Kontak::where('no_hp', $pesanan->penerima_hp)->first();
-                            if ($kontakPenerima && $kontakPenerima->district_id) {
-                                $destination = AutoKirim::where('district_id', $kontakPenerima->district_id)->first();
-                            }
-                        }
+                        $destination = AutoKirim::where('district_id', $pesanan->penerima_district_id)
+                                    ->orWhere('zip', trim($pesanan->penerima_kodepos))
+                                    ->first();
+
+                        \Illuminate\Support\Facades\Log::info("LOG LOG: [INVOICE - CASH] Hasil Pencarian -> Origin ID: " . ($origin->id ?? 'NULL') . ", Destination ID: " . ($destination->id ?? 'NULL'));
 
                         // ========================================================
                         // 3. VALIDASI FINAL (Cegah Crash "Attempt to read property")
