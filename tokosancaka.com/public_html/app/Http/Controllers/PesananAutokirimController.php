@@ -2667,8 +2667,12 @@ class PesananAutokirimController extends Controller
                 DB::commit();
 
                 \Illuminate\Support\Facades\Log::info("LOG LOG: [UPDATE ORDER - SUCCESS CASH] AWB Terbit: " . ($awbResult['awb'] ?? 'KOSONG'));
-                return redirect()->route('admin.pesanan-autokirim.index')->with('success', "Order Berhasil Diperbarui & AWB Terbit (Metode Cash).");
-            }
+                //return redirect()->route('admin.pesanan-autokirim.index')->with('success', "Order Berhasil Diperbarui & AWB Terbit (Metode Cash).");
+
+                $resi = $awbResult['awb'] ?? 'Menunggu Update';
+return redirect()->route('admin.pesanan-autokirim.index')->with('success', "Order Berhasil Diperbarui dan AWB Terbit: {$resi} (Metode Cash).");
+
+                }
 
             // 2. Arahkan Langsung ke Halaman Invoice untuk semua Pilihan Pembayaran Tertunda Lainnya
             else {
