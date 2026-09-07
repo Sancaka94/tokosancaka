@@ -246,7 +246,7 @@ class AuthenticatedSessionController extends Controller
             // 8. Redirect ke Form OTP
             Log::info('Redirecting user ke form OTP.', ['user_id' => $userId]);
             return redirect()->route('login.otp.form')
-                 ->with('info', 'Kode OTP telah dikirim ke WhatsApp dan Email Anda. Silakan cek pesan masuk.');
+                 ->with('info', 'Kode OTP telah dikirim ke Email Anda. Silakan cek pesan masuk.');
         }
 
         // ====================================================================

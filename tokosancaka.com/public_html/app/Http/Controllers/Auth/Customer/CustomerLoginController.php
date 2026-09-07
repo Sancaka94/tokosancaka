@@ -290,7 +290,7 @@ class CustomerLoginController extends Controller
             }
 
             return redirect()->route('login.otp.form')
-                             ->with('info', 'Kode OTP telah dikirim ke WhatsApp dan Email Anda.');
+                             ->with('info', 'Kode OTP telah dikirim ke Email Anda.');
         }
 
         // ====================================================================
