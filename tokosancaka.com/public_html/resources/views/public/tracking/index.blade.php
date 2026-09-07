@@ -200,27 +200,37 @@ if (!function_exists('maskText')) {
             @if (isset($result))
 
                 {{-- ========================================== --}}
-                {{-- LOGIKA PIN KEAMANAN DITAMBAHKAN DI SINI    --}}
+                {{-- LOGIKA PIN KEAMANAN & FORMAT NOMOR WA      --}}
                 {{-- ========================================== --}}
                 @php
                     $requirePin = false;
                     $pinRahasia = '';
                     $kisiKisiHp = '';
+                    $waNumber = '';
 
                     // Coba ambil nomor HP pengirim dari respon API atau Database internal
                     $hpPengirim = $result['no_pengirim'] ?? ($result['detail']['shipper_phone'] ?? null);
 
                     if (!empty($hpPengirim) && $hpPengirim !== '-') {
-                        $requirePin = true;
-                        $hpPengirim = preg_replace('/[^0-9]/', '', $hpPengirim);
+                        // Bersihkan spasi/karakter selain angka
+                        $waClean = preg_replace('/[^0-9]/', '', $hpPengirim);
 
-                        // Ambil 4 angka terakhir
-                        $pinRahasia = substr($hpPengirim, -4);
+                        // Konversi format nomor WA (ubah awalan 0 menjadi 62)
+                        if (substr($waClean, 0, 1) === '0') {
+                            $waNumber = '62' . substr($waClean, 1);
+                        } else {
+                            $waNumber = $waClean;
+                        }
+
+                        $requirePin = true;
+
+                        // Ambil 4 angka terakhir untuk PIN
+                        $pinRahasia = substr($waClean, -4);
                         if (strlen($pinRahasia) < 4) $pinRahasia = str_pad($pinRahasia, 4, '0', STR_PAD_LEFT);
 
                         // Buat Kisi-kisi (Bintang)
-                        $panjangHp = strlen($hpPengirim);
-                        $tampilDepan = substr($hpPengirim, 0, 7);
+                        $panjangHp = strlen($waClean);
+                        $tampilDepan = substr($waClean, 0, 7);
                         $jumlahBintang = $panjangHp > 7 ? $panjangHp - 7 : 4;
                         $kisiKisiHp = $tampilDepan . str_repeat('*', $jumlahBintang);
                     }
@@ -376,7 +386,6 @@ if (!function_exists('maskText')) {
                             </div>
                         </div>
 
-
                         <div class="card-body p-4 p-md-5">
                             <div class="row mb-4">
                                 <div class="col-md-6 mb-3">
@@ -446,6 +455,36 @@ if (!function_exists('maskText')) {
     </div>
 </div>
 
+<!-- ========================================== -->
+<!-- MODAL BUKTI FOTO PENGIRIMAN                -->
+<!-- ========================================== -->
+<div class="modal fade" id="photoModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-4">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title fw-bold text-dark">Bukti Pengiriman</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body text-center p-4">
+                <!-- Preview Gambar -->
+                <img id="modalImagePreview" src="" class="img-fluid rounded shadow-sm mb-4" alt="Bukti Foto" style="max-height: 55vh; object-fit: contain; width: 100%; background-color: #f8f9fa;">
+
+                <div class="d-flex flex-wrap gap-2 justify-content-center">
+                    <!-- Tombol Download -->
+                    <a id="btnDownloadPhoto" href="" download="Bukti_Pengiriman.jpg" target="_blank" class="btn btn-primary rounded-pill px-4 fw-bold">
+                        <i class="fas fa-download me-1"></i> Download
+                    </a>
+                    <!-- Tombol Share WA -->
+                    <a id="btnShareWA" href="" target="_blank" class="btn btn-success rounded-pill px-4 fw-bold" style="background-color: #25D366; border-color: #25D366;">
+                        <i class="fab fa-whatsapp me-1"></i> Bagikan
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL ERROR PENCARIAN -->
 <div class="modal fade" id="errorModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content border-0 shadow-lg rounded-4">
@@ -511,11 +550,49 @@ if (!function_exists('maskText')) {
     });
     @endif
 
-    // LAIN-LAIN
+    // INTERCEPT TOMBOL "LIHAT FOTO" UNTUK DIBUKA DI MODAL
     document.addEventListener('DOMContentLoaded', function() {
+        // Ambil Nomor WA pengirim (Sudah terformat 62... dari PHP)
+        const waPengirim = "{{ $waNumber ?? '' }}";
+
+        // Cari seluruh link yang ada di dalam class .timeline
+        const timelineLinks = document.querySelectorAll('.timeline-item a');
+
+        timelineLinks.forEach(link => {
+            // Cek jika link mengandung kata "Foto" atau extensi gambar / url download Autokirim
+            if(link.innerHTML.includes('Foto') || link.href.includes('.jpg') || link.href.includes('shopee.co.id/downloads')) {
+                link.addEventListener('click', function(e) {
+                    e.preventDefault(); // Mencegah pindah halaman
+
+                    const imgUrl = this.href;
+
+                    // 1. Tampilkan gambar di preview modal
+                    document.getElementById('modalImagePreview').src = imgUrl;
+
+                    // 2. Pasang URL ke tombol Download
+                    document.getElementById('btnDownloadPhoto').href = imgUrl;
+
+                    // 3. Setup Link WhatsApp
+                    const waText = encodeURIComponent('Halo, berikut adalah bukti foto pengiriman paket Anda:\n\n' + imgUrl);
+                    let waLink = `https://wa.me/?text=${waText}`; // Fallback jika tidak ada nomor
+
+                    if(waPengirim !== "") {
+                        waLink = `https://wa.me/${waPengirim}?text=${waText}`;
+                    }
+                    document.getElementById('btnShareWA').href = waLink;
+
+                    // Tampilkan Bootstrap Modal
+                    var photoModal = new bootstrap.Modal(document.getElementById('photoModal'));
+                    photoModal.show();
+                });
+            }
+        });
+
+        // Efek animasi slide up pada list timeline
         const items = document.querySelectorAll('.timeline-item');
         items.forEach((item, index) => { item.style.animationDelay = `${index * 0.1}s`; });
 
+        // Tampilkan Modal error (404 Resi tidak ditemukan)
         @if (session('error'))
             var errorModalEl = document.getElementById('errorModal');
             if (errorModalEl) {
@@ -525,6 +602,7 @@ if (!function_exists('maskText')) {
         @endif
     });
 
+    // Fungsi klik icon copy paste text
     function copyResi(text, element) {
         navigator.clipboard.writeText(text).then(function() {
             const icon = element.querySelector('i');
