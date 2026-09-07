@@ -1087,7 +1087,7 @@ class TrackingController extends Controller
                             // 🔥 Cek apakah key 'image' ada isinya dari API Autokirim
                             if (!empty($h['image'])) {
                                 $keterangan .= '<br><a href="' . $h['image'] . '" target="_blank" style="color: #ff0800; text-decoration: none; font-size: 13px; margin-top: 5px; display: inline-block; font-weight: 600;">
-                                                    <i class="fas fa-camera"></i> Lihat Foto 1
+                                                    <i class="fas fa-camera"></i> Lihat Bukti Photo
                                                 </a>';
                             }
 
