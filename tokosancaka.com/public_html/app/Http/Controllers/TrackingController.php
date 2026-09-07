@@ -1112,7 +1112,7 @@ class TrackingController extends Controller
             $histories->push((object)[
                 'status' => 'Pesanan Dibuat Oleh TOKOSANCAKA.COM',
                 'lokasi' => 'Sistem Integrasi',
-                'keterangan' => 'Data pesanan berhasil disubmit ke server logistik Autokirim.',
+                'keterangan' => 'Data pesanan berhasil disubmit ke server logistik Sancaka Express.',
                 'created_at' => $waktuDibuat,
             ]);
         }
