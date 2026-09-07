@@ -1081,11 +1081,12 @@ class TrackingController extends Controller
                                 ? \Carbon\Carbon::parse($datetimeString)->timezone('Asia/Jakarta')
                                 : now()->timezone('Asia/Jakarta');
 
+                            // Buat string keterangan default
                             $keterangan = 'Status Paket: ' . ($h['desc'] ?? '-');
 
-                            // Asumsikan key fotonya adalah 'photo' (sesuaikan dengan hasil LOG Anda nanti)
-                            if (!empty($h['photo'])) {
-                                $keterangan .= '<br><a href="' . $h['photo'] . '" target="_blank" style="color: #d9534f; text-decoration: none; font-size: 12px; margin-top: 5px; display: inline-block;">
+                            // 🔥 Cek apakah key 'image' ada isinya dari API Autokirim
+                            if (!empty($h['image'])) {
+                                $keterangan .= '<br><a href="' . $h['image'] . '" target="_blank" style="color: #ff0800; text-decoration: none; font-size: 13px; margin-top: 5px; display: inline-block; font-weight: 600;">
                                                     <i class="fas fa-camera"></i> Lihat Foto 1
                                                 </a>';
                             }
@@ -1093,7 +1094,7 @@ class TrackingController extends Controller
                             $histories->push((object)[
                                 'status' => $h['desc'] ?? 'Update Pengiriman',
                                 'lokasi' => 'Sistem ' . ($data['courier_name'] ?? 'Ekspedisi'),
-                                'keterangan' => $keterangan, // <--- Masukkan variabel $keterangan yang sudah dimodifikasi
+                                'keterangan' => $keterangan, // <--- Masukkan variabel $keterangan di sini
                                 'created_at' => $parsedDate
                             ]);
                         }
