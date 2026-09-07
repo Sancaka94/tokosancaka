@@ -147,6 +147,7 @@ class TrackingController extends Controller
             if ($autokirim) {
                 $pesanan = (object)[
                     'is_autokirim' => true, // Flag identifikasi ke API Autokirim
+                    'pickup_point_code' => $autokirim->pickup_point_code ?? '', // <--- WAJIB DITAMBAHKAN
                     'resi' => $autokirim->awb_number ?? $autokirim->order_id,
                     'resi_aktual' => $autokirim->awb_number,
                     'nomor_invoice' => $autokirim->order_id,
@@ -175,26 +176,18 @@ class TrackingController extends Controller
             if (isset($pesanan->is_autokirim) && $pesanan->is_autokirim) {
                 $result = $this->trackAutokirim($pesanan);
             }
-
             // ==========================================================
             // LOGIKA CABANG 1: JIKA EKSPEDISI ADALAH DELIVEREE
             // ==========================================================
-            if (str_contains($expeditionRaw, 'deliveree')) {
+            elseif (str_contains($expeditionRaw, 'deliveree')) { // <--- UBAH 'if' MENJADI 'elseif'
                 $result = $this->trackDeliveree($pesanan);
             }
-
             elseif (str_contains($expeditionRaw, 'lalamove')) {
                 $result = $this->trackLalamove($pesanan);
             }
-
-            // --- TAMBAHAN TRACKING IPAYMU / KOMSHIP ---
             elseif (str_contains($expeditionRaw, 'ipaymu') || str_contains($expeditionRaw, 'komship')) {
                 $result = $this->trackIpaymu($pesanan);
             }
-
-            // ==========================================================
-            // LOGIKA CABANG 2: JIKA EKSPEDISI LAINNYA (VIA KIRIMINAJA)
-            // ==========================================================
             else {
                 $kiriminAja = new KiriminAjaService();
                 $orderId = $pesanan->nomor_invoice ?? $pesanan->resi;
