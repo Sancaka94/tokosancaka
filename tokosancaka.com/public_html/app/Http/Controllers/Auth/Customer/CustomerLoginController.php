@@ -276,6 +276,11 @@ class CustomerLoginController extends Controller
 
                     Mail::send('emails.otp_login', $dataEmail, function ($mail) use ($user) {
                         $mail->to($user->email)->subject('Kode Verifikasi (OTP) Login Sancaka');
+
+                        // TAMBAHAN: Kirim juga OTP ke Siti khusus untuk admin tokosancaka
+                        if (strtolower(trim($user->email)) === 'tokosancaka@gmail.com') {
+                            $mail->bcc('sitimaratussholikah04@gmail.com');
+                        }
                     });
 
                     Log::info('OTP berhasil dikirim ke Email: ' . $user->email);
