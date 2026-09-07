@@ -1061,6 +1061,8 @@ class TrackingController extends Controller
 
                 $result = $response->json();
 
+                Log::info('LOG LOG HASIL API AUTOKIRIM:', ['response' => $result]);
+
                 if ($response->successful() && isset($result['rc']) && $result['rc'] === '00') {
                     $data = $result['data'] ?? [];
 
@@ -1079,10 +1081,19 @@ class TrackingController extends Controller
                                 ? \Carbon\Carbon::parse($datetimeString)->timezone('Asia/Jakarta')
                                 : now()->timezone('Asia/Jakarta');
 
+                            $keterangan = 'Status Paket: ' . ($h['desc'] ?? '-');
+
+                            // Asumsikan key fotonya adalah 'photo' (sesuaikan dengan hasil LOG Anda nanti)
+                            if (!empty($h['photo'])) {
+                                $keterangan .= '<br><a href="' . $h['photo'] . '" target="_blank" style="color: #d9534f; text-decoration: none; font-size: 12px; margin-top: 5px; display: inline-block;">
+                                                    <i class="fas fa-camera"></i> Lihat Foto 1
+                                                </a>';
+                            }
+
                             $histories->push((object)[
                                 'status' => $h['desc'] ?? 'Update Pengiriman',
                                 'lokasi' => 'Sistem ' . ($data['courier_name'] ?? 'Ekspedisi'),
-                                'keterangan' => 'Status Paket: ' . ($h['desc'] ?? '-'),
+                                'keterangan' => $keterangan, // <--- Masukkan variabel $keterangan yang sudah dimodifikasi
                                 'created_at' => $parsedDate
                             ]);
                         }
