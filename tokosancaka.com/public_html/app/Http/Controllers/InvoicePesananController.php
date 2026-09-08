@@ -84,7 +84,8 @@ class InvoicePesananController extends Controller
         // Tentukan status lunas atau belum
         $statusLunas = in_array(strtoupper($isAutokirim ? $pesanan->status : $pesanan->status_pesanan), [
             'PAID', 'LUNAS', 'SELESAI', 'TERKIRIM', 'BOOKING_CREATED',
-            'MENUNGGU PICKUP', 'PESANAN DIBUAT', 'DIPROSES', 'SEDANG DIKIRIM'
+            'MENUNGGU PICKUP', 'PESANAN DIBUAT', 'DIPROSES', 'SEDANG DIKIRIM',
+            'PICKUP', 'ON SHIPMENT', 'DELIVERED', 'SUCCESS' // Tambahan status API
         ]);
 
         // Tarik daftar Tripay Channels
