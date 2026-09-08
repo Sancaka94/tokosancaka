@@ -24,11 +24,61 @@ class InvoicePesananController extends Controller
         // 2. JIKA TIDAK KETEMU, CARI DI PESANAN AUTOKIRIM
         $isAutokirim = false;
         if (!$pesanan) {
-            $pesanan = PesananAutokirim::where('order_id', $nomor_invoice)
+            $autokirim = PesananAutokirim::where('order_id', $nomor_invoice)
                 ->orWhere('awb_number', $nomor_invoice)
                 ->firstOrFail(); // Jika di Autokirim juga tidak ada, baru 404
 
             $isAutokirim = true;
+
+            // LAKUKAN MAPPING (Persis seperti di PesananAutokirimController@cetakInvoice)
+            // Agar view tidak error dan nama, alamat, dsb bisa dirender dengan sempurna
+            $pesanan = (object)[
+                'id'                    => $autokirim->id,
+                'is_autokirim'          => true,
+                'nomor_invoice'         => $autokirim->order_id,
+                'resi'                  => $autokirim->awb_number ?? $autokirim->order_id,
+                'resi_aktual'           => $autokirim->awb_number,
+                'status'                => $autokirim->status,
+                'status_pesanan'        => $autokirim->status,
+                'tanggal_pesanan'       => $autokirim->created_at,
+                'updated_at'            => $autokirim->updated_at,
+
+                'sender_name'           => $autokirim->pengirim_nama,
+                'sender_phone'          => $autokirim->pengirim_hp,
+                'sender_address'        => $autokirim->pengirim_alamat,
+                'sender_village'        => '',
+                'sender_district'       => '',
+                'sender_regency'        => '',
+                'sender_province'       => '',
+                'sender_postal_code'    => $autokirim->pengirim_kodepos,
+
+                'receiver_name'         => $autokirim->penerima_nama,
+                'receiver_phone'        => $autokirim->penerima_hp,
+                'receiver_address'      => $autokirim->penerima_alamat,
+                'receiver_village'      => '',
+                'receiver_district'     => '',
+                'receiver_regency'      => '',
+                'receiver_province'     => '',
+                'receiver_postal_code'  => $autokirim->penerima_kodepos,
+
+                'expedition'            => $autokirim->kurir,
+                'jasa_ekspedisi_aktual' => $autokirim->kurir,
+                'service_type'          => $autokirim->layanan,
+                'item_description'      => $autokirim->deskripsi_barang ?? $autokirim->kategori_barang,
+                'weight'                => $autokirim->berat_gram,
+                'length'                => $autokirim->panjang_cm ?? 0,
+                'width'                 => $autokirim->lebar_cm ?? 0,
+                'height'                => $autokirim->tinggi_cm ?? 0,
+
+                'item_price'            => $autokirim->nilai_barang,
+                'shipping_cost'         => $autokirim->ongkir,
+                'insurance_cost'        => $autokirim->asuransi ? round($autokirim->nilai_barang * 0.002) : 0,
+                'cod_fee'               => 0,
+                'price'                 => $autokirim->grand_total,
+                'payment_method'        => str_replace('_', ' ', strtoupper($autokirim->metode_pembayaran)),
+                'payment_url'           => $autokirim->payment_url ?? null,
+                'ansuransi'             => $autokirim->asuransi ? 'Iya' : 'Tidak',
+            ];
         }
 
         // Tentukan status lunas atau belum
