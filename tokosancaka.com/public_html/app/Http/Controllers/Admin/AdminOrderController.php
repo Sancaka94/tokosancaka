@@ -100,7 +100,8 @@ class AdminOrderController extends Controller
         });
 
         // --- Gabungkan dan Urutkan ---
-        $merged = $orders->merge($pesanans)->merge($autokirims);
+        // Gunakan collect() untuk merubahnya jadi Base Collection murni, lalu concat()
+        $merged = collect($orders)->concat($pesanans)->concat($autokirims);
         $sorted = $merged->sortByDesc('created_at');
 
         // --- Pagination Manual ---
