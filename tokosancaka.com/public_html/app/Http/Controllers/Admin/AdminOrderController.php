@@ -23,6 +23,7 @@ class AdminOrderController extends Controller
     {
         $statusFilter = $request->query('status');
         $searchQuery = $request->query('search');
+        $tipeFilter = $request->query('tipe');
         $perPage = $request->query('per_page', 15); // Disamakan 15
 
         // =========================================================================
@@ -78,29 +79,37 @@ class AdminOrderController extends Controller
                 return $query->where('order_id', 'like', "%{$search}%")->orWhere('awb_number', 'like', "%{$search}%");
             });
 
-        // --- Eksekusi Query ---
-        $orders = $orderQuery->get()->map(function ($item) {
-            $item->is_pesanan = false;
-            $item->is_autokirim = false;
-            return $item;
-        });
+        // --- Eksekusi Query & Terapkan Filter Tipe ---
+        $orders = collect();
+        if (!$tipeFilter || $tipeFilter === 'marketplace') {
+            $orders = $orderQuery->get()->map(function ($item) {
+                $item->is_pesanan = false;
+                $item->is_autokirim = false;
+                return $item;
+            });
+        }
 
-        $pesanans = $pesananQuery->get()->map(function ($item) {
-            $std = $this->standardizePesanan($item);
-            $std->is_pesanan = true;
-            $std->is_autokirim = false;
-            return $std;
-        });
+        $pesanans = collect();
+        if (!$tipeFilter || $tipeFilter === 'kiriminaja') {
+            $pesanans = $pesananQuery->get()->map(function ($item) {
+                $std = $this->standardizePesanan($item);
+                $std->is_pesanan = true;
+                $std->is_autokirim = false;
+                return $std;
+            });
+        }
 
-        $autokirims = $autokirimQuery->get()->map(function ($item) {
-            $std = $this->standardizeAutokirim($item);
-            $std->is_pesanan = false;
-            $std->is_autokirim = true;
-            return $std;
-        });
+        $autokirims = collect();
+        if (!$tipeFilter || $tipeFilter === 'autokirim') {
+            $autokirims = $autokirimQuery->get()->map(function ($item) {
+                $std = $this->standardizeAutokirim($item);
+                $std->is_pesanan = false;
+                $std->is_autokirim = true;
+                return $std;
+            });
+        }
 
         // --- Gabungkan dan Urutkan ---
-        // Gunakan collect() untuk merubahnya jadi Base Collection murni, lalu concat()
         $merged = collect($orders)->concat($pesanans)->concat($autokirims);
         $sorted = $merged->sortByDesc('created_at');
 

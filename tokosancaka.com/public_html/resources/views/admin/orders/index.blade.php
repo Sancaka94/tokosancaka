@@ -111,41 +111,78 @@
             @if (request('status'))
                 <input type="hidden" name="status" value="{{ request('status') }}">
             @endif
+            {{-- Tambahan Hidden Input untuk Tipe --}}
+            @if (request('tipe'))
+                <input type="hidden" name="tipe" value="{{ request('tipe') }}">
+            @endif
         </form>
 
         <button type="button" onclick="openModal('exportModal')"
-    class="inline-flex items-center justify-center w-full md:w-auto px-4 py-2 bg-gray-200 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-300 transition duration-150 ease-in-out whitespace-nowrap">
-    <i class="fas fa-file-export mr-2"></i> Export
+            class="inline-flex items-center justify-center w-full md:w-auto px-4 py-2 bg-gray-200 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-300 transition duration-150 ease-in-out whitespace-nowrap">
+            <i class="fas fa-file-export mr-2"></i> Export
         </button>
     </div>
 
-    {{-- FILTER STATUS --}}
-    <div class="p-4 border-b border-gray-200 flex flex-wrap gap-2">
-        @php
-            $statusFilters = [
-                'pending' => 'Menunggu Bayar',
-                'menunggu-pickup' => 'Menunggu Pickup',
-                'diproses' => 'Diproses',
-                'terkirim' => 'Terkirim',
-                'selesai' => 'Selesai',
-                'batal' => 'Batal',
-            ];
-            $currentStatus = request('status');
-        @endphp
+    {{-- FILTER STATUS & TIPE --}}
+    <div class="p-4 border-b border-gray-200 space-y-3">
 
-        <a href="{{ route('admin.orders.index', request()->except('status', 'page')) }}"
-            class="px-3 py-1 text-sm font-medium rounded-full transition duration-150 ease-in-out focus:outline-none whitespace-nowrap
-            {{ !$currentStatus ? 'bg-green-600 text-white shadow' : 'bg-gray-200 text-gray-600 hover:bg-gray-300' }}">
-            Semua
-        </a>
+        {{-- BARIS 1: FILTER STATUS --}}
+        <div class="flex flex-wrap items-center gap-2">
+            <span class="text-xs font-bold text-gray-400 uppercase tracking-wider mr-2">Status:</span>
+            @php
+                $statusFilters = [
+                    'pending' => 'Menunggu Bayar',
+                    'menunggu-pickup' => 'Menunggu Pickup',
+                    'diproses' => 'Diproses',
+                    'terkirim' => 'Terkirim',
+                    'selesai' => 'Selesai',
+                    'batal' => 'Batal',
+                ];
+                $currentStatus = request('status');
+            @endphp
 
-        @foreach ($statusFilters as $key => $label)
-            <a href="{{ route('admin.orders.index', array_merge(request()->query(), ['status' => $key, 'page' => 1])) }}"
+            <a href="{{ route('admin.orders.index', request()->except('status', 'page')) }}"
                 class="px-3 py-1 text-sm font-medium rounded-full transition duration-150 ease-in-out focus:outline-none whitespace-nowrap
-                {{ $currentStatus == $key ? 'bg-blue-600 text-white shadow' : 'bg-gray-200 text-gray-600 hover:bg-gray-300' }}">
-                {{ $label }}
+                {{ !$currentStatus ? 'bg-green-600 text-white shadow' : 'bg-gray-200 text-gray-600 hover:bg-gray-300' }}">
+                Semua Status
             </a>
-        @endforeach
+
+            @foreach ($statusFilters as $key => $label)
+                <a href="{{ route('admin.orders.index', array_merge(request()->query(), ['status' => $key, 'page' => 1])) }}"
+                    class="px-3 py-1 text-sm font-medium rounded-full transition duration-150 ease-in-out focus:outline-none whitespace-nowrap
+                    {{ $currentStatus == $key ? 'bg-blue-600 text-white shadow' : 'bg-gray-200 text-gray-600 hover:bg-gray-300' }}">
+                    {{ $label }}
+                </a>
+            @endforeach
+        </div>
+
+        {{-- BARIS 2: FILTER TIPE (AUTOKIRIM, KIRIMINAJA, MARKETPLACE) --}}
+        <div class="flex flex-wrap items-center gap-2">
+            <span class="text-xs font-bold text-gray-400 uppercase tracking-wider mr-2">Tipe Platform:</span>
+            @php
+                $tipeFilters = [
+                    'autokirim' => 'AutoKirim',
+                    'kiriminaja' => 'KiriminAja',
+                    'marketplace' => 'Marketplace',
+                ];
+                $currentTipe = request('tipe');
+            @endphp
+
+            <a href="{{ route('admin.orders.index', request()->except('tipe', 'page')) }}"
+                class="px-3 py-1 text-sm font-medium rounded-full transition duration-150 ease-in-out focus:outline-none whitespace-nowrap
+                {{ !$currentTipe ? 'bg-gray-800 text-white shadow' : 'bg-gray-200 text-gray-600 hover:bg-gray-300' }}">
+                Semua Tipe
+            </a>
+
+            @foreach ($tipeFilters as $key => $label)
+                <a href="{{ route('admin.orders.index', array_merge(request()->query(), ['tipe' => $key, 'page' => 1])) }}"
+                    class="px-3 py-1 text-sm font-medium rounded-full transition duration-150 ease-in-out focus:outline-none whitespace-nowrap
+                    {{ $currentTipe == $key ? 'bg-purple-600 text-white shadow' : 'bg-gray-200 text-gray-600 hover:bg-gray-300' }}">
+                    {{ $label }}
+                </a>
+            @endforeach
+        </div>
+
     </div>
 
    {{-- 1. Scrollbar Dummy di Atas (Biarkan seperti ini) --}}
