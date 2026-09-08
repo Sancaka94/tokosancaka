@@ -193,6 +193,8 @@ class AdminOrderController extends Controller
         $order->pengirim_hp = $ak->pengirim_hp;
         $order->penerima_hp = $ak->penerima_hp;
 
+        $order->user_id = $ak->user_id;
+
         return $order;
     }
 
@@ -305,6 +307,7 @@ class AdminOrderController extends Controller
 
         // Status
         $order->status = $pesanan->status_pesanan; // Tampilkan status asli
+        $order->user_id = $pesanan->customer_id ?? $pesanan->id_pengguna_pembeli ?? null;
 
         return $order;
     }

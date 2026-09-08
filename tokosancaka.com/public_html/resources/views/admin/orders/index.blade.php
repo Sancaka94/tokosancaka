@@ -230,7 +230,7 @@
                             $lebar = $order->width ?? 0;
                             $tinggi = $order->height ?? 0;
 
-                            $userId = null;
+                            $userId = $order->user_id ?? $order->customer_id ?? $order->id_pengguna_pembeli ?? null;
                             $senderName = $order->store->name ?? '-';
                             $senderAddress = $order->store->address_detail ?? '-';
                             $receiverName = $order->user->nama_lengkap ?? '-';
@@ -260,7 +260,7 @@
                             $lebar = $order->width ?? ($itemProd->width ?? 0);
                             $tinggi = $order->height ?? ($itemProd->height ?? 0);
 
-                            $userId = $order->customer_id ?? $order->id_pengguna_pembeli ?? null;
+                            $userId = $order->user_id ?? $order->customer_id ?? $order->id_pengguna_pembeli ?? null;
 
                             $senderName = $order->store->name ?? $order->sender_name ?? '-';
                             $senderAddress = $order->store->address_detail ?? $order->sender_address ?? '-';
@@ -299,7 +299,7 @@
                             $lebar = $itemProd->width ?? 0;
                             $tinggi = $itemProd->height ?? 0;
 
-                            $userId = $order->user_id ?? null;
+                            $userId = $order->user_id ?? $order->customer_id ?? $order->id_pengguna_pembeli ?? null;
                             $senderName = $order->store ? $order->store->name : '-';
                             $senderAddress = $order->store ? $order->store->address_detail : '-';
                             $receiverName = $order->user ? $order->user->nama_lengkap : '-';
