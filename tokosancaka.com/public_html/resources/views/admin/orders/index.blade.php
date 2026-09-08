@@ -298,9 +298,9 @@
                             @if ($isAutokirim)
                                 <span class="px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">AutoKirim</span>
                             @elseif ($isPesanan)
-                                <span class="px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">Pesanan</span>
+                                <span class="px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">KiriminAja</span>
                             @else
-                                <span class="px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">Order</span>
+                                <span class="px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">Marketplace</span>
                             @endif
                         </td>
 
