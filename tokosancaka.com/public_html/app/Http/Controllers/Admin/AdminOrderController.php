@@ -1,175 +1,187 @@
 <?php
 
-// Tentukan namespace untuk controller ini (lokasi file dalam struktur folder)
 namespace App\Http\Controllers\Admin;
 
-// Import class-class (dependency) yang dibutuhkan dari Laravel dan library lain
-use App\Http\Controllers\Controller; // Controller dasar Laravel
-use Illuminate\Http\Request; // Class untuk mengelola data request HTTP (query string, form input)
-use App\Models\Order; // Model Eloquent untuk berinteraksi dengan tabel 'orders'
-use App\Models\Pesanan; // <-- TAMBAHKAN INI: Model Eloquent untuk tabel 'Pesanan'
-use App\Models\User; // Model User (digunakan untuk relasi dan pencarian)
-use Illuminate\Support\Facades\Log; // Fasilitas logging Laravel untuk mencatat error atau informasi
-use Exception; // Class Exception dasar PHP untuk menangani error umum
-use Barryvdh\DomPDF\Facade\Pdf; // Facade untuk library DomPDF (generate PDF dari HTML)
-use Carbon\Carbon; // Library untuk mempermudah manipulasi tanggal dan waktu
-use Illuminate\Database\Eloquent\ModelNotFoundException; // Exception khusus saat query findOrFail() gagal
-use Illuminate\Pagination\Paginator; // <-- TAMBAHAN: Untuk pagination manual
-use Illuminate\Pagination\LengthAwarePaginator; // <-- TAMBAHAN: Untuk pagination manual
-use Illuminate\Support\Collection; // <-- TAMBAHAN: Untuk pagination manual
-use App\Services\DokuJokulService;
+use App\Http\Controllers\Controller;
+use Illuminate\Http\Request;
+use App\Models\Order;
+use App\Models\Pesanan;
+use App\Models\PesananAutokirim; // <-- PASTIKAN IMPORT INI
+use App\Models\User;
+use Illuminate\Support\Facades\Log;
+use Exception;
+use Barryvdh\DomPDF\Facade\Pdf;
+use Carbon\Carbon;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Pagination\Paginator;
+use Illuminate\Support\Collection;
 
-
-// Deklarasi class controller, mewarisi (extends) Controller dasar Laravel
 class AdminOrderController extends Controller
 {
-    /**
-     * Menampilkan halaman utama Data Pesanan (Gabungan 'Orders' dan 'Pesanan').
-     * Method ini mengambil data dari kedua tabel, menggabungkan, memfilter,
-     * melakukan pencarian, dan paginasi secara manual.
-     *
-     * @param  \Illuminate\Http\Request  $request Object request yang berisi query string (cth: ?status=pending&search=INV)
-     * @return \Illuminate\View\View      Objek view Blade 'admin.orders.index' beserta data gabungan
-     */
     public function index(Request $request)
-{
-    // Ambil nilai filter dari URL
-    $statusFilter = $request->query('status');
-    $searchQuery = $request->query('search');
-    $perPage = $request->query('per_page', 5); // Default 15 item per halaman
+    {
+        $statusFilter = $request->query('status');
+        $searchQuery = $request->query('search');
+        $perPage = $request->query('per_page', 15); // Disamakan 15
 
-    // =========================================================================
-    // BAGIAN 1: QUERY DATA UTAMA (Orders & Pesanan)
-    // =========================================================================
+        // =========================================================================
+        // BAGIAN 1: QUERY DATA (Orders, Pesanan, Autokirim)
+        // =========================================================================
 
-    // --- 1. Query 'Orders' (Web/Otomatis) ---
-    $orderQuery = Order::query()
-        ->with([
-            'user:id_pengguna,nama_lengkap,no_wa,village,district,regency',
-            'store:id,name,address_detail,village,district,regency',
-            'items:id,order_id,product_id,product_variant_id,quantity',
-            'items.product:id,name,weight,length,width,height',
-            'items.variant:id,product_variant_id,combination_string,sku_code'
-        ])
-        ->when($statusFilter, function ($query, $statusTab) {
-            $statusMap = [
-                'pending' => ['pending'],
-                'menunggu-pickup' => ['paid', 'processing'],
-                'diproses' => ['shipping'],
-                'terkirim' => ['delivered'],
-                'selesai' => ['completed'],
-                'batal' => ['cancelled', 'failed', 'rejected'],
-            ];
-            if (isset($statusMap[$statusTab])) {
-                return $query->whereIn('status', $statusMap[$statusTab]);
-            }
-            return $query;
-        })
-        ->when($searchQuery, function ($query, $search) {
-            return $query->where(function($q) use ($search) {
-                $q->where('invoice_number', 'like', "%{$search}%")
-                  ->orWhere('shipping_reference', 'like', "%{$search}%")
-                  ->orWhereHas('user', function($userQuery) use ($search) {
-                      $userQuery->where('nama_lengkap', 'like', "%{$search}%")
-                                ->orWhere('no_wa', 'like', "%{$search}%");
-                  })
-                  ->orWhereHas('store', function($storeQuery) use ($search) {
-                      $storeQuery->where('name', 'like', "%{$search}%");
-                  });
+        // --- 1. Query 'Orders' (Web/Otomatis) ---
+        $orderQuery = Order::with(['user', 'store', 'items.product', 'items.variant'])
+            ->when($statusFilter, function ($query, $statusTab) {
+                $statusMap = [
+                    'pending' => ['pending'],
+                    'menunggu-pickup' => ['paid', 'processing'],
+                    'diproses' => ['shipping'],
+                    'terkirim' => ['delivered'],
+                    'selesai' => ['completed'],
+                    'batal' => ['cancelled', 'failed', 'rejected'],
+                ];
+                if (isset($statusMap[$statusTab])) return $query->whereIn('status', $statusMap[$statusTab]);
+                return $query;
+            })
+            ->when($searchQuery, function ($query, $search) {
+                return $query->where('invoice_number', 'like', "%{$search}%")->orWhere('shipping_reference', 'like', "%{$search}%");
             });
+
+        // --- 2. Query 'Pesanan' (Manual) ---
+        $pesananQuery = Pesanan::when($statusFilter, function ($query, $statusTab) {
+                $statusMap = [
+                    'menunggu-pickup' => ['Menunggu Pickup'],
+                    'terkirim' => ['Sedang Dikirim'],
+                    'selesai' => ['Selesai'],
+                    'batal' => ['Batal'],
+                ];
+                if (isset($statusMap[$statusTab])) return $query->whereIn('status_pesanan', $statusMap[$statusTab]);
+                return $query;
+            })
+            ->when($searchQuery, function ($query, $search) {
+                return $query->where('nomor_invoice', 'like', "%{$search}%")->orWhere('resi', 'like', "%{$search}%");
+            });
+
+        // --- 3. Query 'Pesanan Autokirim' ---
+        $autokirimQuery = PesananAutokirim::when($statusFilter, function ($query, $statusTab) {
+                $statusMap = [
+                    'pending' => ['waiting_payment', 'menunggu_pembayaran'],
+                    'menunggu-pickup' => ['booking_created'],
+                    'terkirim' => ['on_delivery', 'shipping'], // Sesuaikan dengan status API autokirim
+                    'selesai' => ['completed', 'terkirim', 'selesai', 'sukses'],
+                    'batal' => ['batal', 'gagal', 'cancelled'],
+                ];
+                if (isset($statusMap[$statusTab])) return $query->whereIn('status', $statusMap[$statusTab]);
+                return $query;
+            })
+            ->when($searchQuery, function ($query, $search) {
+                return $query->where('order_id', 'like', "%{$search}%")->orWhere('awb_number', 'like', "%{$search}%");
+            });
+
+        // --- Eksekusi Query ---
+        $orders = $orderQuery->get()->map(function ($item) {
+            $item->is_pesanan = false;
+            $item->is_autokirim = false;
+            return $item;
         });
 
-    // --- 2. Query 'Pesanan' (Manual) ---
-    $pesananQuery = Pesanan::query()
-        ->when($statusFilter, function ($query, $statusTab) {
-            $statusMap = [
-                'menunggu-pickup' => ['Menunggu Pickup'],
-                'terkirim' => ['Sedang Dikirim'],
-                'selesai' => ['Selesai'],
-                'batal' => ['Batal'],
-            ];
-            if (isset($statusMap[$statusTab])) {
-                return $query->whereIn('status_pesanan', $statusMap[$statusTab]);
-            }
-            return $query;
-        })
-        ->when($searchQuery, function ($query, $search) {
-            return $query->where(function($q) use ($search) {
-                $q->where('nomor_invoice', 'like', "%{$search}%")
-                  ->orWhere('resi', 'like', "%{$search}%")
-                  ->orWhere('resi_aktual', 'like', "%{$search}%")
-                  ->orWhere('nama_pembeli', 'like', "%{$search}%")
-                  ->orWhere('telepon_pembeli', 'like', "%{$search}%")
-                  ->orWhere('receiver_name', 'like', "%{$search}%")
-                  ->orWhere('receiver_phone', 'like', "%{$search}%")
-                  ->orWhere('sender_name', 'like', "%{$search}%");
-            });
+        $pesanans = $pesananQuery->get()->map(function ($item) {
+            $std = $this->standardizePesanan($item);
+            $std->is_pesanan = true;
+            $std->is_autokirim = false;
+            return $std;
         });
 
-    // --- 3. Eksekusi Query ---
-    $orders = $orderQuery->get();
-    $pesanans = $pesananQuery->get();
+        $autokirims = $autokirimQuery->get()->map(function ($item) {
+            $std = $this->standardizeAutokirim($item);
+            $std->is_pesanan = false;
+            $std->is_autokirim = true;
+            return $std;
+        });
 
-    // Standarisasi tanggal 'created_at' untuk sorting
-    $standardizedPesanans = $pesanans->map(function ($pesanan) {
-        $pesanan->created_at = $pesanan->created_at ?? $pesanan->tanggal_pesanan;
-        return $pesanan;
-    });
+        // --- Gabungkan dan Urutkan ---
+        $merged = $orders->merge($pesanans)->merge($autokirims);
+        $sorted = $merged->sortByDesc('created_at');
 
-    // --- 4. Gabungkan dan Urutkan ---
-    $merged = $orders->merge($standardizedPesanans);
-    $sorted = $merged->sortByDesc('created_at');
+        // --- Pagination Manual ---
+        $currentPage = Paginator::resolveCurrentPage('page');
+        $currentPageItems = $sorted->slice(($currentPage - 1) * $perPage, $perPage);
+        $paginatedItems = new LengthAwarePaginator(
+            $currentPageItems, $sorted->count(), $perPage, $currentPage,
+            ['path' => Paginator::resolveCurrentPath(), 'query' => $request->query()]
+        );
 
-    // --- 5. Pagination Manual ---
-    $currentPage = \Illuminate\Pagination\Paginator::resolveCurrentPage('page');
-    $currentPageItems = $sorted->slice(($currentPage - 1) * $perPage, $perPage);
+        // =========================================================================
+        // BAGIAN 2: LOGIKA HITUNG PENDAPATAN (GABUNGAN 3 TABEL)
+        // =========================================================================
 
-    $paginatedItems = new \Illuminate\Pagination\LengthAwarePaginator(
-        $currentPageItems,
-        $sorted->count(),
-        $perPage,
-        $currentPage,
-        [
-            'path' => \Illuminate\Pagination\Paginator::resolveCurrentPath(),
-            'query' => $request->query()
-        ]
-    );
+        $pSelesai = Pesanan::where('status_pesanan', 'Selesai')->sum('price');
+        $oSelesai = Order::where('status', 'completed')->sum('total_amount');
+        $akSelesai = PesananAutokirim::whereIn('status', ['completed', 'terkirim', 'selesai', 'sukses'])->sum('grand_total');
 
-    // =========================================================================
-    // BAGIAN 2: LOGIKA HITUNG PENDAPATAN (GABUNGAN)
-    // =========================================================================
+        $pPickup  = Pesanan::whereIn('status_pesanan', ['Menunggu Pickup'])->sum('price');
+        $oPickup  = Order::where('status', 'paid')->sum('total_amount');
+        $akPickup = PesananAutokirim::where('status', 'booking_created')->sum('grand_total');
 
-    // 1. Hitung dari Tabel 'Pesanan' (Manual)
-    $pSelesai = Pesanan::where('status_pesanan', 'Selesai')->sum('price');
-    $pPickup  = Pesanan::whereIn('status_pesanan', ['Menunggu Pickup', 'Pembayaran Lunas (Gagal Auto-Resi)'])->sum('price');
-    $pDikirim = Pesanan::whereIn('status_pesanan', ['Diproses', 'Terkirim', 'Sedang Dikirim'])->sum('price');
-    $pGagal   = Pesanan::whereIn('status_pesanan', ['Batal', 'Kadaluarsa', 'Gagal Bayar', 'Dibatalkan'])->sum('price');
+        $pDikirim = Pesanan::whereIn('status_pesanan', ['Diproses', 'Terkirim', 'Sedang Dikirim'])->sum('price');
+        $oDikirim = Order::whereIn('status', ['processing', 'shipment', 'delivered'])->sum('total_amount');
+        $akDikirim = PesananAutokirim::whereIn('status', ['on_delivery', 'shipping'])->sum('grand_total');
 
-    // 2. Hitung dari Tabel 'Order' (Website/Otomatis)
-    $oSelesai = Order::where('status', 'completed')->sum('total_amount');
-    $oPickup  = Order::where('status', 'paid')->sum('total_amount');
-    $oDikirim = Order::whereIn('status', ['processing', 'shipment', 'delivered'])->sum('total_amount');
-    $oGagal   = Order::whereIn('status', ['cancelled', 'failed', 'rejected'])->sum('total_amount');
+        $pGagal   = Pesanan::whereIn('status_pesanan', ['Batal', 'Gagal Bayar'])->sum('price');
+        $oGagal   = Order::whereIn('status', ['cancelled', 'failed', 'rejected'])->sum('total_amount');
+        $akGagal  = PesananAutokirim::whereIn('status', ['batal', 'gagal'])->sum('grand_total');
 
-    // 3. Gabungkan Keduanya
-    $incomeSelesai = $pSelesai + $oSelesai;
-    $incomePickup  = $pPickup + $oPickup;
-    $incomeDikirim = $pDikirim + $oDikirim;
-    $incomeGagal   = $pGagal + $oGagal;
+        return view('admin.orders.index', [
+            'orders' => $paginatedItems,
+            'incomeSelesai' => $pSelesai + $oSelesai + $akSelesai,
+            'incomePickup' => $pPickup + $oPickup + $akPickup,
+            'incomeDikirim' => $pDikirim + $oDikirim + $akDikirim,
+            'incomeGagal' => $pGagal + $oGagal + $akGagal
+        ]);
+    }
 
-    // =========================================================================
-    // BAGIAN 3: RETURN VIEW
-    // =========================================================================
+    /**
+     * FUNGSI BARU: Standarisasi Data Autokirim
+     */
+    private function standardizeAutokirim(PesananAutokirim $ak)
+    {
+        $order = new \stdClass();
+        $order->id = $ak->id;
+        $order->invoice_number = $ak->order_id;
+        $order->created_at = $ak->created_at;
+        $order->status = $ak->status;
 
-    return view('admin.orders.index', [
-        'orders' => $paginatedItems,        // Data Tabel dengan Pagination
-        'incomeSelesai' => $incomeSelesai, // Data Card 1
-        'incomePickup' => $incomePickup,    // Data Card 2
-        'incomeDikirim' => $incomeDikirim, // Data Card 3
-        'incomeGagal' => $incomeGagal      // Data Card 4
-    ]);
-}
+        $order->shipping_method = $ak->kurir . ' - ' . $ak->layanan;
+        $order->shipping_reference = $ak->awb_number;
+        $order->payment_method = $ak->metode_pembayaran;
 
+        $order->total_amount = $ak->grand_total;
+        $order->subtotal = $ak->nilai_barang ?? 0;
+        $order->shipping_cost = $ak->ongkir ?? 0;
+        $order->cod_fee = 0; // Sesuaikan jika ada logika COD
+        $order->insurance_cost = $ak->asuransi ? round($ak->nilai_barang * 0.002) : 0;
+
+        // Mockup User (Pembeli)
+        $user = new \stdClass();
+        $user->nama_lengkap = $ak->penerima_nama;
+        $user->address_detail = $ak->penerima_alamat;
+        $order->user = $user;
+
+        // Mockup Store (Pengirim)
+        $store = new \stdClass();
+        $store->name = $ak->pengirim_nama;
+        $store->address_detail = $ak->pengirim_alamat;
+        $order->store = $store;
+
+        // Mockup Item
+        $order->item_description = $ak->deskripsi_barang ?? $ak->kategori_barang;
+        $order->weight = $ak->berat_gram;
+        $order->length = $ak->panjang_cm;
+        $order->width = $ak->lebar_cm;
+        $order->height = $ak->tinggi_cm;
+
+        return $order;
+    }
 
     /**
      * Mengubah objek 'Pesanan' agar strukturnya mirip dengan 'Order'
@@ -197,7 +209,7 @@ class AdminOrderController extends Controller
         $store = new \stdClass();
         $store->name = $pesanan->sender_name ?? 'N/A';
         // PERBAIKAN UTAMA: Tambahkan phone, province, dll
-        $store->phone = $pesanan->sender_phone; 
+        $store->phone = $pesanan->sender_phone;
         $store->address_detail = $pesanan->sender_address ?? 'N/A';
         $store->village = $pesanan->sender_village;
         $store->district = $pesanan->sender_district;
@@ -234,7 +246,7 @@ class AdminOrderController extends Controller
         $order->shipping_address = $pesanan->receiver_address ?? $pesanan->alamat_pengiriman;
         $order->shipping_reference = $pesanan->resi_aktual ?? $pesanan->resi;
         $order->payment_method = $pesanan->payment_method;
-        
+
         // Agar blade tidak bingung, mapping sender_phone juga ke root object (opsional tapi aman)
         $order->sender_phone = $pesanan->sender_phone;
         $order->receiver_phone = $pesanan->receiver_phone;
@@ -255,14 +267,14 @@ class AdminOrderController extends Controller
             // Ini akan disesuaikan lagi jika ada biaya COD
             $order->subtotal = $order->total_amount - $order->shipping_cost;
         }
-        
+
         $order->cod_fee = 0; // Default 0
         if (strtoupper($pesanan->payment_method) == 'CODBARANG' || strtoupper($pesanan->payment_method) == 'COD') {
              // Biaya COD = Total - Subtotal - Ongkir
              // (Gunakan $pesanan->total_harga_barang untuk subtotal jika ada, jika tidak, $order->subtotal)
              $subtotalForCalc = $pesanan->total_harga_barang ?? $order->subtotal;
              $calculated_cod_fee = $order->total_amount - $subtotalForCalc - $order->shipping_cost;
-             
+
              $order->cod_fee = max(0, $calculated_cod_fee); // Pastikan tidak negatif
         }
 
@@ -309,10 +321,10 @@ class AdminOrderController extends Controller
 
             // Jika tidak ada di 'orders', coba cari di 'Pesanan'
             $pesanan = Pesanan::where('nomor_invoice', $invoice)->firstOrFail();
-            
+
             // Ditemukan di 'Pesanan', standarisasi datanya
             $order = $this->standardizePesanan($pesanan);
-            
+
             // Tampilkan view 'orders.show' dengan data 'Pesanan' yang sudah distandarisasi
             return view('admin.orders.show', compact('order'));
 
@@ -400,7 +412,7 @@ class AdminOrderController extends Controller
                                 'items.variant:id,product_variant_id,combination_string'
                             ])
                             ->first();
-            
+
             if ($order) {
                 $order->is_pesanan = false; // Tambah flag
             } else {
@@ -452,7 +464,7 @@ class AdminOrderController extends Controller
             $order = Order::where('invoice_number', $invoice)
                             ->with(['user', 'store', 'items.product:id,name,weight,length,width,height'])
                             ->first();
-            
+
             if ($order) {
                  $order->is_pesanan = false; // Tambah flag
             } else {
@@ -528,7 +540,7 @@ class AdminOrderController extends Controller
                 ->whereIn('status', $statusesToIncludeOrders)
                 ->whereBetween('created_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59'])
                 ->get();
-            
+
             // --- Ambil Data 'Pesanan' ---
             $statusesToIncludePesanan = ['Menunggu Pickup', 'Sedang Dikirim', 'Selesai'];
              $pesanans = Pesanan::query() // Ganti 'user' dengan relasi yang sesuai di 'Pesanan' jika ada
@@ -545,7 +557,7 @@ class AdminOrderController extends Controller
             $standardizedPesanans = $pesanans->map(function ($item) {
                 // Gunakan helper standarisasi, tapi hanya ambil data yg perlu u/ laporan
                 $stdOrder = $this->standardizePesanan($item);
-                
+
                 return (object) [ // Ubah jadi objek standar agar mirip Eloquent
                     'invoice_number' => $stdOrder->invoice_number,
                     'created_at' => $stdOrder->created_at,
