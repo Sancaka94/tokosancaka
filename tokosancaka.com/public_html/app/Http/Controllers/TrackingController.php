@@ -416,7 +416,7 @@ class TrackingController extends Controller
         return redirect()->route('tracking.index')->with('error', "Nomor resi '{$resi}' tidak ditemukan.");
     }
 
-  /**
+    /**
      * [CETAK THERMAL ADMIN]
      */
     public function cetakThermal($resi)
@@ -580,6 +580,59 @@ class TrackingController extends Controller
                 ];
             }
         }
+
+        // ==========================================================
+        // 🔥 FIX 404: TAMBAHAN LOGIKA UNTUK PESANAN AUTOKIRIM 🔥
+        // ==========================================================
+        if (!$pesanan) {
+            $autokirim = \App\Models\PesananAutokirim::where('awb_number', $resi)
+                ->orWhere('order_id', $resi)
+                ->first();
+
+            if ($autokirim) {
+                $isCod = in_array(strtolower($autokirim->metode_pembayaran), ['cod', 'codbarang', 'cod_barang', 'cod_ongkir']);
+
+                $pesanan = (object)[
+                    'resi'                  => $autokirim->awb_number ?? $autokirim->order_id,
+                    'nomor_invoice'         => $autokirim->order_id,
+                    'status'                => $autokirim->status,
+                    'sender_name'           => $autokirim->pengirim_nama ?? 'N/A',
+                    'sender_phone'          => $autokirim->pengirim_hp ?? '-',
+                    'sender_address'        => $autokirim->pengirim_alamat ?? '-',
+                    'sender_village'        => '',
+                    'sender_district'       => '',
+                    'sender_regency'        => '',
+                    'sender_province'       => '',
+                    'sender_postal_code'    => $autokirim->pengirim_kodepos ?? '',
+                    'receiver_name'         => $autokirim->penerima_nama ?? 'N/A',
+                    'receiver_phone'        => $autokirim->penerima_hp ?? '-',
+                    'receiver_address'      => $autokirim->penerima_alamat ?? '-',
+                    'receiver_village'      => '',
+                    'receiver_district'     => '',
+                    'receiver_regency'      => '',
+                    'receiver_province'     => '',
+                    'receiver_postal_code'  => $autokirim->penerima_kodepos ?? '',
+                    'weight'                => $autokirim->berat_gram ?? 1000,
+                    'item_price'            => $autokirim->nilai_barang ?? 0,
+                    'shipping_cost'         => $autokirim->ongkir ?? 0,
+                    'ongkir'                => $autokirim->ongkir ?? 0,
+                    'insurance_cost'        => $autokirim->asuransi ? round(($autokirim->nilai_barang ?? 0) * 0.002) : 0,
+                    'total_cod'             => $isCod ? $autokirim->grand_total : 0,
+                    'cod_amount'            => $isCod ? $autokirim->grand_total : 0,
+                    'item_description'      => $autokirim->deskripsi_barang ?? $autokirim->kategori_barang ?? 'Paket Autokirim',
+                    'length'                => $autokirim->panjang_cm ?? 10,
+                    'width'                 => $autokirim->lebar_cm ?? 10,
+                    'height'                => $autokirim->tinggi_cm ?? 10,
+                    'expedition'            => $autokirim->kurir ?? 'Sancaka Express',
+                    'service_type'          => $autokirim->layanan ?? 'REG',
+                    'payment_method'        => str_replace('_', ' ', strtoupper($autokirim->metode_pembayaran)),
+                    'created_at'            => $autokirim->created_at,
+                    'resi_aktual'           => $autokirim->awb_number,
+                    'jasa_ekspedisi_aktual' => $autokirim->kurir,
+                ];
+            }
+        }
+        // ==========================================================
 
         if (!$pesanan) {
             abort(404, 'Pesanan tidak ditemukan untuk dicetak.');
