@@ -332,12 +332,40 @@
                         }
 
                         $badgeMap = [
-                            'pending' => 'bg-yellow-100 text-yellow-800', 'waiting_payment' => 'bg-yellow-100 text-yellow-800',
-                            'menunggu-pickup' => 'bg-yellow-100 text-yellow-800', 'booking_created' => 'bg-blue-100 text-blue-800', 'paid' => 'bg-blue-100 text-blue-800',
-                            'diproses' => 'bg-blue-100 text-blue-800', 'processing' => 'bg-blue-100 text-blue-800',
-                            'terkirim' => 'bg-green-100 text-green-800', 'delivered' => 'bg-green-100 text-green-800',
-                            'selesai' => 'bg-green-100 text-green-800', 'completed' => 'bg-green-100 text-green-800', 'sukses' => 'bg-green-100 text-green-800',
-                            'batal' => 'bg-red-100 text-red-800', 'cancelled' => 'bg-red-100 text-red-800', 'gagal' => 'bg-red-100 text-red-800'
+                            // Merah (Cancel, Dibatalkan, Batal, Canceled/Cancelled, Gagal)
+                            'batal' => 'bg-red-100 text-red-800',
+                            'cancel' => 'bg-red-100 text-red-800',
+                            'canceled' => 'bg-red-100 text-red-800',
+                            'cancelled' => 'bg-red-100 text-red-800',
+                            'dibatalkan' => 'bg-red-100 text-red-800',
+                            'gagal' => 'bg-red-100 text-red-800',
+
+                            // Kuning (Menunggu Pickup, Menunggu Pembayaran, On Shipment)
+                            'pending' => 'bg-yellow-100 text-yellow-800',
+                            'waiting_payment' => 'bg-yellow-100 text-yellow-800',
+                            'menunggu pembayaran' => 'bg-yellow-100 text-yellow-800',
+                            'menunggu pickup' => 'bg-yellow-100 text-yellow-800',
+                            'menunggu-pickup' => 'bg-yellow-100 text-yellow-800',
+                            'on shipment' => 'bg-yellow-100 text-yellow-800',
+                            'on_shipment' => 'bg-yellow-100 text-yellow-800',
+                            'paid' => 'bg-yellow-100 text-yellow-800',
+
+                            // Hijau (Selesai, Terkirim, Finished, Completed)
+                            'selesai' => 'bg-green-100 text-green-800',
+                            'terkirim' => 'bg-green-100 text-green-800',
+                            'finished' => 'bg-green-100 text-green-800',
+                            'completed' => 'bg-green-100 text-green-800',
+                            'delivered' => 'bg-green-100 text-green-800',
+                            'sukses' => 'bg-green-100 text-green-800',
+
+                            // Abu-abu (Created, Dibuat, Booking Created)
+                            'created' => 'bg-gray-100 text-gray-800',
+                            'dibuat' => 'bg-gray-100 text-gray-800',
+                            'booking_created' => 'bg-gray-100 text-gray-800',
+
+                            // Biru (Diproses / Processing)
+                            'diproses' => 'bg-blue-100 text-blue-800',
+                            'processing' => 'bg-blue-100 text-blue-800',
                         ];
 
                         $textMap = [
