@@ -176,18 +176,19 @@
             <tbody class="bg-white divide-y divide-gray-200">
                 @forelse($orders as $index => $order)
                     @php
-                        // --- Cek Tipe Data ---
+                        // --- Inisialisasi Flag Tipe Data ---
                         $isPesanan = isset($order->is_pesanan) && $order->is_pesanan;
                         $isAutokirim = isset($order->is_autokirim) && $order->is_autokirim;
 
+                        // --- Pemetaan Variabel Berdasarkan Tipe ---
                         if ($isAutokirim) {
-                            // Mapping untuk Autokirim
-                            $id = $order->id; // ID Database
+                            $id = $order->id;
                             $invoice = $order->invoice_number;
                             $resi = $order->shipping_reference;
                             $paymentMethod = str_replace('_', ' ', strtoupper($order->payment_method));
                             $shippingMethodString = $order->shipping_method;
                             $paket = $order->item_description;
+                            $userId = null; // Autokirim belum mapping user_id di standarizer, fallback aman
                             $senderName = $order->store->name;
                             $senderAddress = $order->store->address_detail;
                             $receiverName = $order->user->nama_lengkap;
@@ -198,20 +199,19 @@
                             $subtotal = $order->subtotal;
                             $shippingCost = $order->shipping_cost;
                             $insuranceCost = $order->insurance_cost;
-                            $codFeeDisplay = 0;
-                            $finalTagihan = $totalAmountDB;
+                            $codFeeDB = 0;
                             $statusRaw = strtolower($order->status);
 
                             $canCancel = in_array($statusRaw, ['waiting_payment', 'menunggu_pembayaran']);
 
                         } elseif ($isPesanan) {
-                            // Mapping untuk Pesanan (Manual) -> (Logic Lama Anda)
                             $id = $order->id_pesanan ?? $order->id;
                             $invoice = $order->invoice_number;
                             $resi = $order->shipping_reference;
                             $paymentMethod = $order->payment_method;
                             $shippingMethodString = $order->shipping_method;
                             $paket = $order->items->first()->product->name ?? 'Paket';
+                            $userId = $order->customer_id ?? $order->id_pengguna_pembeli ?? null;
                             $senderName = $order->store->name;
                             $senderAddress = $order->store->address_detail;
                             $receiverName = $order->user->nama_lengkap;
@@ -222,13 +222,12 @@
                             $subtotal = $order->subtotal;
                             $shippingCost = $order->shipping_cost;
                             $insuranceCost = $order->insurance_cost ?? 0;
-                            $codFeeDisplay = $order->cod_fee ?? 0;
-                            $finalTagihan = $totalAmountDB;
+                            $codFeeDB = $order->cod_fee ?? 0;
                             $statusRaw = strtolower($order->status);
 
                             $canCancel = in_array($statusRaw, ['menunggu pickup', 'menunggu-pickup']);
+
                         } else {
-                            // Mapping untuk Order (Web/Otomatis) -> (Logic Lama Anda)
                             $id = $order->id;
                             $invoice = $order->invoice_number;
                             $resi = $order->shipping_reference;
@@ -236,6 +235,7 @@
                             $shippingMethodString = $order->shipping_method;
                             $item = $order->items->first();
                             $paket = $item && $item->product ? $item->product->name : 'N/A';
+                            $userId = $order->user_id ?? null;
                             $senderName = $order->store ? $order->store->name : 'N/A';
                             $senderAddress = $order->store ? $order->store->address_detail : 'N/A';
                             $receiverName = $order->user ? $order->user->nama_lengkap : 'N/A';
@@ -246,18 +246,27 @@
                             $subtotal = $order->subtotal;
                             $shippingCost = $order->shipping_cost;
                             $insuranceCost = $order->insurance_cost ?? 0;
-                            $codFeeDisplay = $order->cod_fee ?? 0;
-                            $finalTagihan = $totalAmountDB;
+                            $codFeeDB = $order->cod_fee ?? 0;
                             $statusRaw = strtolower($order->status);
 
                             $canCancel = in_array($statusRaw, ['pending', 'paid', 'processing']);
                         }
 
-                        // Parsing Kurir
+                        // --- Parsing Ekspedisi & Kalkulasi COD Sesuai Logic Asli ---
                         $ship = \App\Helpers\ShippingHelper::parseShippingMethod($shippingMethodString);
-                        $isCodOngkir = (strtoupper(trim($paymentMethod ?? '')) === 'COD');
+                        $metodeBayar = strtoupper(trim($paymentMethod ?? ''));
+                        $isCodOngkir = ($metodeBayar === 'COD');
 
-                        // --- STANDARISASI BADGE STATUS GABUNGAN ---
+                        if ($isCodOngkir && !$isAutokirim) {
+                            $basisCod = ($shippingCost ?? 0) + 10000;
+                            $codFeeDisplay = max(2500, $basisCod * 0.03);
+                            $finalTagihan = $shippingCost + $codFeeDisplay + $insuranceCost + 1000;
+                        } else {
+                            $codFeeDisplay = $codFeeDB;
+                            $finalTagihan = $totalAmountDB;
+                        }
+
+                        // --- Badge & Text Status ---
                         $badgeMap = [
                             'pending' => 'bg-yellow-100 text-yellow-800', 'waiting_payment' => 'bg-yellow-100 text-yellow-800',
                             'menunggu-pickup' => 'bg-yellow-100 text-yellow-800', 'booking_created' => 'bg-blue-100 text-blue-800', 'paid' => 'bg-blue-100 text-blue-800',
@@ -281,11 +290,11 @@
                     @endphp
 
                     <tr class="group hover:bg-gray-50">
-                        <td class="px-4 py-4 text-gray-500 align-top">{{ $orders->firstItem() + $index }}</td>
-                        <td class="px-4 py-4 text-gray-500 align-top">{{ $id }}</td>
+                        <td class="px-4 py-4 whitespace-nowrap text-gray-500 align-top">{{ $orders->firstItem() + $index }}</td>
+                        <td class="px-4 py-4 whitespace-nowrap text-gray-500 align-top">{{ $id }}</td>
 
                         {{-- Kolom Tipe --}}
-                        <td class="px-4 py-4 align-top">
+                        <td class="px-4 py-4 whitespace-nowrap align-top">
                             @if ($isAutokirim)
                                 <span class="px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">AutoKirim</span>
                             @elseif ($isPesanan)
@@ -297,20 +306,37 @@
 
                         {{-- Kolom Transaksi --}}
                         <td class="px-4 py-4 align-top">
-                            <span class="font-bold {{ $isCodOngkir ? 'text-green-600' : 'text-blue-600' }}">{{ $paymentMethod }}</span>
+                            @if(Str::contains($metodeBayar, 'COD'))
+                                <span class="font-bold text-green-600">{{ $paymentMethod }}</span>
+                            @else
+                                <span class="font-bold text-blue-600">{{ $paymentMethod }}</span>
+                            @endif
                             <div class="font-bold text-gray-800">{{ $invoice }}</div>
+
                             <div class="text-xs mt-2 space-y-0.5 text-gray-600 w-52">
                                 <div class="flex justify-between">
                                     <span>Nilai Barang:</span>
-                                    <span class="font-medium">Rp{{ number_format($subtotal, 0, ',', '.') }}</span>
+                                    <span class="font-medium {{ $isCodOngkir ? 'line-through text-gray-400' : '' }}">
+                                        Rp{{ number_format($subtotal, 0, ',', '.') }}
+                                    </span>
                                 </div>
                                 <div class="flex justify-between">
                                     <span>Ongkir:</span>
                                     <span class="font-medium">Rp{{ number_format($shippingCost, 0, ',', '.') }}</span>
                                 </div>
+                                @if ($insuranceCost > 0)
+                                    <div class="flex justify-between">
+                                    <span>Asuransi:</span>
+                                    <span class="font-medium">Rp{{ number_format($insuranceCost, 0, ',', '.') }}</span>
+                                    </div>
+                                @endif
+                                <div class="flex justify-between">
+                                    <span>Biaya COD:</span>
+                                    <span class="font-medium">Rp{{ number_format($codFeeDisplay, 0, ',', '.') }}</span>
+                                </div>
                                 <div class="flex justify-between font-bold pt-0.5 border-t border-gray-200 mt-1">
                                     <span>Total Tagihan:</span>
-                                    <span class="text-blue-700">Rp{{ number_format($finalTagihan, 0, ',', '.') }}</span>
+                                    <span class="text-blue-700"><strong>Rp{{ number_format($finalTagihan, 0, ',', '.') }}</strong></span>
                                 </div>
                             </div>
                         </td>
@@ -330,20 +356,25 @@
                         </td>
 
                         {{-- Kolom Ekspedisi --}}
-                        <td class="px-4 py-4 align-top">
+                        <td class="px-4 py-4 align-top whitespace-nowrap">
                             @if ($ship['logo_url'])
                                 <img src="{{ $ship['logo_url'] }}" alt="Logo" class="h-5 mb-1 max-w-[90px] object-contain">
                             @else
                                 <div class="font-bold text-gray-800">{{ $ship['courier_name'] }}</div>
                             @endif
-                            <div class="text-xs text-gray-500">{{ $ship['service_name'] }}</div>
+                            <div class="text-xs text-gray-500">Layanan: {{ $ship['service_name'] }}</div>
                             <div class="font-semibold text-green-700 mt-1">Rp{{ number_format($shippingCost ?? 0, 0, ',', '.') }}</div>
                         </td>
 
-                        {{-- Kolom Resi --}}
+                        {{-- Kolom Resi (Fitur Barcode Zoom kembali) --}}
                         <td class="px-4 py-4 align-top">
                             @if ($resi)
-                                <div class="font-medium text-gray-800">{{ $resi }}</div>
+                                <div id="barcode-{{ $id }}" class="clickable-zoom-barcode cursor-pointer hover:opacity-75 transition-opacity">
+                                    <div class="font-medium text-gray-800 break-all max-w-[180px]">{{ $resi }}</div>
+                                    <div class="mt-2 barcode-svg-container inline-block">
+                                        {!! DNS2D::getBarcodeSVG($resi, 'DATAMATRIX', 5, 5) !!}
+                                    </div>
+                                </div>
                             @else
                                 <span class="text-gray-400 italic">Belum ada resi</span>
                             @endif
@@ -351,7 +382,7 @@
 
                         {{-- Kolom Paket --}}
                         <td class="px-4 py-4 align-top">
-                            <div class="font-semibold text-gray-800">{{ $paket }}</div>
+                            <div class="font-semibold text-gray-800 break-words max-w-xs">{{ $paket }}</div>
                             <div class="text-xs text-gray-500 mt-1">
                                 Berat: {{ $order->weight ?? 0 }} gr <br>
                                 Dimensi: {{ $order->length ?? 0 }}x{{ $order->width ?? 0 }}x{{ $order->height ?? 0 }} cm
@@ -359,13 +390,13 @@
                         </td>
 
                         {{-- Kolom Tanggal --}}
-                        <td class="px-4 py-4 align-top text-gray-500 whitespace-nowrap">
+                        <td class="px-4 py-4 align-top whitespace-nowrap text-gray-500">
                             <div><span class="text-gray-400">Dibuat:</span> {{ \Carbon\Carbon::parse($createdAt)->translatedFormat('d M Y, H:i') }}</div>
                         </td>
 
                         {{-- Kolom Status --}}
                         <td class="px-4 py-4 align-top whitespace-nowrap">
-                            <span class="px-2 py-1 inline-flex text-xs font-semibold rounded-full {{ $statusBadge }}">
+                            <span class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full {{ $statusBadge }}">
                                 {{ $statusText }}
                             </span>
                         </td>
@@ -374,19 +405,33 @@
                         <td class="sticky right-0 z-10 bg-white group-hover:bg-gray-50 px-6 py-4 align-top whitespace-nowrap border-l border-gray-200">
                             <div class="flex items-center space-x-3">
 
-                                {{-- Aksi View/Edit/Cetak tergantung tipe order --}}
-                                @if ($isAutokirim)
-                                    <a href="{{ route('admin.pesanan-autokirim.invoice', $id) }}" target="_blank" class="text-gray-500 hover:text-indigo-600" title="Cetak Invoice Autokirim"><i class="fas fa-file-invoice fa-fw"></i></a>
-                                    <a href="{{ route('admin.pesanan-autokirim.cetak', $id) }}" target="_blank" class="text-gray-500 hover:text-gray-800" title="Cetak Label Autokirim"><i class="fas fa-print fa-fw"></i></a>
-                                    <a href="{{ route('admin.pesanan-autokirim.edit', $id) }}" class="text-gray-500 hover:text-blue-600" title="Edit Pesanan"><i class="fas fa-edit fa-fw"></i></a>
-                                @elseif ($isPesanan)
-                                    <a href="{{ route('admin.pesanan.show', $invoice) }}" class="text-gray-500 hover:text-indigo-600" title="Detail"><i class="fas fa-eye fa-fw"></i></a>
-                                @else
-                                    <a href="{{ route('admin.orders.show', $invoice) }}" class="text-gray-500 hover:text-indigo-600" title="Detail"><i class="fas fa-eye fa-fw"></i></a>
+                                {{-- 1. Tombol Truk / Tracking Resi (Universal) --}}
+                                @if($resi)
+                                    <a href="{{ 'https://tokosancaka.com/tracking/search?resi=' . e($resi) }}" target="_blank" class="text-gray-500 hover:text-green-600" title="Lacak Resi"><i class="fas fa-truck fa-fw"></i></a>
                                 @endif
 
-                                {{-- Tombol Batal --}}
-                                <form action="{{ $isAutokirim ? route('admin.pesanan-autokirim.cancel', $id) : route('admin.orders.cancel', $invoice) }}" method="POST" onsubmit="return confirm('Yakin batalkan?');" class="inline-block">
+                                {{-- 2. Tombol View, Print Thermal, PDF Faktur, Edit (Dibedakan per Tipe) --}}
+                                @if ($isAutokirim)
+                                    <a href="{{ route('admin.pesanan-autokirim.invoice', $id) }}" target="_blank" class="text-gray-500 hover:text-red-600" title="PDF Faktur Autokirim"><i class="fas fa-file-pdf fa-fw"></i></a>
+                                    <a href="{{ route('admin.pesanan-autokirim.cetak', $id) }}" target="_blank" class="text-gray-500 hover:text-gray-800" title="Cetak Label Autokirim"><i class="fas fa-print fa-fw"></i></a>
+                                    <a href="{{ route('admin.pesanan-autokirim.edit', $id) }}" class="text-gray-500 hover:text-blue-600" title="Edit Pesanan"><i class="fas fa-edit fa-fw"></i></a>
+                                @else
+                                    @if ($isPesanan)
+                                        <a href="{{ route('admin.pesanan.show', $invoice) }}" class="text-gray-500 hover:text-indigo-600" title="Detail"><i class="fas fa-eye fa-fw"></i></a>
+                                    @else
+                                        <a href="{{ route('admin.orders.show', $invoice) }}" class="text-gray-500 hover:text-indigo-600" title="Detail"><i class="fas fa-eye fa-fw"></i></a>
+                                    @endif
+                                    <a href="{{ route('admin.orders.print.thermal', $invoice) }}" target="_blank" class="text-gray-500 hover:text-gray-800" title="Cetak Label"><i class="fas fa-print fa-fw"></i></a>
+                                    <a href="{{ route('admin.orders.invoice.pdf', $invoice) }}" target="_blank" class="text-gray-500 hover:text-red-600" title="PDF Faktur"><i class="fas fa-file-pdf fa-fw"></i></a>
+                                @endif
+
+                                {{-- 3. Tombol Chat (Universal jika ada user) --}}
+                                @if ($userId)
+                                    <a href="{{ route('admin.chat.start', ['id_pengguna' => $userId]) }}" target="_blank" class="text-gray-500 hover:text-blue-600" title="Chat"><i class="fas fa-comment fa-fw"></i></a>
+                                @endif
+
+                                {{-- 4. Tombol Trash / Batal --}}
+                                <form action="{{ $isAutokirim ? route('admin.pesanan-autokirim.cancel', $id) : route('admin.orders.cancel', $invoice) }}" method="POST" onsubmit="return confirm('Apakah Anda yakin ingin membatalkan pesanan ini?');" class="inline-block">
                                     @csrf
                                     @if($isAutokirim) @method('POST') @else @method('PATCH') @endif
                                     <button type="submit" class="text-gray-500 hover:text-red-600 {{ !$canCancel ? 'opacity-40 cursor-not-allowed' : '' }}" title="Batalkan" @disabled(!$canCancel)>
@@ -398,10 +443,11 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="11" class="text-center py-4 text-gray-500">Data tidak ditemukan.</td>
+                        <td colspan="11" class="text-center py-4 text-gray-500">Data pesanan tidak ditemukan.</td>
                     </tr>
                 @endforelse
             </tbody>
+
         </table>
     </div>
 </div>
