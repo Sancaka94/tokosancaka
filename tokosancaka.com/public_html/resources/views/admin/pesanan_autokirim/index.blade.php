@@ -160,8 +160,11 @@
                                 </div>
 
                                 @if($item->awb_number)
-                                    <div class="inline-block bg-blue-50 text-blue-700 font-bold font-mono px-2 py-1 rounded text-xs border border-blue-200 mb-4 shadow-sm">
-                                        {{ $item->awb_number }}
+                                    <div class="inline-flex items-center gap-2 bg-blue-50 text-blue-700 font-bold font-mono px-2 py-1 rounded text-xs border border-blue-200 mb-4 shadow-sm">
+                                        <span id="resi-{{ $item->id }}">{{ $item->awb_number }}</span>
+                                        <button type="button" onclick="copyResi('{{ $item->awb_number }}', this)" class="text-blue-500 hover:text-blue-800 transition focus:outline-none" title="Copy Resi">
+                                            <i class="fa-regular fa-copy"></i>
+                                        </button>
                                     </div>
                                 @else
                                     <div class="inline-block bg-gray-100 text-gray-500 px-2 py-1 rounded italic text-xs mb-4">Menunggu Resi</div>
@@ -492,6 +495,32 @@
             setTimeout(() => {
                 document.getElementById('agentModal').classList.add('hidden');
             }, 200);
+        }
+    </script>
+
+    <!-- SCRIPT COPY RESI -->
+    <script>
+        function copyResi(text, btnElement) {
+            // Gunakan API Clipboard untuk menyalin teks
+            navigator.clipboard.writeText(text).then(() => {
+                // Ambil elemen ikon di dalam tombol
+                let icon = btnElement.querySelector('i');
+
+                // Simpan class awal (fa-regular fa-copy)
+                let originalClass = icon.className;
+
+                // Ubah ikon menjadi centang hijau sebagai tanda sukses
+                icon.className = 'fa-solid fa-check text-green-600';
+
+                // Kembalikan ke ikon semula setelah 1.5 detik
+                setTimeout(() => {
+                    icon.className = originalClass;
+                }, 1500);
+
+            }).catch(err => {
+                console.error('Gagal menyalin teks: ', err);
+                alert('Gagal menyalin nomor resi.');
+            });
         }
     </script>
 
