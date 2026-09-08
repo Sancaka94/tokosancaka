@@ -222,7 +222,14 @@
                             $resi = $order->shipping_reference;
                             $paymentMethod = str_replace('_', ' ', strtoupper($order->payment_method));
                             $shippingMethodString = $order->shipping_method;
+
+                            // Dimensi Autokirim (di akar objek)
                             $paket = $order->item_description;
+                            $berat = $order->weight ?? 0;
+                            $panjang = $order->length ?? 0;
+                            $lebar = $order->width ?? 0;
+                            $tinggi = $order->height ?? 0;
+
                             $userId = null;
                             $senderName = $order->store->name ?? '-';
                             $senderAddress = $order->store->address_detail ?? '-';
@@ -244,7 +251,15 @@
                             $resi = $order->shipping_reference;
                             $paymentMethod = $order->payment_method;
                             $shippingMethodString = $order->shipping_method;
-                            $paket = isset($order->items) && $order->items->count() > 0 ? ($order->items->first()->product->name ?? 'Paket') : ($order->item_description ?? 'Paket');
+
+                            // Dimensi KiriminAja (di dalam items->product)
+                            $itemProd = isset($order->items) && $order->items->count() > 0 ? $order->items->first()->product : null;
+                            $paket = $itemProd->name ?? ($order->item_description ?? 'Paket');
+                            $berat = $order->weight ?? ($itemProd->weight ?? 0);
+                            $panjang = $order->length ?? ($itemProd->length ?? 0);
+                            $lebar = $order->width ?? ($itemProd->width ?? 0);
+                            $tinggi = $order->height ?? ($itemProd->height ?? 0);
+
                             $userId = $order->customer_id ?? $order->id_pengguna_pembeli ?? null;
 
                             $senderName = $order->store->name ?? $order->sender_name ?? '-';
@@ -274,8 +289,16 @@
                             $resi = $order->shipping_reference;
                             $paymentMethod = $order->payment_method;
                             $shippingMethodString = $order->shipping_method;
+
+                            // Dimensi Marketplace (di dalam items->product)
                             $item = isset($order->items) ? $order->items->first() : null;
-                            $paket = $item && $item->product ? $item->product->name : '-';
+                            $itemProd = $item ? $item->product : null;
+                            $paket = $itemProd->name ?? '-';
+                            $berat = $itemProd->weight ?? 0;
+                            $panjang = $itemProd->length ?? 0;
+                            $lebar = $itemProd->width ?? 0;
+                            $tinggi = $itemProd->height ?? 0;
+
                             $userId = $order->user_id ?? null;
                             $senderName = $order->store ? $order->store->name : '-';
                             $senderAddress = $order->store ? $order->store->address_detail : '-';
@@ -384,17 +407,14 @@
                             {{-- BAGIAN PENGIRIM --}}
                             <div class="mb-4">
                                 <div class="text-xs text-gray-500 mb-0.5">Dari:</div>
-                                {{-- Nama + Icon User --}}
                                 <div class="font-semibold text-blue-700 flex items-center">
                                     <i class="fas fa-user mr-1.5 text-blue-500 text-sm"></i>
                                     <span>{{ $senderName }}</span>
                                 </div>
-                                {{-- Alamat + Icon Pin Biru --}}
                                 <div class="text-xs text-gray-600 break-words max-w-xs leading-relaxed mt-1 flex items-start">
                                     <i class="fas fa-map-marker-alt text-blue-600 mr-1.5 mt-0.5 shrink-0 text-sm"></i>
                                     <span>{{ $senderAddress }}</span>
                                 </div>
-                                {{-- WA --}}
                                 @if($senderPhone !== '-')
                                     <div class="text-[11px] text-gray-500 mt-1 flex items-center font-medium">
                                         <i class="fab fa-whatsapp text-green-500 mr-1.5 text-sm"></i> {{ $senderPhone }}
@@ -405,17 +425,14 @@
                             {{-- BAGIAN PENERIMA --}}
                             <div>
                                 <div class="text-xs text-gray-500 mb-0.5">Kepada:</div>
-                                {{-- Nama + Icon User --}}
                                 <div class="font-semibold text-red-700 flex items-center">
                                     <i class="fas fa-user mr-1.5 text-red-500 text-sm"></i>
                                     <span>{{ $receiverName }}</span>
                                 </div>
-                                {{-- Alamat + Icon Pin Merah --}}
                                 <div class="text-xs text-gray-600 break-words max-w-xs leading-relaxed mt-1 flex items-start">
                                     <i class="fas fa-map-marker-alt text-red-600 mr-1.5 mt-0.5 shrink-0 text-sm"></i>
                                     <span>{{ $receiverAddress }}</span>
                                 </div>
-                                {{-- WA --}}
                                 @if($receiverPhone !== '-')
                                     <div class="text-[11px] text-gray-500 mt-1 flex items-center font-medium">
                                         <i class="fab fa-whatsapp text-green-500 mr-1.5 text-sm"></i> {{ $receiverPhone }}
@@ -450,8 +467,8 @@
                         <td class="px-4 py-4 align-top">
                             <div class="font-semibold text-gray-800 break-words max-w-xs">{{ $paket }}</div>
                             <div class="text-xs text-gray-500 mt-1">
-                                Berat: {{ $order->weight ?? 0 }} gr <br>
-                                Dimensi: {{ $order->length ?? 0 }}x{{ $order->width ?? 0 }}x{{ $order->height ?? 0 }} cm
+                                Berat: {{ $berat }} gr <br>
+                                Dimensi: {{ $panjang }}x{{ $lebar }}x{{ $tinggi }} cm
                             </div>
                         </td>
 
