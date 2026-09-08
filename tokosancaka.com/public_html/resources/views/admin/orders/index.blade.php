@@ -344,21 +344,25 @@
                         </td>
 
                         <td class="px-4 py-4 align-top">
-                            <div class="mb-2">
+                            <div class="mb-3">
                                 <div class="text-xs text-gray-500">Dari:</div>
-                                <div class="font-semibold text-blue-700">
-                                    <strong>{{ $senderName }}</strong>
-                                    <span class="text-xs text-gray-500 font-normal ml-1">{{ $senderPhone !== '-' ? $senderPhone : '' }}</span>
-                                </div>
-                                <div class="text-xs text-gray-600 break-words max-w-xs">{{ $senderAddress }}</div>
+                                <div class="font-semibold text-blue-700"><strong>{{ $senderName }}</strong></div>
+                                <div class="text-xs text-gray-600 break-words max-w-xs leading-relaxed">{{ $senderAddress }}</div>
+                                @if($senderPhone !== '-')
+                                    <div class="text-[11px] text-gray-500 mt-1 flex items-center font-medium">
+                                        <i class="fab fa-whatsapp text-green-500 mr-1.5 text-sm"></i> {{ $senderPhone }}
+                                    </div>
+                                @endif
                             </div>
                             <div>
                                 <div class="text-xs text-gray-500">Kepada:</div>
-                                <div class="font-semibold text-red-700">
-                                    <strong>{{ $receiverName }}</strong>
-                                    <span class="text-xs text-gray-500 font-normal ml-1">{{ $receiverPhone !== '-' ? $receiverPhone : '' }}</span>
-                                </div>
-                                <div class="text-xs text-gray-600 break-words max-w-xs">{{ $receiverAddress }}</div>
+                                <div class="font-semibold text-red-700"><strong>{{ $receiverName }}</strong></div>
+                                <div class="text-xs text-gray-600 break-words max-w-xs leading-relaxed">{{ $receiverAddress }}</div>
+                                @if($receiverPhone !== '-')
+                                    <div class="text-[11px] text-gray-500 mt-1 flex items-center font-medium">
+                                        <i class="fab fa-whatsapp text-green-500 mr-1.5 text-sm"></i> {{ $receiverPhone }}
+                                    </div>
+                                @endif
                             </div>
                         </td>
 
