@@ -181,6 +181,9 @@ class AdminOrderController extends Controller
         $order->width = $ak->lebar_cm;
         $order->height = $ak->tinggi_cm;
 
+        $order->pengirim_hp = $ak->pengirim_hp;
+        $order->penerima_hp = $ak->penerima_hp;
+
         return $order;
     }
 

@@ -255,6 +255,9 @@
                             $canCancel = in_array($statusRaw, ['pending', 'paid', 'processing']);
                         }
 
+                        $senderPhone = $order->pengirim_hp ?? $order->sender_phone ?? ($order->store->no_wa ?? ($order->store->phone ?? '-'));
+                        $receiverPhone = $order->penerima_hp ?? $order->receiver_phone ?? ($order->user->no_wa ?? ($order->user->phone ?? '-'));
+
                         $ship = \App\Helpers\ShippingHelper::parseShippingMethod($shippingMethodString);
                         $metodeBayar = strtoupper(trim($paymentMethod ?? ''));
                         $isCodOngkir = ($metodeBayar === 'COD');
@@ -343,12 +346,18 @@
                         <td class="px-4 py-4 align-top">
                             <div class="mb-2">
                                 <div class="text-xs text-gray-500">Dari:</div>
-                                <div class="font-semibold text-blue-700"><strong>{{ $senderName }}</strong></div>
+                                <div class="font-semibold text-blue-700">
+                                    <strong>{{ $senderName }}</strong>
+                                    <span class="text-xs text-gray-500 font-normal ml-1">{{ $senderPhone !== '-' ? $senderPhone : '' }}</span>
+                                </div>
                                 <div class="text-xs text-gray-600 break-words max-w-xs">{{ $senderAddress }}</div>
                             </div>
                             <div>
                                 <div class="text-xs text-gray-500">Kepada:</div>
-                                <div class="font-semibold text-red-700"><strong>{{ $receiverName }}</strong></div>
+                                <div class="font-semibold text-red-700">
+                                    <strong>{{ $receiverName }}</strong>
+                                    <span class="text-xs text-gray-500 font-normal ml-1">{{ $receiverPhone !== '-' ? $receiverPhone : '' }}</span>
+                                </div>
                                 <div class="text-xs text-gray-600 break-words max-w-xs">{{ $receiverAddress }}</div>
                             </div>
                         </td>
