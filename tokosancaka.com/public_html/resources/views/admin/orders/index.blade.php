@@ -340,7 +340,7 @@
                             'dibatalkan' => 'bg-red-100 text-red-800',
                             'gagal' => 'bg-red-100 text-red-800',
 
-                            // Kuning (Menunggu Pickup, Menunggu Pembayaran, On Shipment)
+                            // Kuning (Menunggu Pickup, Menunggu Pembayaran, On Shipment, Sedang Dikirim)
                             'pending' => 'bg-yellow-100 text-yellow-800',
                             'waiting_payment' => 'bg-yellow-100 text-yellow-800',
                             'menunggu pembayaran' => 'bg-yellow-100 text-yellow-800',
@@ -349,6 +349,10 @@
                             'on shipment' => 'bg-yellow-100 text-yellow-800',
                             'on_shipment' => 'bg-yellow-100 text-yellow-800',
                             'paid' => 'bg-yellow-100 text-yellow-800',
+                            'sedang dikirim' => 'bg-yellow-100 text-yellow-800',
+                            'sedang_dikirim' => 'bg-yellow-100 text-yellow-800',
+                            'shipping' => 'bg-yellow-100 text-yellow-800',
+                            'on_delivery' => 'bg-yellow-100 text-yellow-800',
 
                             // Hijau (Selesai, Terkirim, Finished, Completed)
                             'selesai' => 'bg-green-100 text-green-800',
