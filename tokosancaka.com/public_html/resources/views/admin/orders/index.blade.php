@@ -344,20 +344,41 @@
                         </td>
 
                         <td class="px-4 py-4 align-top">
-                            <div class="mb-3">
-                                <div class="text-xs text-gray-500">Dari:</div>
-                                <div class="font-semibold text-blue-700"><strong>{{ $senderName }}</strong></div>
-                                <div class="text-xs text-gray-600 break-words max-w-xs leading-relaxed">{{ $senderAddress }}</div>
+                            {{-- BAGIAN PENGIRIM --}}
+                            <div class="mb-4">
+                                <div class="text-xs text-gray-500 mb-0.5">Dari:</div>
+                                {{-- Nama + Icon User --}}
+                                <div class="font-semibold text-blue-700 flex items-center">
+                                    <i class="fas fa-user mr-1.5 text-blue-500 text-sm"></i>
+                                    <span>{{ $senderName }}</span>
+                                </div>
+                                {{-- Alamat + Icon Pin Biru --}}
+                                <div class="text-xs text-gray-600 break-words max-w-xs leading-relaxed mt-1 flex items-start">
+                                    <i class="fas fa-map-marker-alt text-blue-600 mr-1.5 mt-0.5 shrink-0 text-sm"></i>
+                                    <span>{{ $senderAddress }}</span>
+                                </div>
+                                {{-- WA --}}
                                 @if($senderPhone !== '-')
                                     <div class="text-[11px] text-gray-500 mt-1 flex items-center font-medium">
                                         <i class="fab fa-whatsapp text-green-500 mr-1.5 text-sm"></i> {{ $senderPhone }}
                                     </div>
                                 @endif
                             </div>
+
+                            {{-- BAGIAN PENERIMA --}}
                             <div>
-                                <div class="text-xs text-gray-500">Kepada:</div>
-                                <div class="font-semibold text-red-700"><strong>{{ $receiverName }}</strong></div>
-                                <div class="text-xs text-gray-600 break-words max-w-xs leading-relaxed">{{ $receiverAddress }}</div>
+                                <div class="text-xs text-gray-500 mb-0.5">Kepada:</div>
+                                {{-- Nama + Icon User --}}
+                                <div class="font-semibold text-red-700 flex items-center">
+                                    <i class="fas fa-user mr-1.5 text-red-500 text-sm"></i>
+                                    <span>{{ $receiverName }}</span>
+                                </div>
+                                {{-- Alamat + Icon Pin Merah --}}
+                                <div class="text-xs text-gray-600 break-words max-w-xs leading-relaxed mt-1 flex items-start">
+                                    <i class="fas fa-map-marker-alt text-red-600 mr-1.5 mt-0.5 shrink-0 text-sm"></i>
+                                    <span>{{ $receiverAddress }}</span>
+                                </div>
+                                {{-- WA --}}
                                 @if($receiverPhone !== '-')
                                     <div class="text-[11px] text-gray-500 mt-1 flex items-center font-medium">
                                         <i class="fab fa-whatsapp text-green-500 mr-1.5 text-sm"></i> {{ $receiverPhone }}
