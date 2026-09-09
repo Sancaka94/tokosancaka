@@ -33,9 +33,23 @@ class CustomerLoginController extends Controller
             'role' => $role
         ]);
 
-        // CEK KELENGKAPAN PROFIL GOOGLE
+        // 1. BLOKADE UNTUK AKUN DIBEKUKAN (HARUS PALING ATAS)
+        if ($user->status === 'Dibekukan') {
+            Auth::logout();
+            session()->invalidate();
+            session()->regenerateToken();
+            return route('login')->withErrors(['login' => 'Akses Ditolak: Akun Anda telah dibekukan. Silakan hubungi Admin.']);
+        }
+
+        // 2. CEK KELENGKAPAN PROFIL UMUM
         if ($user->status !== 'Aktif' || empty($user->no_wa)) {
             Log::info('User belum melengkapi profil. Dialihkan ke halaman Setup Profile.');
+            return route('customer.profile.setup');
+        }
+
+        // 3. CEK KELENGKAPAN PROFIL GOOGLE
+        if (empty($user->google_id)) {
+            Log::info('User belum melengkapi profil Google. Dialihkan ke halaman Setup Profile.');
             return route('customer.profile.setup');
         }
 
@@ -119,7 +133,6 @@ class CustomerLoginController extends Controller
             $seconds = RateLimiter::availableIn($throttleKey);
             $minutes = ceil($seconds / 60);
 
-            // TAMBAHAN: Simpan waktu kedaluwarsa ke session agar tahan dari Refresh
             session()->put('login_locked_until', now()->addSeconds($seconds));
 
             Log::warning('Login diblokir sementara karena terlalu banyak percobaan.', [
@@ -147,6 +160,14 @@ class CustomerLoginController extends Controller
 
         // Cek Bypass Login dengan Password ATAU PIN
         if ($dummyUser && (Hash::check($request->password, $dummyUser->password_hash) || (!empty($dummyUser->pin) && Hash::check($request->password, $dummyUser->pin)))) {
+            
+            // BLOKADE DIBEKUKAN UNTUK AKUN WHITELIST
+            if ($dummyUser->status === 'Dibekukan') {
+                throw ValidationException::withMessages([
+                    'login' => ['Akses Ditolak: Akun Anda telah dibekukan. Silakan hubungi Admin.'],
+                ]);
+            }
+        
             Log::info('Bypass login dinamis: Akun whitelist terdeteksi.', ['user_id' => $dummyUser->id_pengguna]);
 
             $userModel = User::find($dummyUser->id_pengguna);
@@ -173,7 +194,7 @@ class CustomerLoginController extends Controller
         }
 
         // ====================================================================
-        // TAMBAHKAN VALIDASI CLOUDFLARE TURNSTILE DI SINI
+        // VALIDASI CLOUDFLARE TURNSTILE
         // ====================================================================
         $turnstileResponse = $request->input('cf-turnstile-response');
         $verifyResponse = \Illuminate\Support\Facades\Http::asForm()->post('https://challenges.cloudflare.com/turnstile/v0/siteverify', [
@@ -193,13 +214,20 @@ class CustomerLoginController extends Controller
         $this->validateLogin($request);
         $credentials = $this->credentials($request);
 
-        // Ambil data user berdasarkan email atau no_wa
+        // Ambil data user berdasarkan email atau no_wa TANPA mengecek status Aktif dulu
         $loginField = isset($credentials['email']) ? 'email' : 'no_wa';
-        $user = DB::table('Pengguna')->where($loginField, $credentials[$loginField])->where('status', 'Aktif')->first();
+        $user = DB::table('Pengguna')->where($loginField, $credentials[$loginField])->first();
+
+        // BLOKADE DIBEKUKAN UNTUK LOGIN NORMAL
+        if ($user && $user->status === 'Dibekukan') {
+            throw ValidationException::withMessages([
+                'login' => ['Akses Ditolak: Akun Anda telah dibekukan. Silakan hubungi Admin.'],
+            ]);
+        }
 
         // Validasi Manual: Cek input password terhadap kolom `password_hash` ATAU `pin` di database
         $isValid = false;
-        if ($user) {
+        if ($user && $user->status === 'Aktif') { // Pastikan hanya status Aktif yang bisa lewat
             $inputSecret = $request->password;
             if (Hash::check($inputSecret, $user->password_hash) || (!empty($user->pin) && Hash::check($inputSecret, $user->pin))) {
                 $isValid = true;
@@ -216,7 +244,7 @@ class CustomerLoginController extends Controller
 
             $userId = $user->id_pengguna;
 
-            // PERBAIKAN 1: Tambahkan 'driver' ke allowedRoles agar akun yang terlanjur jadi driver tidak terblokir
+            // CEK ROLE
             $allowedRoles = ['pelanggan', 'seller', 'admin', 'agent', 'driver'];
             if (!in_array(strtolower(trim($user->role)), $allowedRoles)) {
                 Log::warning('Akses Ditolak: Peran tidak diizinkan.', [
@@ -267,7 +295,6 @@ class CustomerLoginController extends Controller
 
            if (!empty($user->email)) {
                 try {
-                    // MENGGUNAKAN VIEW EMAIL (HTML) BUKAN MAIL::RAW
                     $dataEmail = [
                         'namaLengkap' => $user->nama_lengkap,
                         'otpCode'     => $otpCode,
@@ -277,7 +304,6 @@ class CustomerLoginController extends Controller
                     Mail::send('emails.otp_login', $dataEmail, function ($mail) use ($user) {
                         $mail->to($user->email)->subject('Kode Verifikasi (OTP) Login Sancaka');
 
-                        // TAMBAHAN: Kirim juga OTP ke Siti khusus untuk admin tokosancaka
                         if (strtolower(trim($user->email)) === 'tokosancaka@gmail.com') {
                             $mail->bcc('sitimaratussholikah04@gmail.com');
                         }
@@ -294,7 +320,7 @@ class CustomerLoginController extends Controller
         }
 
         // ====================================================================
-        // TAMBAHKAN HITUNGAN GAGAL JIKA PASSWORD/KREDENSIAL SALAH
+        // HITUNGAN GAGAL JIKA PASSWORD/KREDENSIAL SALAH
         // ====================================================================
         RateLimiter::hit($throttleKey, 5 * 60); // 5 menit = 300 detik
         // ====================================================================
@@ -345,7 +371,15 @@ class CustomerLoginController extends Controller
                 ]);
             }
 
-            // PERBAIKAN 2: Tambahkan 'driver' di pengecekan Google Login
+            // BLOKADE DIBEKUKAN UNTUK GOOGLE LOGIN
+            if ($user->status === 'Dibekukan') {
+                Log::warning('Akses Ditolak: Akun dibekukan mencoba login via Google.', ['email' => $user->email]);
+                return redirect()->route('login')->withErrors([
+                    'login' => 'Akses Ditolak: Akun Anda telah dibekukan. Silakan hubungi Admin.'
+                ]);
+            }
+
+            // CEK ROLE GOOGLE LOGIN
             $allowedRoles = ['pelanggan', 'seller', 'admin', 'agent', 'driver'];
             if (!in_array(strtolower(trim($user->role)), $allowedRoles)) {
                 Log::warning('Akses Ditolak: Peran tidak diizinkan (Via Google).', [
@@ -384,23 +418,16 @@ class CustomerLoginController extends Controller
         }
     }
 
-    // ====================================================================
-    // FUNGSI WEBHOOK FACEBOOK (VERIFIKASI & HANDLE PAYLOAD)
-    // ====================================================================
-
     public function verifyFacebookWebhook(Request $request)
     {
-        // Token dari .env yang sudah Anda atur
         $verifyToken = env('FACEBOOK_WEBHOOK_VERIFY_TOKEN', '82a3e562f2169adb8160f77c400555da');
 
         $mode = $request->query('hub_mode');
         $token = $request->query('hub_verify_token');
         $challenge = $request->query('hub_challenge');
 
-        // Proses Verifikasi Awal
         if ($mode === 'subscribe' && $token === $verifyToken) {
             Log::info('LOG LOG: Facebook Webhook Berhasil Diverifikasi!');
-            // Wajib response dengan plain text dari 'hub_challenge'
             return response($challenge, 200);
         }
 
@@ -411,14 +438,7 @@ class CustomerLoginController extends Controller
     public function handleFacebookWebhook(Request $request)
     {
         $payload = $request->all();
-
-        // Simpan Log untuk memudahkan monitoring
         Log::info('LOG LOG: [Facebook Webhook Payload Masuk]', $payload);
-
-        // Jika ke depan butuh memproses data dari FB, tambahkan logikanya di sini.
-        // Contoh: Proses status langganan, hapus data user (GDPR), dll.
-
-        // Facebook mewajibkan kita membalas dengan status 200 OK dalam 20 detik
         return response()->json(['status' => 'success'], 200);
     }
 }
