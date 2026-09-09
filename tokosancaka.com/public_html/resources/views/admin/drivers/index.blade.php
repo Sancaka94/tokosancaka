@@ -248,7 +248,7 @@
                                 $akunPengguna = \App\Models\Pengguna::where('id_pengguna', $driver->id_pengguna)->first();
                                 $jabatan = $akunPengguna ? ($akunPengguna->role_operasional ?? 'Driver') : '-';
                             @endphp
-                            
+
                             @if($jabatan == 'Manajer Operasional')
                                 <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-purple-50 border border-purple-200 text-purple-700 text-xs font-bold tracking-wide">
                                     <i class="fas fa-user-tie text-purple-500"></i> Manajer
