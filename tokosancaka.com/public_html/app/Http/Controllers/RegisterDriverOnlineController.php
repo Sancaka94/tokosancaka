@@ -23,7 +23,7 @@ class RegisterDriverOnlineController extends Controller
         return view('public.register_driver', compact('turnstileSiteKey', 'bidangs'));
     }
 
-    public function store(Request $request)
+   public function store(Request $request)
     {
         Log::info("LOG: Pendaftaran driver baru masuk.");
 
@@ -48,8 +48,8 @@ class RegisterDriverOnlineController extends Controller
         $messages = [
             'tanggal_lahir.before' => 'Usia Anda harus minimal 18 tahun untuk mendaftar.',
             'tahun_kendaraan.min'  => "Tahun pembuatan kendaraan maksimal berusia 8 tahun (Minimal {$minTahun}).",
-            'captcha.required'     => 'Kode Captcha gambar wajib diisi.', // <-- Tambahan
-            'captcha.captcha'      => 'Kode Captcha gambar yang Anda masukkan salah.', // <-- Tambahan
+            'captcha.required'     => 'Kode Captcha gambar wajib diisi.',
+            'captcha.captcha'      => 'Kode Captcha gambar yang Anda masukkan salah.',
         ];
 
         $request->validate([
@@ -108,10 +108,34 @@ class RegisterDriverOnlineController extends Controller
                 }
             }
 
+            // === AWAL KODE TAMBAHAN UNTUK SINKRONISASI ===
+            // Cek apakah pendaftar sudah punya akun Pengguna di Sancaka berdasarkan Nomor WA
+            $pengguna = Pengguna::where('no_wa', $request->nomor_wa)->first();
+
+            if (!$pengguna) {
+                // Jika belum punya akun sama sekali, buatkan akun baru otomatis
+                $pengguna = new Pengguna();
+                $pengguna->nama_lengkap  = $request->nama_lengkap;
+                $pengguna->no_wa         = $request->nomor_wa;
+                $pengguna->jenis_kelamin = $request->jenis_kelamin;
+                // Default password menggunakan Nomor WA pendaftar
+                $pengguna->password_hash = \Illuminate\Support\Facades\Hash::make($request->nomor_wa);
+                $pengguna->role          = 'Pelanggan'; // Diset pelanggan dulu, akan jadi driver saat di-approve Admin
+                $pengguna->status        = 'Aktif';
+                $pengguna->saldo         = 0;
+                $pengguna->save();
+            }
+            // === AKHIR KODE TAMBAHAN ===
+
+            // Proses simpan tabel registrasi driver sancaka
             RegistrasiDriverSancaka::create(array_merge(
                 $request->only(['nama_lengkap', 'tempat_lahir', 'tanggal_lahir', 'jenis_kelamin', 'nomor_nik', 'nomor_kk', 'nomor_wa', 'instansi_perusahaan', 'alamat_lengkap', 'jenis_layanan', 'merk_kendaraan', 'tahun_kendaraan', 'plat_nomor', 'latitude', 'longitude', 'id_master_layanan']),
                 $filePaths,
-                ['status' => 'pending', 'is_active_map' => 0]
+                [
+                    'id_pengguna'   => $pengguna->id_pengguna, // <-- Menyisipkan ID Pengguna dari atas
+                    'status'        => 'pending',
+                    'is_active_map' => 0
+                ]
             ));
 
             return redirect()->back()->with('success', 'Pendaftaran berhasil! Tim kami akan melakukan verifikasi berkas Anda maksimal 2x24 Jam.');
