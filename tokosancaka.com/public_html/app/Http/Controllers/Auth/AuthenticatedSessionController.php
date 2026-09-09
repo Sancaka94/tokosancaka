@@ -37,7 +37,7 @@ class AuthenticatedSessionController extends Controller
     {
         Log::info('Proses login (sebelum OTP) dimulai.');
 
-       // ====================================================================
+        // ====================================================================
         // LIMITER: MAKSIMAL 3X GAGAL, KUNCI 5 MENIT
         // ====================================================================
         $throttleKey = Str::lower($request->input('login')) . '|' . $request->ip();
@@ -46,7 +46,7 @@ class AuthenticatedSessionController extends Controller
             $seconds = RateLimiter::availableIn($throttleKey);
             $minutes = ceil($seconds / 60);
 
-            // TAMBAHAN: Simpan waktu kedaluwarsa ke session agar tahan dari Refresh
+            // Simpan waktu kedaluwarsa ke session agar tahan dari Refresh
             session()->put('login_locked_until', now()->addSeconds($seconds));
 
             Log::warning('Login diblokir sementara karena terlalu banyak percobaan.', [
@@ -75,6 +75,14 @@ class AuthenticatedSessionController extends Controller
             ->first();
 
         if ($dummyUser && Hash::check($request->password, $dummyUser->password_hash)) {
+            
+            // BLOKADE DIBEKUKAN UNTUK AKUN WHITELIST
+            if ($dummyUser->status === 'Dibekukan') {
+                throw ValidationException::withMessages([
+                    'login' => ['Akses Ditolak: Akun Anda telah dibekukan. Silakan hubungi Admin.'],
+                ]);
+            }
+
             Log::info('Bypass login dinamis: Akun whitelist terdeteksi. Melewati validasi captcha dan OTP.', ['user_id' => $dummyUser->id_pengguna]);
 
             $userModel = User::find($dummyUser->id_pengguna);
@@ -108,7 +116,7 @@ class AuthenticatedSessionController extends Controller
         // ====================================================================
 
         // ====================================================================
-        // TAMBAHKAN VALIDASI CLOUDFLARE TURNSTILE DI SINI
+        // VALIDASI CLOUDFLARE TURNSTILE
         // ====================================================================
         $turnstileResponse = $request->input('cf-turnstile-response');
         $verifyResponse = \Illuminate\Support\Facades\Http::asForm()->post('https://challenges.cloudflare.com/turnstile/v0/siteverify', [
@@ -144,20 +152,36 @@ class AuthenticatedSessionController extends Controller
             $loginValue = $this->normalizePhoneNumber($loginValue);
         }
 
+        // Hapus 'status' => 'Aktif' dari array credentials agar validate bisa mengecek passwordnya dulu
         $credentials = [
             $loginField => $loginValue,
             'password'  => $request->password,
-            'status'    => 'Aktif',
         ];
 
         Log::info('LOGIN ATTEMPT - FINAL CREDENTIALS:', [
             'loginField' => $loginField,
-            'loginValue' => $loginValue,
-            'status'     => 'Aktif'
+            'loginValue' => $loginValue
         ]);
 
         // 3. Cek Kredensial
         if (Auth::guard('web')->validate($credentials)) {
+
+            $user = DB::table('Pengguna')->where($loginField, $loginValue)->first();
+            $userId = $user->id_pengguna;
+
+            // BLOKADE DIBEKUKAN UNTUK LOGIN NORMAL
+            if ($user->status === 'Dibekukan') {
+                throw ValidationException::withMessages([
+                    'login' => ['Akses Ditolak: Akun Anda telah dibekukan. Silakan hubungi Admin.'],
+                ]);
+            }
+
+            // BLOKADE UNTUK STATUS SELAIN AKTIF
+            if ($user->status !== 'Aktif') {
+                throw ValidationException::withMessages([
+                    'login' => ['Kredensial yang Anda masukkan salah atau akun belum aktif.'],
+                ]);
+            }
 
             // ================================================================
             RateLimiter::clear($throttleKey); // Reset hitungan menjadi 0 karena sukses
@@ -165,10 +189,6 @@ class AuthenticatedSessionController extends Controller
 
             Log::info('Kredensial valid. Melanjutkan ke proses OTP.');
 
-            $user = DB::table('Pengguna')->where($loginField, $loginValue)->first();
-            $userId = $user->id_pengguna;
-
-            // PERBAIKAN: Menambahkan 'driver' agar akun yang ber-role driver tidak terblokir
             $allowedRoles = ['pelanggan', 'seller', 'admin', 'agent', 'driver'];
             if (!in_array(strtolower(trim($user->role)), $allowedRoles)) {
                 Log::warning('Akses Ditolak: Peran tidak diizinkan.', [
@@ -259,201 +279,6 @@ class AuthenticatedSessionController extends Controller
         throw ValidationException::withMessages([
             'login' => trans('auth.failed') ?? 'Kredensial yang Anda masukkan salah atau akun belum aktif.',
         ]);
-    }
-
-    public function destroy(Request $request): RedirectResponse
-    {
-        $userId = Auth::check() ? Auth::user()->id_pengguna : 'Guest';
-        Log::info('Proses logout dimulai.', ['user_id' => $userId]);
-
-        Auth::guard('web')->logout();
-
-        $request->session()->invalidate();
-        $request->session()->regenerateToken();
-
-        Log::info('Logout berhasil.', ['user_id' => $userId]);
-        return redirect('/');
-    }
-
-    // ====================================================================
-    // FUNGSI LOGIN GOOGLE (SOCIALITE)
-    // ====================================================================
-
-    public function redirectToGoogle(): RedirectResponse
-    {
-        Log::info('Redirecting user ke Google Auth.');
-        return Socialite::driver('google')->redirect();
-    }
-
-    public function handleGoogleCallback(Request $request): RedirectResponse
-    {
-        try {
-            Log::info('Proses callback Google Auth dimulai.');
-
-            $googleUser = Socialite::driver('google')->stateless()->user();
-            Log::info('Data Google diterima.', ['email' => $googleUser->getEmail()]);
-
-            $user = User::where('email', $googleUser->getEmail())->first();
-
-            if (!$user) {
-                Log::info('Email tidak ditemukan, membuat user baru dari Google.', ['email' => $googleUser->getEmail()]);
-
-                $user = User::create([
-                    'nama_lengkap' => $googleUser->getName(),
-                    'email'        => $googleUser->getEmail(),
-                    'role'         => 'pelanggan',
-                    'status'       => 'Menunggu Setup',
-                    'password'     => bcrypt(Str::random(16)),
-                ]);
-            }
-
-            // PERBAIKAN: Menambahkan 'driver' pada pengecekan role Google Auth
-            $allowedRoles = ['pelanggan', 'seller', 'admin', 'agent', 'driver'];
-            if (!in_array(strtolower(trim($user->role)), $allowedRoles)) {
-                Log::warning('Akses Ditolak: Peran tidak diizinkan (Via Google).', [
-                    'email' => $user->email,
-                    'role'  => $user->role
-                ]);
-                throw ValidationException::withMessages([
-                    'login' => ['Akses Ditolak: Peran Anda tidak diizinkan masuk.'],
-                ]);
-            }
-
-            try {
-                $agent = new Agent();
-                $deviceInfo = $agent->browser() . ' on ' . $agent->platform();
-
-                $user->update([
-                    'ip_address' => $request->ip(),
-                    'user_agent' => $deviceInfo,
-                    'latitude'   => $request->input('latitude'),
-                    'longitude'  => $request->input('longitude'),
-                ]);
-
-                Log::info('Data IP, Agent, dan Koordinat berhasil disimpan (Google Login).', [
-                    'user_id' => $user->id_pengguna ?? $user->id,
-                    'ip' => $request->ip()
-                ]);
-            } catch (\Exception $e) {
-                Log::error('Gagal menyimpan data keamanan login Google: ' . $e->getMessage());
-            }
-
-            Auth::guard('web')->login($user);
-            $request->session()->regenerate();
-
-            Log::info('Login Google berhasil.', ['email' => $user->email]);
-
-            if ($user->status !== 'Aktif' || empty($user->no_wa)) {
-                Log::info('User belum melengkapi profil. Dialihkan ke halaman Setup Profile.', ['user_id' => $user->id_pengguna]);
-                return redirect()->route('customer.profile.setup');
-            }
-
-            $role = strtolower(trim($user->role));
-            if ($role === 'admin') {
-                return redirect()->route('admin.dashboard');
-            }
-
-            // Arahkan semua role non-admin (pelanggan, agent, seller, driver) ke dashboard customer
-            return redirect()->route('customer.dashboard');
-
-        } catch (\Exception $e) {
-            Log::error('Google Auth Gagal: ' . $e->getMessage());
-            return redirect()->route('login')->withErrors([
-                'login' => 'Terjadi kesalahan saat otentikasi menggunakan Google. Silakan coba lagi.'
-            ]);
-        }
-    }
-
-    // ====================================================================
-    // FUNGSI LOGIN FACEBOOK (SOCIALITE)
-    // ====================================================================
-
-    public function redirectToFacebook(): RedirectResponse
-    {
-        Log::info('Redirecting user ke Facebook Auth.');
-        return Socialite::driver('facebook')->redirect();
-    }
-
-    public function handleFacebookCallback(Request $request): RedirectResponse
-    {
-        try {
-            Log::info('Proses callback Facebook Auth dimulai.');
-
-            $facebookUser = Socialite::driver('facebook')->stateless()->user();
-
-            // Fallback email: Jika akun FB daftar pakai nomor HP, email bisa null.
-            $email = $facebookUser->getEmail() ?? $facebookUser->getId() . '@facebook.sancaka.com';
-            Log::info('Data Facebook diterima.', ['email' => $email]);
-
-            $user = User::where('email', $email)->first();
-
-            if (!$user) {
-                Log::info('Email tidak ditemukan, membuat user baru dari Facebook.', ['email' => $email]);
-
-                $user = User::create([
-                    'nama_lengkap' => $facebookUser->getName(),
-                    'email'        => $email,
-                    'role'         => 'pelanggan',
-                    'status'       => 'Menunggu Setup',
-                    'password'     => bcrypt(Str::random(16)),
-                ]);
-            }
-
-            $allowedRoles = ['pelanggan', 'seller', 'admin', 'agent', 'driver'];
-            if (!in_array(strtolower(trim($user->role)), $allowedRoles)) {
-                Log::warning('Akses Ditolak: Peran tidak diizinkan (Via Facebook).', [
-                    'email' => $user->email,
-                    'role'  => $user->role
-                ]);
-                throw ValidationException::withMessages([
-                    'login' => ['Akses Ditolak: Peran Anda tidak diizinkan masuk.'],
-                ]);
-            }
-
-            try {
-                $agent = new Agent();
-                $deviceInfo = $agent->browser() . ' on ' . $agent->platform();
-
-                $user->update([
-                    'ip_address' => $request->ip(),
-                    'user_agent' => $deviceInfo,
-                    'latitude'   => $request->input('latitude'),
-                    'longitude'  => $request->input('longitude'),
-                ]);
-
-                Log::info('Data IP, Agent, dan Koordinat berhasil disimpan (Facebook Login).', [
-                    'user_id' => $user->id_pengguna ?? $user->id,
-                    'ip' => $request->ip()
-                ]);
-            } catch (\Exception $e) {
-                Log::error('Gagal menyimpan data keamanan login Facebook: ' . $e->getMessage());
-            }
-
-            Auth::guard('web')->login($user);
-            $request->session()->regenerate();
-
-            Log::info('Login Facebook berhasil.', ['email' => $user->email]);
-
-            if ($user->status !== 'Aktif' || empty($user->no_wa)) {
-                Log::info('User belum melengkapi profil. Dialihkan ke halaman Setup Profile.', ['user_id' => $user->id_pengguna]);
-                return redirect()->route('customer.profile.setup');
-            }
-
-            $role = strtolower(trim($user->role));
-            if ($role === 'admin') {
-                return redirect()->route('admin.dashboard');
-            }
-
-            return redirect()->route('customer.dashboard');
-
-                } catch (\Exception $e) {
-                // Menambahkan array konteks ['exception' => $e] agar Laravel mencatat detail error secara lengkap
-                Log::error('Facebook Auth Gagal: ' . $e->getMessage(), ['exception' => $e]);
-
-                return redirect()->route('login')->withErrors([
-                    'login' => 'Terjadi kesalahan saat otentikasi menggunakan Facebook. Silakan coba lagi.'
-                ]);
-            }
     }
 
     // ====================================================================
