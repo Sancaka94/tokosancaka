@@ -176,6 +176,7 @@
                         <th class="px-6 py-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">No</th>
                         <th class="px-6 py-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">Profil Driver</th>
                         <th class="px-6 py-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">Kendaraan & Layanan</th>
+                        <th class="px-6 py-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">Jabatan</th>
                         <th class="px-6 py-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">Status</th>
                         <th class="px-6 py-4 text-center text-xs font-semibold text-gray-400 uppercase tracking-wider sticky-col">Aksi</th>
                     </tr>
@@ -238,6 +239,33 @@
                                     @endif
                                 </div>
                             </div>
+                        </td>
+
+                        {{-- JABATAN (KOLOM BARU) --}}
+                        <td class="hidden md:table-cell px-6 py-5 align-top toggle-target-{{$index}}">
+                            <span class="md:hidden font-semibold text-gray-400 text-xs mb-2 block mt-4">JABATAN</span>
+                            @php
+                                $akunPengguna = \App\Models\Pengguna::where('id_pengguna', $driver->id_pengguna)->first();
+                                $jabatan = $akunPengguna ? ($akunPengguna->role_operasional ?? 'Driver') : '-';
+                            @endphp
+                            
+                            @if($jabatan == 'Manajer Operasional')
+                                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-purple-50 border border-purple-200 text-purple-700 text-xs font-bold tracking-wide">
+                                    <i class="fas fa-user-tie text-purple-500"></i> Manajer
+                                </span>
+                            @elseif($jabatan == 'Koordinator Wilayah')
+                                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-blue-50 border border-blue-200 text-blue-700 text-xs font-bold tracking-wide">
+                                    <i class="fas fa-users-cog text-blue-500"></i> Korwil
+                                </span>
+                            @elseif($jabatan == 'Driver')
+                                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-100 border border-slate-200 text-slate-700 text-xs font-bold tracking-wide">
+                                    <i class="fas fa-motorcycle text-slate-500"></i> Driver
+                                </span>
+                            @else
+                                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-gray-50 border border-gray-200 text-gray-500 text-xs font-medium">
+                                    <i class="fas fa-clock text-gray-400"></i> Pending
+                                </span>
+                            @endif
                         </td>
 
                         {{-- STATUS --}}
@@ -598,9 +626,10 @@
                     {{-- MODAL HAPUS DRIVER --}}
                     {{-- ======================================================== --}}
 
-                    @empty
+                   @empty
                     <tr>
-                        <td colspan="6" class="text-center py-16 text-gray-400 bg-white">
+                        {{-- UBAH COLSPAN MENJADI 7 --}}
+                        <td colspan="7" class="text-center py-16 text-gray-400 bg-white">
                             <div class="flex flex-col items-center justify-center">
                                 <div class="h-16 w-16 bg-gray-50 rounded-full flex items-center justify-center mb-4"><i class="fa-regular fa-folder-open text-2xl text-gray-300"></i></div>
                                 <span class="font-medium text-sm text-gray-500">Belum ada data pendaftaran driver.</span>
