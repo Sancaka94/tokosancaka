@@ -34,6 +34,7 @@ use App\Http\Controllers\Api\Mobile\ApiMapboxController;
 use App\Http\Controllers\Api\Mobile\AdminDriverController;
 use App\Http\Controllers\Api\Mobile\PesananAutokirimMobileController; // <-- TAMBAHKAN INI
 use App\Http\Controllers\Api\Mobile\KomisiMobileController;
+use App\Http\Controllers\Api\Mobile\PenggunaController;
 
 Route::prefix('mapbox')->group(function () {
     Route::post('/cek-tarif', [ApiMapboxController::class, 'cek_tarif']);
@@ -499,12 +500,16 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::post('/user/update-password', [SettingPrivacyController::class, 'updatePassword']);
     Route::post('/user/update-pin', [SettingPrivacyController::class, 'updatePin']);
 
-        // --- KHUSUS ADMIN (ID 4) ---
-    Route::get('/admin/pengguna/{id}', [EditPenggunaController::class, 'show']);
+    // --- KHUSUS ADMIN (ID 4) ---
+    // (Bawaan lama untuk edit data satuan)
+    Route::get('/admin/pengguna/detail/{id}', [EditPenggunaController::class, 'show']); 
     Route::put('/admin/pengguna/{id}', [EditPenggunaController::class, 'update']);
 
-    Route::get('/admin/pengguna', [EditPenggunaController::class, 'index']); // Ambil semua
-    Route::delete('/admin/pengguna/{id}', [EditPenggunaController::class, 'destroy']); // Hapus
+    // (Rute Baru untuk Halaman Menejemen User)
+    Route::get('/admin/pengguna', [PenggunaController::class, 'index']); // Ambil semua & fitur search
+    Route::post('/admin/pengguna/{id}/approve', [PenggunaController::class, 'approve']); // Tombol Setujui
+    Route::post('/admin/pengguna/{id}/reject', [PenggunaController::class, 'reject']); // Tombol Tolak
+    Route::delete('/admin/pengguna/{id}', [PenggunaController::class, 'destroy']); // Tombol Hapus
 
     Route::get('/customer/pesanan/detail/{resi}', [\App\Http\Controllers\Api\Mobile\PesananController::class, 'getDetailPesanan']);
 
