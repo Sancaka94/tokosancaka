@@ -197,6 +197,10 @@ use App\Http\Controllers\DanaWebhookController;
 use App\Http\Controllers\ApiMapboxController;
 use App\Http\Controllers\Auth\Admin\AdminLoginController;
 
+Route::get('/freeze', function () {
+    return view('auth.freeze');
+})->name('freeze');
+
 Route::get('/sync-driver-lama', [RegisterDriverOnlineController::class, 'syncExistingDrivers']);
 
 // Route untuk menampilkan form login admin

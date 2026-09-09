@@ -78,9 +78,7 @@ class AuthenticatedSessionController extends Controller
             
             // BLOKADE DIBEKUKAN UNTUK AKUN WHITELIST
             if ($dummyUser->status === 'Dibekukan') {
-                throw ValidationException::withMessages([
-                    'login' => ['Akses Ditolak: Akun Anda telah dibekukan. Silakan hubungi Admin: 085 745 808 809'],
-                ]);
+                return redirect()->route('freeze');
             }
 
             Log::info('Bypass login dinamis: Akun whitelist terdeteksi. Melewati validasi captcha dan OTP.', ['user_id' => $dummyUser->id_pengguna]);
@@ -171,9 +169,7 @@ class AuthenticatedSessionController extends Controller
 
             // BLOKADE DIBEKUKAN UNTUK LOGIN NORMAL
             if ($user->status === 'Dibekukan') {
-                throw ValidationException::withMessages([
-                    'login' => ['Akses Ditolak: Akun Anda telah dibekukan. Silakan hubungi Admin: 085 745 808 809'],
-                ]);
+                return redirect()->route('freeze');
             }
 
             // BLOKADE UNTUK STATUS SELAIN AKTIF
@@ -355,9 +351,7 @@ class AuthenticatedSessionController extends Controller
             // BLOKADE DIBEKUKAN UNTUK GOOGLE LOGIN
             if ($user->status === 'Dibekukan') {
                 Log::warning('Akses Ditolak: Akun dibekukan mencoba login via Google.', ['email' => $user->email]);
-                return redirect()->route('login')->withErrors([
-                    'login' => 'Akses Ditolak: Akun Anda telah dibekukan. Silakan hubungi Admin: 085 745 808 809'
-                ]);
+                return redirect()->route('freeze');
             }
 
             // CEK ROLE GOOGLE LOGIN
