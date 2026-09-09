@@ -509,7 +509,11 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::get('/admin/pengguna', [PenggunaController::class, 'index']); // Ambil semua & fitur search
     Route::post('/admin/pengguna/{id}/approve', [PenggunaController::class, 'approve']); // Tombol Setujui
     Route::post('/admin/pengguna/{id}/reject', [PenggunaController::class, 'reject']); // Tombol Tolak
+    Route::post('/admin/pengguna/{id}/freeze', [PenggunaController::class, 'freeze']);
+    Route::post('/admin/pengguna/{id}/unfreeze', [PenggunaController::class, 'unfreeze']);
+
     Route::delete('/admin/pengguna/{id}', [PenggunaController::class, 'destroy']); // Tombol Hapus
+    
 
     Route::get('/customer/pesanan/detail/{resi}', [\App\Http\Controllers\Api\Mobile\PesananController::class, 'getDetailPesanan']);
 
