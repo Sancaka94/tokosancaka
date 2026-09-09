@@ -79,7 +79,7 @@ class AuthenticatedSessionController extends Controller
             // BLOKADE DIBEKUKAN UNTUK AKUN WHITELIST
             if ($dummyUser->status === 'Dibekukan') {
                 throw ValidationException::withMessages([
-                    'login' => ['Akses Ditolak: Akun Anda telah dibekukan. Silakan hubungi Admin.'],
+                    'login' => ['Akses Ditolak: Akun Anda telah dibekukan. Silakan hubungi Admin: 085 745 808 809'],
                 ]);
             }
 
@@ -172,7 +172,7 @@ class AuthenticatedSessionController extends Controller
             // BLOKADE DIBEKUKAN UNTUK LOGIN NORMAL
             if ($user->status === 'Dibekukan') {
                 throw ValidationException::withMessages([
-                    'login' => ['Akses Ditolak: Akun Anda telah dibekukan. Silakan hubungi Admin.'],
+                    'login' => ['Akses Ditolak: Akun Anda telah dibekukan. Silakan hubungi Admin: 085 745 808 809'],
                 ]);
             }
 
@@ -356,7 +356,7 @@ class AuthenticatedSessionController extends Controller
             if ($user->status === 'Dibekukan') {
                 Log::warning('Akses Ditolak: Akun dibekukan mencoba login via Google.', ['email' => $user->email]);
                 return redirect()->route('login')->withErrors([
-                    'login' => 'Akses Ditolak: Akun Anda telah dibekukan. Silakan hubungi Admin.'
+                    'login' => 'Akses Ditolak: Akun Anda telah dibekukan. Silakan hubungi Admin: 085 745 808 809'
                 ]);
             }
 
@@ -414,5 +414,5 @@ class AuthenticatedSessionController extends Controller
             ]);
         }
     }
-    
+
 }
