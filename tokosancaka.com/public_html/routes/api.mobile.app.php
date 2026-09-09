@@ -502,7 +502,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
     // --- KHUSUS ADMIN (ID 4) ---
     // (Bawaan lama untuk edit data satuan)
-    Route::get('/admin/pengguna/detail/{id}', [EditPenggunaController::class, 'show']); 
+    Route::get('/admin/pengguna/detail/{id}', [EditPenggunaController::class, 'show']);
     Route::put('/admin/pengguna/{id}', [EditPenggunaController::class, 'update']);
 
     // (Rute Baru untuk Halaman Menejemen User)
