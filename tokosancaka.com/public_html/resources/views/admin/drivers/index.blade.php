@@ -22,7 +22,7 @@
         .bulk-action-bar { transition: all 0.3s ease; opacity: 0; visibility: hidden; transform: translateY(-10px); display: none; }
         .bulk-action-bar.active { opacity: 1; visibility: visible; transform: translateY(0); display: flex; }
         .flatpickr-calendar { z-index: 9999 !important; border: none !important; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1) !important; }
-        
+
         /* Custom Scrollbar for better elegance */
         ::-webkit-scrollbar { width: 6px; height: 6px; }
         ::-webkit-scrollbar-track { background: #f1f5f9; }
@@ -49,8 +49,8 @@
         <div class="mb-6 p-5 text-sm text-rose-800 bg-rose-50 border border-rose-200 rounded-xl shadow-sm">
             <div class="font-bold mb-2 flex items-center gap-2"><i class="fa-solid fa-circle-exclamation text-rose-500 text-lg"></i> Terjadi Kesalahan pada Input Data:</div>
             <ul class="mb-0 ps-7 list-disc text-rose-700 space-y-1">
-                @foreach($errors->all() as $error) 
-                    <li>{{ $error }}</li> 
+                @foreach($errors->all() as $error)
+                    <li>{{ $error }}</li>
                 @endforeach
             </ul>
         </div>
@@ -58,7 +58,7 @@
 
    {{-- STATISTIK (CLEAN & ELEGANT) --}}
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-5 mb-8">
-        
+
         <div class="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm flex items-center justify-between transition hover:shadow-md">
             <div>
                 <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Total Pendaftar</p>
@@ -68,7 +68,7 @@
                 <i class="fas fa-users text-xl"></i>
             </div>
         </div>
-        
+
         <div class="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm flex items-center justify-between transition hover:shadow-md">
             <div>
                 <p class="text-xs font-semibold text-amber-500 uppercase tracking-wider mb-1">Pending</p>
@@ -78,7 +78,7 @@
                 <i class="fas fa-clock text-xl"></i>
             </div>
         </div>
-        
+
         <div class="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm flex items-center justify-between transition hover:shadow-md">
             <div>
                 <p class="text-xs font-semibold text-emerald-500 uppercase tracking-wider mb-1">Disetujui</p>
@@ -88,7 +88,7 @@
                 <i class="fas fa-check-circle text-xl"></i>
             </div>
         </div>
-        
+
         <div class="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm flex items-center justify-between transition hover:shadow-md">
             <div>
                 <p class="text-xs font-semibold text-rose-500 uppercase tracking-wider mb-1">Ditolak</p>
@@ -112,11 +112,11 @@
     </div>
 
     <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-        
+
         {{-- HEADER & FILTER SECTION --}}
         <div class="p-6 border-b border-gray-100">
             <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-5">
-                
+
                 {{-- TAB STATUS --}}
                 <div class="flex flex-nowrap overflow-x-auto gap-2 pb-2 lg:pb-0 w-full lg:w-auto scrollbar-hide">
                     @php $baseQuery = request()->except(['status', 'page']); @endphp
@@ -125,24 +125,24 @@
                     <a href="{{ route('admin.drivers.index', array_merge($baseQuery, ['status'=>'approved', 'page'=>1])) }}" class="whitespace-nowrap px-4 py-2 text-sm font-medium rounded-lg transition-all {{ request('status')=='approved' ? 'bg-emerald-500 text-white shadow-md' : 'bg-white text-slate-600 border border-gray-200 hover:bg-slate-50' }}">Approved</a>
                     <a href="{{ route('admin.drivers.index', array_merge($baseQuery, ['status'=>'rejected', 'page'=>1])) }}" class="whitespace-nowrap px-4 py-2 text-sm font-medium rounded-lg transition-all {{ request('status')=='rejected' ? 'bg-rose-500 text-white shadow-md' : 'bg-white text-slate-600 border border-gray-200 hover:bg-slate-50' }}">Rejected</a>
                     <a href="{{ route('admin.drivers.index', array_merge($baseQuery, ['status'=>'freeze', 'page'=>1])) }}" class="whitespace-nowrap px-4 py-2 text-sm font-medium rounded-lg transition-all {{ request('status')=='freeze' ? 'bg-cyan-500 text-white shadow-md' : 'bg-white text-slate-600 border border-gray-200 hover:bg-slate-50' }}">Frozen</a>
-                
+
                 </div>
 
                 {{-- FILTER FORM --}}
                 <div class="w-full lg:w-auto">
                     <form action="{{ route('admin.drivers.index') }}" method="GET" class="flex flex-col sm:flex-row gap-3">
                         @if(request('status')) <input type="hidden" name="status" value="{{ request('status') }}"> @endif
-                        
+
                         <div class="relative w-full sm:w-64">
                             <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400"><i class="fas fa-search text-sm"></i></div>
                             <input type="text" name="search" value="{{ request('search') }}" class="w-full pl-9 pr-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-slate-800 focus:border-slate-800 transition" placeholder="Cari Nama / No. WA...">
                         </div>
-                        
+
                         <div class="relative w-full sm:w-56">
                             <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400"><i class="far fa-calendar-alt text-sm"></i></div>
                             <input type="text" id="date_range_picker" name="date_range" value="{{ request('date_range') }}" class="w-full pl-9 pr-4 py-2.5 border border-gray-200 rounded-xl text-sm bg-white focus:ring-2 focus:ring-slate-800 focus:border-slate-800 transition cursor-pointer" placeholder="Filter Tanggal..." readonly>
                         </div>
-                        
+
                         <button type="submit" class="bg-slate-800 text-white px-5 py-2.5 rounded-xl text-sm font-medium hover:bg-slate-700 transition shadow-sm flex items-center justify-center">
                             Filter
                         </button>
@@ -183,18 +183,18 @@
                 <tbody class="divide-y divide-gray-100">
                     @forelse ($drivers as $index => $driver)
                     <tr class="hover:bg-slate-50/50 transition duration-150 ease-in-out group">
-                        
+
                         {{-- CEKBOX --}}
                         <td class="px-6 py-5 align-top">
                             <input type="checkbox" name="selected_ids[]" value="{{ $driver->id }}" data-name="{{ $driver->nama_lengkap }}" onchange="updateBulkActionUI()" class="row-checkbox w-4 h-4 text-slate-800 rounded border-gray-300 focus:ring-slate-800 transition cursor-pointer mt-1">
                         </td>
-                        
+
                         {{-- NO --}}
                         <td class="px-6 py-5 align-top text-sm text-gray-500 font-medium">
                             <span class="md:hidden font-semibold text-gray-400 text-xs block mb-1">NO</span>
                             {{ $drivers->firstItem() + $index }}
                         </td>
-                        
+
                         {{-- PROFIL --}}
                         <td class="px-6 py-5 align-top">
                             <span class="md:hidden font-semibold text-gray-400 text-xs mb-1 block">PROFIL</span>
@@ -227,7 +227,7 @@
                                     @endif
                                 </div>
                                 <div class="text-sm font-medium text-gray-800 mt-1">
-                                    {{ $driver->merk_kendaraan ?? '-' }} 
+                                    {{ $driver->merk_kendaraan ?? '-' }}
                                     @if($driver->tahun_kendaraan) <span class="text-gray-400 font-normal">({{ $driver->tahun_kendaraan }})</span> @endif
                                 </div>
                                 <div>
@@ -243,14 +243,14 @@
                         {{-- STATUS --}}
                         <td class="hidden md:table-cell px-6 py-5 align-top toggle-target-{{$index}}">
                             <span class="md:hidden font-semibold text-gray-400 text-xs mb-2 block mt-4">STATUS</span>
-                            @if($driver->status == 'pending') 
+                            @if($driver->status == 'pending')
                                 <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-50 border border-amber-200 text-amber-700 text-xs font-medium"><span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span> Pending</span>
-                            @elseif($driver->status == 'approved') 
+                            @elseif($driver->status == 'approved')
                                 <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-medium"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Approved</span>
-                            @elseif($driver->status == 'freeze') 
+                            @elseif($driver->status == 'freeze')
                                 <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-cyan-50 border border-cyan-200 text-cyan-700 text-xs font-medium"><span class="w-1.5 h-1.5 rounded-full bg-cyan-500"></span> Frozen</span>
-                            @else 
-                                <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-rose-50 border border-rose-200 text-rose-700 text-xs font-medium"><span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span> Rejected</span> 
+                            @else
+                                <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-rose-50 border border-rose-200 text-rose-700 text-xs font-medium"><span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span> Rejected</span>
                             @endif
                         </td>
 
@@ -263,6 +263,12 @@
                                 <button type="button" onclick="openModal('modalEdit_{{ $driver->id }}')" class="h-9 w-9 flex items-center justify-center text-gray-400 hover:text-amber-600 bg-white border border-gray-200 hover:border-amber-200 hover:bg-amber-50 rounded-lg transition-all" title="Edit Data">
                                     <i class="fas fa-pen"></i>
                                 </button>
+
+                                @if($driver->status == 'approved' && $driver->id_pengguna)
+                                <button type="button" onclick="openModal('modalPromosi_{{ $driver->id }}')" class="h-9 w-9 flex items-center justify-center text-gray-400 hover:text-purple-600 bg-white border border-gray-200 hover:border-purple-200 hover:bg-purple-50 rounded-lg transition-all" title="Ubah Jabatan (Promosi)">
+                                    <i class="fas fa-user-tie"></i>
+                                </button>
+                                @endif
 
                                 @if($driver->status == 'approved')
                                 <form action="{{ route('admin.drivers.status', $driver->id) }}" method="POST" class="m-0 inline" onsubmit="return confirm('Yakin ingin membekukan (freeze) akun driver ini? Driver tidak akan bisa menerima orderan.')">
@@ -302,7 +308,7 @@
                         <div class="fixed inset-0 overflow-y-auto py-10">
                             <div class="flex min-h-full items-center justify-center p-4">
                                 <div class="bg-white rounded-2xl shadow-xl w-full max-w-4xl overflow-hidden transform transition-all border border-gray-100">
-                                    
+
                                     {{-- Header Modal --}}
                                     <div class="border-b border-gray-100 px-6 py-5 flex justify-between items-center bg-white">
                                         <div class="flex items-center gap-3">
@@ -314,10 +320,10 @@
                                         </div>
                                         <button type="button" onclick="closeModal('modalDetail_{{ $driver->id }}')" class="text-gray-400 hover:text-gray-600 transition bg-gray-50 hover:bg-gray-100 rounded-full h-8 w-8 flex items-center justify-center"><i class="fas fa-times"></i></button>
                                     </div>
-                                    
+
                                     <div class="px-6 py-6 bg-slate-50/50">
                                         <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                                            
+
                                             {{-- Box Kiri: Data Pribadi --}}
                                             <div class="bg-white p-5 rounded-xl border border-gray-100 shadow-sm">
                                                 <h6 class="font-semibold text-gray-800 mb-4 text-sm flex items-center gap-2"><i class="fa-regular fa-user text-gray-400"></i> Informasi Pribadi</h6>
@@ -326,7 +332,7 @@
                                                     <div class="flex justify-between border-b border-gray-50 pb-2"><span class="text-gray-500">NIK KTP</span> <span class="font-medium text-gray-900">{{ $driver->nomor_nik ?? '-' }}</span></div>
                                                     <div class="flex justify-between border-b border-gray-50 pb-2"><span class="text-gray-500">No. Kartu Keluarga</span> <span class="font-medium text-gray-900">{{ $driver->nomor_kk ?? '-' }}</span></div>
                                                     <div class="flex justify-between border-b border-gray-50 pb-2">
-                                                        <span class="text-gray-500">TTL</span> 
+                                                        <span class="text-gray-500">TTL</span>
                                                         <span class="font-medium text-gray-900 text-right">
                                                             {{ $driver->tempat_lahir ?? '-' }}, {{ $driver->tanggal_lahir ? \Carbon\Carbon::parse($driver->tanggal_lahir)->format('d M Y') . ' ('.\Carbon\Carbon::parse($driver->tanggal_lahir)->age.' Thn)' : '-' }}
                                                         </span>
@@ -425,7 +431,7 @@
                         <div class="fixed inset-0 overflow-y-auto py-6">
                             <div class="flex min-h-full items-center justify-center p-4">
                                 <div class="bg-white rounded-2xl shadow-xl w-full max-w-5xl overflow-hidden border border-gray-100">
-                                    
+
                                     <div class="border-b border-gray-100 px-6 py-5 flex justify-between items-center bg-white">
                                         <div class="flex items-center gap-3">
                                             <div class="h-10 w-10 rounded-full bg-amber-50 flex items-center justify-center text-amber-500"><i class="fa-solid fa-pen-to-square"></i></div>
@@ -436,21 +442,21 @@
                                         </div>
                                         <button type="button" onclick="closeModal('modalEdit_{{ $driver->id }}')" class="text-gray-400 hover:text-gray-600 transition bg-gray-50 hover:bg-gray-100 rounded-full h-8 w-8 flex items-center justify-center"><i class="fas fa-times"></i></button>
                                     </div>
-                                    
+
                                     <form action="{{ route('admin.drivers.update', $driver->id) }}" method="POST" enctype="multipart/form-data" class="m-0">
                                         @csrf @method('PUT')
                                         <div class="px-6 py-6 max-h-[65vh] overflow-y-auto bg-slate-50/30">
                                             <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
-                                                
+
                                                 {{-- KIRI: DATA TEKS --}}
                                                 <div class="lg:col-span-7 space-y-5">
                                                     <h6 class="font-semibold text-gray-800 text-sm flex items-center gap-2 mb-4"><i class="fa-regular fa-id-card text-gray-400"></i> Identitas & Kendaraan</h6>
-                                                    
+
                                                     <div>
                                                         <label class="block text-xs font-medium text-gray-500 mb-1.5">Nama Lengkap</label>
                                                         <input type="text" name="nama_lengkap" class="w-full border border-gray-200 p-2.5 rounded-xl text-sm bg-white focus:ring-2 focus:ring-slate-800 focus:border-slate-800 outline-none transition" value="{{ $driver->nama_lengkap }}" required>
                                                     </div>
-                                                    
+
                                                     <div class="flex flex-col sm:flex-row gap-4">
                                                         <div class="w-full sm:w-1/2">
                                                             <label class="block text-xs font-medium text-gray-500 mb-1.5">Tempat Lahir</label>
@@ -461,7 +467,7 @@
                                                             <input type="date" name="tanggal_lahir" class="w-full border border-gray-200 p-2.5 rounded-xl text-sm bg-white focus:ring-2 focus:ring-slate-800 focus:border-slate-800 outline-none transition" value="{{ $driver->tanggal_lahir ? \Carbon\Carbon::parse($driver->tanggal_lahir)->format('Y-m-d') : '' }}">
                                                         </div>
                                                     </div>
-                                                    
+
                                                     <div class="flex flex-col sm:flex-row gap-4">
                                                         <div class="w-full sm:w-1/2">
                                                             <label class="block text-xs font-medium text-gray-500 mb-1.5">Nomor NIK KTP</label>
@@ -472,7 +478,7 @@
                                                             <input type="text" name="nomor_wa" class="w-full border border-gray-200 p-2.5 rounded-xl text-sm bg-white focus:ring-2 focus:ring-slate-800 focus:border-slate-800 outline-none transition" value="{{ $driver->nomor_wa }}" required>
                                                         </div>
                                                     </div>
-                                                    
+
                                                     <div>
                                                         <label class="block text-xs font-medium text-gray-500 mb-1.5">Alamat Domisili</label>
                                                         <textarea name="alamat_lengkap" class="w-full border border-gray-200 p-2.5 rounded-xl text-sm bg-white focus:ring-2 focus:ring-slate-800 focus:border-slate-800 outline-none transition" rows="3" required>{{ $driver->alamat_lengkap }}</textarea>
@@ -496,7 +502,7 @@
                                                             <input type="number" name="tahun_kendaraan" class="w-full border border-gray-200 p-2.5 rounded-xl text-sm bg-white focus:ring-2 focus:ring-slate-800 focus:border-slate-800 outline-none transition" value="{{ $driver->tahun_kendaraan }}">
                                                         </div>
                                                     </div>
-                                                    
+
                                                     <div>
                                                         <label class="block text-xs font-medium text-gray-500 mb-1.5">Plat Nomor</label>
                                                         <input type="text" name="plat_nomor" class="w-full md:w-1/3 border border-gray-200 p-2.5 rounded-xl text-sm bg-white focus:ring-2 focus:ring-slate-800 focus:border-slate-800 outline-none transition uppercase font-medium" value="{{ $driver->plat_nomor }}">
@@ -510,15 +516,15 @@
                                                         <i class="fa-solid fa-circle-info mt-0.5"></i>
                                                         <p>Kosongkan input file jika tidak ingin mengubah dokumen lama.</p>
                                                     </div>
-                                                    
+
                                                     @php
                                                     $dokumenList = [
-                                                        'foto_wajah'=>'Foto Wajah', 'file_ktp'=>'KTP', 'file_sim'=>'SIM', 
-                                                        'file_skck'=>'SKCK', 'file_buku_rekening'=>'Buku Rekening', 'file_stnk'=>'STNK', 
+                                                        'foto_wajah'=>'Foto Wajah', 'file_ktp'=>'KTP', 'file_sim'=>'SIM',
+                                                        'file_skck'=>'SKCK', 'file_buku_rekening'=>'Buku Rekening', 'file_stnk'=>'STNK',
                                                         'foto_motor'=>'Foto Kendaraan', 'file_kk'=>'Kartu Keluarga'
                                                     ];
                                                     @endphp
-                                                    
+
                                                     <div class="space-y-3">
                                                         @foreach($dokumenList as $field => $label)
                                                         <div>
@@ -530,7 +536,7 @@
                                                 </div>
                                             </div>
                                         </div>
-                                        
+
                                         <div class="px-6 py-5 bg-white border-t border-gray-100 flex justify-end gap-3 rounded-b-2xl">
                                             <button type="button" onclick="closeModal('modalEdit_{{ $driver->id }}')" class="px-5 py-2.5 bg-white border border-gray-200 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50 transition">Batal</button>
                                             <button type="submit" class="px-5 py-2.5 bg-slate-800 text-white rounded-xl text-sm font-medium hover:bg-slate-900 transition flex items-center gap-2"><i class="fa-solid fa-save"></i> Simpan Perubahan</button>
@@ -540,6 +546,57 @@
                             </div>
                         </div>
                     </div>
+
+                    {{-- ======================================================== --}}
+                    {{-- MODAL UBAH JABATAN (PROMOSI) --}}
+                    {{-- ======================================================== --}}
+                    <div id="modalPromosi_{{ $driver->id }}" class="hidden fixed inset-0 z-[99999]">
+                        <div class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm transition-opacity" onclick="closeModal('modalPromosi_{{ $driver->id }}')"></div>
+                        <div class="fixed inset-0 flex items-center justify-center p-4">
+                            <div class="bg-white rounded-2xl p-6 max-w-md w-full shadow-xl transform transition-all border border-gray-100 relative">
+                                <div class="flex justify-between items-center mb-4 border-b border-gray-100 pb-3">
+                                    <h3 class="font-bold text-lg text-gray-900 flex items-center gap-2">
+                                        <div class="h-8 w-8 rounded-full bg-purple-50 flex items-center justify-center text-purple-600 text-sm"><i class="fas fa-user-tie"></i></div>
+                                        Ubah Jabatan Operasional
+                                    </h3>
+                                    <button type="button" onclick="closeModal('modalPromosi_{{ $driver->id }}')" class="text-gray-400 hover:text-gray-600 bg-gray-50 hover:bg-gray-100 rounded-full h-7 w-7 flex items-center justify-center"><i class="fas fa-times"></i></button>
+                                </div>
+
+                                <form action="{{ route('admin.drivers.update_role', $driver->id) }}" method="POST">
+                                    @csrf @method('PATCH')
+
+                                    {{-- Mengambil role saat ini langsung dari tabel Pengguna --}}
+                                    @php
+                                        $akunPengguna = \App\Models\Pengguna::where('id_pengguna', $driver->id_pengguna)->first();
+                                        $currentRole = $akunPengguna ? $akunPengguna->role_operasional : 'Driver';
+                                    @endphp
+
+                                    <div class="mb-5">
+                                        <label class="block text-sm font-medium text-gray-700 mb-2">Pilih Jabatan untuk <span class="text-purple-600">{{ $driver->nama_lengkap }}</span></label>
+                                        <select name="role_operasional" class="w-full border border-gray-200 p-3 rounded-xl text-sm bg-white focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none transition cursor-pointer">
+                                            <option value="Driver" {{ $currentRole == 'Driver' ? 'selected' : '' }}>Driver (Anggota Lapangan)</option>
+                                            <option value="Koordinator Wilayah" {{ $currentRole == 'Koordinator Wilayah' ? 'selected' : '' }}>Koordinator Wilayah (Korwil Kecamatan)</option>
+                                            <option value="Manajer Operasional" {{ $currentRole == 'Manajer Operasional' ? 'selected' : '' }}>Manajer Operasional (Kabupaten/Kota)</option>
+                                        </select>
+                                    </div>
+
+                                    <div class="bg-purple-50 border border-purple-100 text-purple-700 p-3 rounded-xl text-xs mb-6 flex items-start gap-2 leading-relaxed">
+                                        <i class="fa-solid fa-circle-info mt-0.5 text-purple-500"></i>
+                                        <p><strong>Perhatian:</strong> Jika mengubah menjadi Manajer/Korwil, pastikan Anda juga sudah mengatur alamat <span class="font-bold">Kecamatan/Kabupaten</span> di menu Manajemen Pengguna agar fungsi filter wilayahnya berjalan normal.</p>
+                                    </div>
+
+                                    <div class="flex justify-end gap-3 pt-2">
+                                        <button type="button" onclick="closeModal('modalPromosi_{{ $driver->id }}')" class="px-5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl font-medium text-sm text-gray-600 hover:bg-gray-100 transition">Batal</button>
+                                        <button type="submit" class="px-5 py-2.5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-medium text-sm transition shadow-sm"><i class="fa-solid fa-check mr-1.5"></i> Simpan Jabatan</button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+
+                    {{-- ======================================================== --}}
+                    {{-- MODAL HAPUS DRIVER --}}
+                    {{-- ======================================================== --}}
 
                     @empty
                     <tr>
@@ -554,14 +611,14 @@
                 </tbody>
             </table>
         </div>
-        
+
         @if ($drivers->hasPages())
         <div class="p-4 border-t border-gray-100 bg-white">
             {{ $drivers->links('vendor.pagination.tailwind') }}
         </div>
         @endif
     </div>
-    
+
     {{-- ======================================================== --}}
     {{-- MODAL HAPUS MASSAL --}}
     {{-- ======================================================== --}}
@@ -591,7 +648,7 @@
 <script>
     function openModal(id) { document.getElementById(id).classList.remove('hidden'); }
     function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
-    
+
     function toggleDetails(idx, btn) {
         document.querySelectorAll('.toggle-target-'+idx).forEach(el => {
             el.classList.toggle('hidden'); el.classList.toggle('block');
@@ -605,12 +662,12 @@
             btn.innerHTML = 'Lihat Detail <i class="fas fa-chevron-down ml-1"></i>';
         }
     }
-    
-    function toggleSelectAllHeader(src) { 
-        document.querySelectorAll('.row-checkbox').forEach(cb => cb.checked = src.checked); 
-        updateBulkActionUI(); 
+
+    function toggleSelectAllHeader(src) {
+        document.querySelectorAll('.row-checkbox').forEach(cb => cb.checked = src.checked);
+        updateBulkActionUI();
     }
-    
+
     function toggleSelectAll() {
         const cbs = document.querySelectorAll('.row-checkbox');
         const allChecked = Array.from(cbs).every(cb => cb.checked);
@@ -618,7 +675,7 @@
         document.querySelector('input[onclick="toggleSelectAllHeader(this)"]').checked = !allChecked;
         updateBulkActionUI();
     }
-    
+
     function updateBulkActionUI() {
         const count = document.querySelectorAll('.row-checkbox:checked').length;
         document.getElementById('selectedCount').innerText = count;
@@ -626,12 +683,12 @@
         if(count > 0) { bar.classList.add('active'); bar.style.display = 'flex'; }
         else { bar.classList.remove('active'); bar.style.display = 'none'; }
     }
-    
+
     function showBulkDeleteModal() {
         const checked = document.querySelectorAll('.row-checkbox:checked');
         if (checked.length === 0) return alert("Pilih minimal satu data terlebih dahulu!");
         document.getElementById('modalSelectedCount').innerText = checked.length;
-        
+
         const form = document.getElementById('bulkDeleteForm');
         form.querySelectorAll('input[name="selected_ids[]"]').forEach(el => el.remove());
         checked.forEach(cb => {
@@ -641,7 +698,7 @@
         });
         openModal('bulkDeleteModal');
     }
-    
+
     flatpickr("#date_range_picker", { mode: "range", dateFormat: "Y-m-d" });
 </script>
 @endpush

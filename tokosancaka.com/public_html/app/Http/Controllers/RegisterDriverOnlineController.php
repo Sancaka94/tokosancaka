@@ -452,4 +452,32 @@ class RegisterDriverOnlineController extends Controller
             'message' => "Proses Selesai! Berhasil mensinkronkan {$count} data driver lama."
         ]);
     }
+
+    // =========================================================================
+    // FUNGSI UBAH JABATAN OPERASIONAL (PROMOSI)
+    // =========================================================================
+    public function updateRole(Request $request, $id)
+    {
+        $request->validate([
+            'role_operasional' => 'required|in:Driver,Koordinator Wilayah,Manajer Operasional'
+        ]);
+
+        try {
+            $driver = RegistrasiDriverSancaka::findOrFail($id);
+
+            if (!$driver->id_pengguna) {
+                return redirect()->back()->with('error', 'Gagal! Driver ini belum disinkronisasi dengan tabel Pengguna.');
+            }
+
+            // Update role_operasional di tabel Pengguna
+            Pengguna::where('id_pengguna', $driver->id_pengguna)->update([
+                'role_operasional' => $request->role_operasional
+            ]);
+
+            return redirect()->back()->with('success', "Jabatan operasional {$driver->nama_lengkap} berhasil diubah menjadi {$request->role_operasional}.");
+        } catch (\Exception $e) {
+            Log::error("LOG: Error Ubah Jabatan Driver - " . $e->getMessage());
+            return redirect()->back()->with('error', 'Terjadi kesalahan sistem saat mengubah jabatan.');
+        }
+    }
 }
