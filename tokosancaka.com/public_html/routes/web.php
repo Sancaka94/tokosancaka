@@ -1983,6 +1983,11 @@ Route::prefix('admin')->middleware(['auth'])->group(function () {
     // Update status (Approve / Reject)
     Route::patch('/drivers/{id}/status', [RegisterDriverOnlineController::class, 'updateStatus'])->name('admin.drivers.status');
 
+    
+    // === ROUTE TAMBAHAN UNTUK PROMOSI JABATAN ===
+    // Update role operasional lapangan (Promosi Jabatan: Driver / Korwil / Manajer)
+    Route::patch('/drivers/{id}/role', [RegisterDriverOnlineController::class, 'updateRole'])->name('admin.drivers.update_role');
+    
     // Hapus satu data (Single Delete)
     Route::delete('/drivers/{id}', [RegisterDriverOnlineController::class, 'destroy'])->name('admin.drivers.destroy');
 
