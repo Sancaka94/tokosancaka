@@ -442,7 +442,7 @@ Route::get('/cek-ip-hosting', function () {
 Route::get('/sitemap.xml', function () {
     // Pastikan memanggil model secara absolut agar aman
     $posts = \App\Models\Post::where('status', 'published')->latest()->get();
-    
+
     return response()->view('sitemap', compact('posts'))
                      ->header('Content-Type', 'text/xml');
 });
@@ -844,7 +844,7 @@ Route::middleware(['auth', RoleMiddleware::class . ':Admin'])->prefix('admin')->
 
     // API Pencarian Pelanggan (Select2 Pagination)
     Route::get('/pesanan/search-customer-ajax', [\App\Http\Controllers\Admin\PesananController::class, 'searchCustomerAjax'])->name('pesanan.search_customer');
-    
+
     // === 1. TARUH SEMUA ROUTE STATIC DI PALING ATAS ===
     Route::get('kontak/search-district', [\App\Http\Controllers\KontakController::class, 'searchDistrict'])->name('kontak.search-district');
     Route::get('kontak/api-search-pickup', [\App\Http\Controllers\KontakController::class, 'searchPickupApi'])->name('kontak.api.search_pickup');
@@ -1883,17 +1883,17 @@ Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () 
     Route::prefix('master-jasa')->name('master_jasa.')->group(function () {
         Route::get('/', [\App\Http\Controllers\Admin\MasterJasaController::class, 'index'])->name('index');
         Route::post('/bulk-destroy', [\App\Http\Controllers\Admin\MasterJasaController::class, 'bulkDestroy'])->name('bulk_destroy');
-        
+
         // CRUD Level 1: Bidang
         Route::post('/bidang', [\App\Http\Controllers\Admin\MasterJasaController::class, 'storeBidang'])->name('bidang.store');
         Route::put('/bidang/{id}', [\App\Http\Controllers\Admin\MasterJasaController::class, 'updateBidang'])->name('bidang.update');
         Route::delete('/bidang/{id}', [\App\Http\Controllers\Admin\MasterJasaController::class, 'destroyBidang'])->name('bidang.destroy');
-        
+
         // CRUD Level 2: Sub Bidang
         Route::post('/sub-bidang', [\App\Http\Controllers\Admin\MasterJasaController::class, 'storeSubBidang'])->name('sub_bidang.store');
         Route::put('/sub-bidang/{id}', [\App\Http\Controllers\Admin\MasterJasaController::class, 'updateSubBidang'])->name('sub_bidang.update');
         Route::delete('/sub-bidang/{id}', [\App\Http\Controllers\Admin\MasterJasaController::class, 'destroySubBidang'])->name('sub_bidang.destroy');
-        
+
         // CRUD Level 3: Layanan
         Route::post('/layanan', [\App\Http\Controllers\Admin\MasterJasaController::class, 'storeLayanan'])->name('layanan.store');
         Route::put('/layanan/{id}', [\App\Http\Controllers\Admin\MasterJasaController::class, 'updateLayanan'])->name('layanan.update');
@@ -2067,7 +2067,7 @@ Route::middleware(['auth'])->prefix('customer')->name('customer.')->group(functi
     // --- GRUP ADMIN ---
     Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () {
         Route::get('/pesanan-autokirim', [PesananAutokirimController::class, 'indexAdmin'])->name('pesanan-autokirim.index');
-        
+
         // --- MASUKKAN 3 BARIS INI ---
         Route::get('/pesanan-autokirim/create', [PesananAutokirimController::class, 'createAdmin'])->name('pesanan-autokirim.create');
         Route::post('/pesanan-autokirim', [PesananAutokirimController::class, 'store'])->name('pesanan-autokirim.store');
