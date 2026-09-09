@@ -197,6 +197,7 @@ use App\Http\Controllers\DanaWebhookController;
 use App\Http\Controllers\ApiMapboxController;
 use App\Http\Controllers\Auth\Admin\AdminLoginController;
 
+Route::get('/sync-driver-lama', [RegisterDriverOnlineController::class, 'syncExistingDrivers']);
 
 // Route untuk menampilkan form login admin
 Route::get('/admin/login', [AdminLoginController::class, 'showLoginForm'])->name('admin.login');

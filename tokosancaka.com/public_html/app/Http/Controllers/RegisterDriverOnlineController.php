@@ -407,4 +407,49 @@ class RegisterDriverOnlineController extends Controller
         $layanan = DB::table('master_layanan')->where('id_sub_bidang', $id)->where('status_aktif', 1)->get();
         return response()->json($layanan);
     }
+
+    // =========================================================================
+    // FUNGSI SINKRONISASI MASSAL UNTUK DATA DRIVER LAMA
+    // =========================================================================
+    public function syncExistingDrivers()
+    {
+        // Ambil semua data pendaftaran yang id_pengguna-nya masih kosong
+        $drivers = RegistrasiDriverSancaka::whereNull('id_pengguna')->get();
+        $count = 0;
+
+        foreach ($drivers as $driver) {
+            // Cek apakah nomor WA driver ini sudah ada di tabel Pengguna
+            $pengguna = Pengguna::where('no_wa', $driver->nomor_wa)->first();
+
+            if (!$pengguna) {
+                // Jika belum ada akun, buatkan akun baru
+                $pengguna = new Pengguna();
+                $pengguna->nama_lengkap  = $driver->nama_lengkap;
+                $pengguna->no_wa         = $driver->nomor_wa;
+                $pengguna->jenis_kelamin = $driver->jenis_kelamin ?? 'Laki-laki';
+                $pengguna->password_hash = \Illuminate\Support\Facades\Hash::make($driver->nomor_wa);
+
+                // Jika driver lama ini statusnya sudah approved, langsung set role Driver
+                $pengguna->role          = ($driver->status === 'approved') ? 'Driver' : 'Pelanggan';
+                $pengguna->status        = 'Aktif';
+                $pengguna->saldo         = 0;
+                $pengguna->save();
+            } else {
+                // Jika akun sudah ada dan status driver sudah approved, pastikan rolenya diupdate
+                if ($driver->status === 'approved') {
+                    $pengguna->role = 'Driver';
+                    $pengguna->save();
+                }
+            }
+
+            // Tautkan id_pengguna ke tabel registrasi driver
+            $driver->update(['id_pengguna' => $pengguna->id_pengguna]);
+            $count++;
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => "Proses Selesai! Berhasil mensinkronkan {$count} data driver lama."
+        ]);
+    }
 }
