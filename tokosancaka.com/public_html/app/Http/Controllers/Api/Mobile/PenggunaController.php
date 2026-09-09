@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\Api\Mobile;
 
 use App\Http\Controllers\Controller;
-use App\Models\User; // Pastikan sesuai dengan model tabel Pengguna Anda
+use App\Models\User; // Sesuaikan jika nama model Anda Pengguna (App\Models\Pengguna)
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Log;
@@ -11,11 +11,11 @@ use Illuminate\Support\Facades\Log;
 class PenggunaController extends Controller
 {
     /**
-     * Menampilkan daftar pengguna untuk aplikasi mobile admin
+     * Menampilkan daftar pengguna dengan paginasi dan pencarian.
      */
     public function index(Request $request)
     {
-        // KUNCI AKSES API: Memastikan hanya Admin ID 4 yang bisa request data ini (Jika menggunakan auth token)
+        // KUNCI AKSES API: Hanya Admin ID 4 yang bisa request
         $user = $request->user();
         if ($user && $user->id_pengguna != 4) {
             return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
@@ -32,11 +32,14 @@ class PenggunaController extends Controller
             });
         }
 
-        $users = $query->get();
+        // Gunakan Paginasi (15 data per halaman)
+        $users = $query->paginate(15);
 
         return response()->json([
-            'success' => true,
-            'data' => $users
+            'success'      => true,
+            'data'         => $users->items(),
+            'current_page' => $users->currentPage(),
+            'last_page'    => $users->lastPage()
         ]);
     }
 
@@ -54,7 +57,6 @@ class PenggunaController extends Controller
         $user->status = 'Aktif';
         $user->save();
 
-        // Kirim Email Notifikasi Disetujui
         try {
             $email = $user->email;
             $subject = "Pendaftaran Disetujui - Toko Sancaka";
@@ -73,15 +75,13 @@ class PenggunaController extends Controller
                         ->subject($subject)
                         ->from(config('mail.from.address'), config('mail.from.name'));
             });
-
         } catch (\Exception $e) {
             Log::error("Gagal kirim email approve ke {$user->email}: " . $e->getMessage());
-            // Email gagal dikirim tapi status tetap diubah
         }
 
         return response()->json([
             'success' => true,
-            'message' => "Pengguna {$user->nama_lengkap} berhasil disetujui dan email notifikasi telah dikirim."
+            'message' => "Pengguna {$user->nama_lengkap} berhasil disetujui."
         ]);
     }
 
@@ -99,7 +99,6 @@ class PenggunaController extends Controller
         $user->status = 'Ditolak';
         $user->save();
 
-        // Kirim Email Notifikasi Ditolak
         try {
             $email = $user->email;
             $subject = "Pemberitahuan Pendaftaran - Toko Sancaka";
@@ -119,14 +118,13 @@ class PenggunaController extends Controller
                         ->subject($subject)
                         ->from(config('mail.from.address'), config('mail.from.name'));
             });
-
         } catch (\Exception $e) {
             Log::error("Gagal kirim email reject ke {$user->email}: " . $e->getMessage());
         }
 
         return response()->json([
             'success' => true,
-            'message' => "Pendaftaran {$user->nama_lengkap} berhasil ditolak dan email notifikasi telah dikirim."
+            'message' => "Pendaftaran {$user->nama_lengkap} berhasil ditolak."
         ]);
     }
 
