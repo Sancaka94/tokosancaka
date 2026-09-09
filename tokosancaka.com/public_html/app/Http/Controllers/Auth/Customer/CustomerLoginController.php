@@ -38,7 +38,7 @@ class CustomerLoginController extends Controller
             Auth::logout();
             session()->invalidate();
             session()->regenerateToken();
-            return route('login')->withErrors(['login' => 'Akses Ditolak: Akun Anda telah dibekukan. Silakan hubungi Admin: 085 745 808 809']);
+            return route('freeze');
         }
 
         // 2. CEK KELENGKAPAN PROFIL UMUM
@@ -163,9 +163,7 @@ class CustomerLoginController extends Controller
             
             // BLOKADE DIBEKUKAN UNTUK AKUN WHITELIST
             if ($dummyUser->status === 'Dibekukan') {
-                throw ValidationException::withMessages([
-                    'login' => ['Akses Ditolak: Akun Anda telah dibekukan. Silakan hubungi Admin: 085 745 808 809'],
-                ]);
+                return redirect()->route('freeze');
             }
         
             Log::info('Bypass login dinamis: Akun whitelist terdeteksi.', ['user_id' => $dummyUser->id_pengguna]);
@@ -220,9 +218,7 @@ class CustomerLoginController extends Controller
 
         // BLOKADE DIBEKUKAN UNTUK LOGIN NORMAL
         if ($user && $user->status === 'Dibekukan') {
-            throw ValidationException::withMessages([
-                'login' => ['Akses Ditolak: Akun Anda telah dibekukan. Silakan hubungi Admin: 085 745 808 809'],
-            ]);
+            return redirect()->route('freeze');
         }
 
         // Validasi Manual: Cek input password terhadap kolom `password_hash` ATAU `pin` di database
@@ -374,9 +370,7 @@ class CustomerLoginController extends Controller
             // BLOKADE DIBEKUKAN UNTUK GOOGLE LOGIN
             if ($user->status === 'Dibekukan') {
                 Log::warning('Akses Ditolak: Akun dibekukan mencoba login via Google.', ['email' => $user->email]);
-                return redirect()->route('login')->withErrors([
-                    'login' => 'Akses Ditolak: Akun Anda telah dibekukan. Silakan hubungi Admin: 085 745 808 809'
-                ]);
+                return redirect()->route('freeze');
             }
 
             // CEK ROLE GOOGLE LOGIN
