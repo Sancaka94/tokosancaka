@@ -136,6 +136,7 @@ class TrackingController extends Controller
                     'is_autokirim' => true,
                     'pickup_point_code' => $autokirim->pickup_point_code ?? '',
                     'resi' => $autokirim->awb_number ?? $autokirim->order_id,
+                    'status' => $autokirim->status ?? 'Menunggu Pickup Ekspedisi',
                     'resi_aktual' => $autokirim->awb_number,
                     'nomor_invoice' => $autokirim->order_id,
                     'sender_name' => $autokirim->pengirim_nama ?? 'N/A',
@@ -212,7 +213,7 @@ class TrackingController extends Controller
                         'alamat_penerima' => $pesanan->receiver_address ?? '-',
                         'no_pengirim' => $pesanan->sender_phone ?? '-',
                         'no_penerima' => $pesanan->receiver_phone ?? '-',
-                        'status' => $pesanan->status,
+                        'status' => $pesanan->status ?? 'Menunggu Ekspedisi',
                         'tanggal_dibuat' => $pesanan->created_at,
                         'histories' => [],
                         'resi_aktual' => $pesanan->resi_aktual,
@@ -268,7 +269,7 @@ class TrackingController extends Controller
                         'penerima' => $percetakan->customer_name ?? 'Pelanggan',
                         'alamat_penerima' => $percetakan->destination_address ?? '-',
                         'no_penerima' => $percetakan->customer_phone ?? '-',
-                        'status' => $percetakan->status,
+                        'status' => $percetakan->status ?? 'Menunggu Ekspedisi',
                         'tanggal_dibuat' => $percetakan->created_at,
                         'histories' => $fakeHistory,
                         'jasa_ekspedisi_aktual' => $displayEkspedisi,
@@ -292,11 +293,11 @@ class TrackingController extends Controller
                     'alamat_pengirim' => $spxScan->kontak->alamat ?? 'N/A',
                     'penerima' => 'Agen SPX Express (Sancaka Express)',
                     'alamat_penerima' => 'Jl.Dr.Wahidin No.18 A RT.22 RW.05 Kel.Ketanggi',
-                    'status' => $spxScan->status,
+                    'status' => $spxScan->status ?? 'Menunggu Ekspedisi',
                     'tanggal_dibuat' => $spxScan->created_at,
                     'histories' => collect([
                         (object)[
-                            'status' => $spxScan->status,
+                            'status' => $spxScan->status ?? 'Menunggu Ekspedisi',
                             'lokasi' => 'SPX Ngawi',
                             'keterangan' => 'Paket telah di-scan oleh pengirim.',
                             'created_at' => Carbon::parse($spxScan->created_at),
@@ -329,11 +330,11 @@ class TrackingController extends Controller
                     'alamat_pengirim' => $senderAddress,
                     'penerima' => 'Agen Drop Point SPX Sancaka Express',
                     'alamat_penerima' => 'Jl.Dr.Wahidin No.18 A RT.22 RW.05 Kel.Ketanggi Kec.Ngawi Kab.Ngawi Jawa Timur 63211',
-                    'status' => $latestScan->status,
+                    'status' => $latestScan->status ?? 'Menunggu Ekspedisi',
                     'tanggal_dibuat' => $firstScan->created_at,
                     'histories' => $scannedHistories->map(function ($item) {
                         return (object)[
-                            'status' => $item->status,
+                            'status' => $item->status ?? 'Menunggu Ekspedisi',
                             'lokasi' => 'Gudang Sancaka',
                             'keterangan' => 'Paket telah diproses di gudang.',
                             'created_at' => Carbon::parse($item->created_at)
@@ -382,7 +383,7 @@ class TrackingController extends Controller
                 if ($trackingData && isset($trackingData['histories'])) {
                     foreach ($trackingData['histories'] as $h) {
                         $result['histories'][] = (object)[
-                            'status' => $h['status'],
+                            'status' => $h['status'] ?? 'Menunggu Ekspedisi',
                             'lokasi' => 'Ekspedisi',
                             'keterangan' => $h['status'],
                             'created_at' => Carbon::parse($h['created_at'])
@@ -392,7 +393,7 @@ class TrackingController extends Controller
 
                 // Inject Status Racik RSUD
                 $result['histories'][] = (object)[
-                    'status' => 'Status Apotek: ' . $rsudOrder->status_racik,
+                    'status' => 'Status Apotek: ' . ($rsudOrder->status_racik ?? 'Menunggu Ekspedisi'),
                     'lokasi' => 'Apotek RSUD',
                     'keterangan' => 'Proses penyiapan obat internal.',
                     'created_at' => $rsudOrder->updated_at ?? $rsudOrder->created_at
@@ -834,7 +835,8 @@ class TrackingController extends Controller
         $token = Api::getValue('AUTOKIRIM_TOKEN', $mode, '');
 
         $histories = collect([]);
-        $statusText = $pesanan->status == 'booking_created' ? 'Menunggu Pickup Ekspedisi' : $pesanan->status;
+        $currentStatus = $pesanan->status ?? '';
+        $statusText = $currentStatus == 'booking_created' ? 'Menunggu Pickup Ekspedisi' : ($currentStatus ?: 'Menunggu Ekspedisi');
         $jasaEkspedisi = ($pesanan->jasa_ekspedisi_aktual ?? 'Autokirim') . ' - ' . ($pesanan->service_type ?? 'REG');
 
         if (!empty($pesanan->resi_aktual)) {
