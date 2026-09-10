@@ -530,7 +530,17 @@
                             x-show="!searchQuery || $el.textContent.toLowerCase().includes(searchQuery.toLowerCase())"
                             class="flex items-center px-3 py-1.5 text-xs rounded-md transition-colors {{ request()->routeIs('admin.pesanan-autokirim.create') ? 'text-blue-600 font-bold bg-blue-50' : 'text-gray-500 hover:text-blue-600 hover:bg-gray-50' }}">
                                 <i class="fa-solid fa-plus w-4 text-center mr-2 {{ request()->routeIs('admin.pesanan-autokirim.create') ? 'text-blue-500' : 'text-gray-400 group-hover:text-blue-500' }}"></i>
-                                <span>Create Autokirim</span>
+                                <span>Create Autokirim Satuan</span>
+                            </a>
+                        </li>
+
+                        {{-- MENU BARU: BUAT PESANAN AUTOKIRIM (MULTI KOLI) --}}
+                        <li>
+                            <a href="{{ route('admin.koli.create') }}" wire:navigate
+                            x-show="!searchQuery || $el.textContent.toLowerCase().includes(searchQuery.toLowerCase())"
+                            class="flex items-center px-3 py-1.5 text-xs rounded-md transition-colors {{ request()->routeIs('admin.koli.create') ? 'text-blue-600 font-bold bg-blue-50' : 'text-gray-500 hover:text-blue-600 hover:bg-gray-50' }}">
+                                <i class="fa-solid fa-layer-group w-4 text-center mr-2 {{ request()->routeIs('admin.koli.create') ? 'text-blue-500' : 'text-gray-400 group-hover:text-blue-500' }}"></i>
+                                <span>Create Multi Koli</span>
                             </a>
                         </li>
 
