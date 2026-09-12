@@ -93,17 +93,21 @@ class ProfileController extends Controller
     }
 
     /**
-     * Mendaftarkan Sub-Role / Karyawan (Hanya untuk Seller & Agent)
+     * Mendaftarkan Sub-Role / Karyawan (Admin ID 4, Seller & Agent)
      */
     public function registerKaryawan(Request $request)
     {
         $user = $request->user();
+        $userId = $user->id_pengguna ?? $user->id;
+        $userRole = strtolower($user->role ?? '');
 
-        // 1. Pengecekan Otorisasi: Pastikan hanya Agent / Seller yang bisa akses
-        if (!in_array(strtolower($user->role), ['agent', 'seller'])) {
+        // 1. Pengecekan Otorisasi: Pastikan Admin (ID 4), Agent, atau Seller yang lolos
+        $isAllowed = in_array($userRole, ['admin', 'agent', 'seller']) || $userId == 4;
+
+        if (!$isAllowed) {
             return response()->json([
                 'success' => false,
-                'message' => 'Akses ditolak. Hanya Agent atau Seller yang dapat mendaftarkan karyawan.'
+                'message' => 'Akses ditolak. Hanya Admin, Agent, atau Seller yang dapat mendaftarkan karyawan.'
             ], 403);
         }
 
@@ -114,7 +118,7 @@ class ProfileController extends Controller
             'no_wa'         => ['required', 'string', 'max:20', 'unique:Pengguna,no_wa'],
             'email'         => ['nullable', 'email', 'max:255', 'unique:Pengguna,email'],
             'password'      => ['required', 'string', 'min:6'],
-            'pin'           => ['nullable', 'string', 'digits:6'], // Jika karyawan butuh PIN kasir
+            'pin'           => ['nullable', 'string', 'max:6'], 
         ], [
             'no_wa.unique' => 'Nomor WhatsApp ini sudah terdaftar sebagai pengguna lain.',
             'email.unique' => 'Email ini sudah digunakan.'
@@ -130,12 +134,14 @@ class ProfileController extends Controller
 
         try {
             // 3. Buat Data Karyawan Baru
-            $karyawan = new User();
-            $karyawan->parent_id    = $user->id_pengguna; // 🔥 Relasi ke Pemilik Toko
+            $karyawan = new User(); // Sesuaikan dengan model pengguna Anda
+            $karyawan->parent_id    = $userId; // 🔥 Relasi ke Pemilik Toko
             $karyawan->nama_lengkap = $request->nama_lengkap;
             $karyawan->no_wa        = $request->no_wa;
-            $karyawan->email        = $request->email;
-            $karyawan->jenis_kelamin = $request->jenis_kelamin;
+            
+            // Konversi string kosong dari frontend menjadi null agar tidak error unique database
+            $karyawan->email        = $request->filled('email') ? $request->email : null;
+            $karyawan->jenis_kelamin = $request->filled('jenis_kelamin') ? $request->jenis_kelamin : null;
             
             // Enkripsi Password & PIN
             $karyawan->password_hash = bcrypt($request->password);
@@ -144,10 +150,11 @@ class ProfileController extends Controller
             }
 
             // Set Role Khusus
-            $karyawan->role = 'Karyawan'; // Atau 'Kasir', sesuaikan dengan kebutuhan aplikasi Anda
+            $karyawan->role = 'Karyawan'; 
             
-            // Wariskan Data Toko dari Pemilik (Agent/Seller)
-            $karyawan->store_name       = $user->store_name;
+            // Wariskan Data Toko dari Pemilik (Admin/Agent/Seller)
+            // Jika nama toko pemilik kosong, pakai default nama pemilik
+            $karyawan->store_name       = $user->store_name ?? ('Cabang ' . $user->nama_lengkap);
             $karyawan->store_logo_path  = $user->store_logo_path;
             $karyawan->province         = $user->province;
             $karyawan->regency          = $user->regency;
@@ -157,7 +164,7 @@ class ProfileController extends Controller
 
             // Status Default
             $karyawan->status      = 'Aktif';
-            $karyawan->is_verified = 1; // Anggap otomatis terverifikasi karena didaftarkan owner
+            $karyawan->is_verified = 1; 
             
             $karyawan->save();
 
@@ -171,7 +178,7 @@ class ProfileController extends Controller
             Log::error('API Register Karyawan Error: '.$e->getMessage());
             return response()->json([
                 'success' => false,
-                'message' => 'Terjadi kesalahan sistem saat mendaftarkan karyawan.'
+                'message' => 'Terjadi kesalahan sistem saat menyimpan data: ' . $e->getMessage()
             ], 500);
         }
     }
