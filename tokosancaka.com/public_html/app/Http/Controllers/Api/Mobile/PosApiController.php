@@ -843,6 +843,9 @@ class PosApiController extends Controller
                         'ket' => $r->keterangan,
                         'time' => $r->created_at->format('H:i'),
                         'foto' => $r->foto ? asset('storage/' . $r->foto) : null,
+                        'latitude' => $r->latitude,
+                        'longitude' => $r->longitude,
+                        'waktu_capture' => $r->waktu_capture,
                     ];
                 });
 
