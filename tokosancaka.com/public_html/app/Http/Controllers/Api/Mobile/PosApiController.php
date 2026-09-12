@@ -9,6 +9,8 @@ use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Api;
 use App\Models\User;
+use App\Models\ShiftKas;
+use App\Models\ShiftFlow;
 use App\Services\DanaSignatureService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
@@ -782,38 +784,72 @@ class PosApiController extends Controller
         }
     }
 
+   // 1. GET STATUS & RIWAYAT SHIFT SAAT INI
     public function getShiftStatus(Request $request)
     {
         try {
             $user = Auth::user() ?? auth('sanctum')->user();
             if (!$user) return response()->json(['success' => false, 'message' => 'Unauthorized'], 401);
 
-            // 1. Tentukan ID Toko (Parent) dan Nama Kasir
             $storeId = $user->parent_id ?? $user->id_pengguna ?? $user->id;
+            $userId = $user->id_pengguna ?? $user->id;
             $operatorName = $user->nama_lengkap;
-            $today = \Carbon\Carbon::now('Asia/Jakarta')->toDateString();
 
-            // 2. Query Total Penjualan Tunai HARI INI khusus untuk Kasir yang login
-            $penjualanTunai = \App\Models\Order::where('user_id', $storeId) 
-                ->where('shipping_address', $operatorName) // Cocokkan dengan nama kasir
+            // Cari shift yang sedang 'open' milik kasir ini
+            $activeShift = ShiftKas::where('user_id', $userId)->where('status', 'open')->first();
+
+            if (!$activeShift) {
+                return response()->json([
+                    'success' => true,
+                    'data' => [
+                        'is_open' => false,
+                        'modal_awal' => 0,
+                        'penjualan_tunai' => 0,
+                        'kas_masuk' => 0,
+                        'kas_keluar' => 0,
+                        'riwayat' => []
+                    ]
+                ]);
+            }
+
+            // Hitung uang cash yang masuk dari Orders SEJAK shift dibuka
+            $penjualanTunai = Order::where('user_id', $storeId)
+                ->where('shipping_address', $operatorName)
                 ->where(function($q) {
                     $q->where('payment_method', 'like', '%CASH%')
                       ->orWhere('payment_method', 'like', '%tunai%');
                 })
                 ->where('status', 'paid')
-                ->whereDate('created_at', $today) // Transaksi khusus hari ini
+                ->where('created_at', '>=', $activeShift->created_at)
                 ->sum('total_amount');
 
-            // 3. Kembalikan response (anggap shift selalu aktif agar bisa jualan)
+            // Hitung Kas Masuk / Keluar dari tabel shift_flows
+            $kasMasuk = ShiftFlow::where('shift_id', $activeShift->id)->where('type', 'masuk')->sum('nominal');
+            $kasKeluar = ShiftFlow::where('shift_id', $activeShift->id)->where('type', 'keluar')->sum('nominal');
+            
+            // Tarik Riwayat
+            $riwayat = ShiftFlow::where('shift_id', $activeShift->id)
+                ->orderBy('created_at', 'desc')
+                ->get()
+                ->map(function($r) {
+                    return [
+                        'id' => $r->id,
+                        'type' => $r->type,
+                        'nominal' => $r->nominal,
+                        'ket' => $r->keterangan,
+                        'time' => $r->created_at->format('H:i')
+                    ];
+                });
+
             return response()->json([
                 'success' => true,
                 'data' => [
-                    'is_open' => true, // Selalu true agar kasir tidak terblokir
-                    'modal_awal' => 0, // 0 karena tanpa database tambahan
+                    'is_open' => true,
+                    'modal_awal' => $activeShift->modal_awal,
                     'penjualan_tunai' => (int) $penjualanTunai,
-                    'kas_masuk' => 0,
-                    'kas_keluar' => 0,
-                    'riwayat' => []
+                    'kas_masuk' => $kasMasuk,
+                    'kas_keluar' => $kasKeluar,
+                    'riwayat' => $riwayat
                 ]
             ]);
 
@@ -822,19 +858,61 @@ class PosApiController extends Controller
         }
     }
 
+    // 2. BUKA SHIFT BARU
     public function openShift(Request $request)
     {
+        $user = Auth::user() ?? auth('sanctum')->user();
+        $storeId = $user->parent_id ?? $user->id_pengguna ?? $user->id;
+        $userId = $user->id_pengguna ?? $user->id;
+
+        // Validasi jika masih ada shift yang belum ditutup
+        $check = ShiftKas::where('user_id', $userId)->where('status', 'open')->first();
+        if ($check) return response()->json(['success' => false, 'message' => 'Tutup shift sebelumnya terlebih dahulu!']);
+
+        $shift = ShiftKas::create([
+            'store_id' => $storeId,
+            'user_id' => $userId,
+            'status' => 'open',
+            'modal_awal' => $request->modal_awal ?? 0
+        ]);
+
         return response()->json(['success' => true, 'message' => 'Shift berhasil dibuka']);
     }
 
-    public function closeShift(Request $request)
-    {
-        return response()->json(['success' => true, 'message' => 'Shift berhasil ditutup']);
-    }
-
+    // 3. CATAT KAS MASUK/KELUAR (IN/OUT)
     public function cashFlowShift(Request $request)
     {
-        return response()->json(['success' => true, 'message' => 'Kas berhasil dicatat (Hanya Simulasi)']);
+        $user = Auth::user() ?? auth('sanctum')->user();
+        $userId = $user->id_pengguna ?? $user->id;
+
+        $activeShift = ShiftKas::where('user_id', $userId)->where('status', 'open')->first();
+        if (!$activeShift) return response()->json(['success' => false, 'message' => 'Buka shift terlebih dahulu.']);
+
+        ShiftFlow::create([
+            'shift_id' => $activeShift->id,
+            'type' => $request->type, // 'masuk' atau 'keluar'
+            'nominal' => $request->nominal,
+            'keterangan' => $request->keterangan
+        ]);
+
+        return response()->json(['success' => true, 'message' => 'Data kas berhasil dicatat.']);
+    }
+
+    // 4. TUTUP SHIFT
+    public function closeShift(Request $request)
+    {
+        $user = Auth::user() ?? auth('sanctum')->user();
+        $userId = $user->id_pengguna ?? $user->id;
+
+        $activeShift = ShiftKas::where('user_id', $userId)->where('status', 'open')->first();
+        if (!$activeShift) return response()->json(['success' => false, 'message' => 'Tidak ada shift aktif.']);
+
+        $activeShift->update([
+            'status' => 'closed',
+            'uang_fisik' => $request->uang_fisik ?? 0
+        ]);
+
+        return response()->json(['success' => true, 'message' => 'Shift berhasil ditutup']);
     }
 
 }
