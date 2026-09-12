@@ -248,4 +248,40 @@ class ProfileController extends Controller
             'message' => 'Hak akses berhasil diperbarui.'
         ]);
     }
+
+    /**
+     * Memperbarui Hak Akses Menu Karyawan
+     */
+    public function updateAksesKaryawan(Request $request)
+    {
+        $user = $request->user();
+        $userId = $user->id_pengguna ?? $user->id;
+
+        $request->validate([
+            'karyawan_id' => 'required|integer',
+            'akses_menu'  => 'required|array' // Pastikan ini array (misal: ['kasir' => true, 'laporan' => false])
+        ]);
+
+        // Pastikan karyawan tersebut benar-benar anak buah dari user yang sedang login
+        $karyawan = User::where('id_pengguna', $request->karyawan_id)
+                        ->where('parent_id', $userId)
+                        ->first();
+
+        if (!$karyawan) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Karyawan tidak ditemukan atau Anda tidak memiliki akses ke akun ini.'
+            ], 404);
+        }
+
+        // Simpan akses menu dalam bentuk JSON
+        $karyawan->akses_menu = json_encode($request->akses_menu);
+        $karyawan->save();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Hak akses karyawan berhasil diperbarui.',
+            'data'    => $request->akses_menu
+        ]);
+    }
 }
