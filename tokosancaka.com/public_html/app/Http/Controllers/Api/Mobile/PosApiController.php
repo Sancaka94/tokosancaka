@@ -294,8 +294,8 @@ class PosApiController extends Controller
         }
     }
 
-    // ==============================================
-    // HELPER: DANA GATEWAY (QRIS / IPG)
+   // ==============================================
+    // HELPER: DANA GATEWAY (GAPURA IPG FULL)
     // ==============================================
     private function createDanaPaymentGateway($invoiceNumber, $amount, $user)
     {
@@ -317,38 +317,36 @@ class PosApiController extends Controller
             "validUpTo"          => $validUpTo,
             "urlParams"          => [
                 [
-                    "url"        => url('/pos/success?trx_id='.$invoiceNumber), // Target callback web
+                    "url"        => url('/pos/success?trx_id='.$invoiceNumber),
                     "type"       => "PAY_RETURN",
                     "isDeeplink" => "N"
                 ],
                 [
-                    "url"        => url('/dana/notify'), // Webhook notifikasi
+                    "url"        => url('/dana/notify'),
                     "type"       => "NOTIFICATION",
                     "isDeeplink" => "N"
                 ]
             ],
-            // 👇 INI YANG SEBELUMNYA KELUPAAN (WAJIB ADA UNTUK DANA IPG)
-            "payOptionDetails"   => [
-                [
-                    "payMethod"   => "BALANCE",
-                    "payOption"   => "BALANCE",
-                    "transAmount" => [
-                        "value"    => $amountValue,
-                        "currency" => "IDR"
-                    ]
-                ]
-            ],
-            // 👆 ========================================================
+            // Catatan: payOptionDetails sengaja dihapus agar SEMUA metode bayar di Gapura terbuka
+
             "additionalInfo"     => [
                 "order"   => [
-                    "orderTitle" => substr("POS Sancaka - " . $invoiceNumber, 0, 64),
-                    "scenario"   => "API"
+                    "orderTitle"        => substr("POS - " . $invoiceNumber, 0, 64),
+                    // 👇 INI YANG BIKIN INVALID FORMAT SEBELUMNYA KARENA TIDAK ADA
+                    "merchantTransType" => "01", 
+                    "scenario"          => "REDIRECT",
+                    "buyer"             => [
+                        "externalUserId"   => (string) ($user->id_pengguna ?? 'GUEST' . rand(100,999)),
+                        "externalUserType" => "MERCHANT_USER",
+                        "nickname"         => substr($user->nama_lengkap ?? 'Customer', 0, 40)
+                    ]
+                    // 👆 ========================================================
                 ],
                 "mcc"     => "5732",
                 "envInfo" => [
                     "sourcePlatform"    => "IPG",
                     "terminalType"      => "SYSTEM",
-                    "orderTerminalType" => "APP" // Karena ditembak dari aplikasi React Native
+                    "orderTerminalType" => "WEB" // Ubah ke WEB agar tampil penuh seperti di browser PC
                 ]
             ]
         ];
