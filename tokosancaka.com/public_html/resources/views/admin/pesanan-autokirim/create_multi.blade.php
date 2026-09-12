@@ -162,7 +162,7 @@
 
                         <div class="col-span-2">
                             <label class="block text-xs font-medium text-gray-700 mb-1.5">ALAMAT JALAN PENGIRIM <span class="text-red-500">*</span></label>
-                            <textarea id="pengirim_alamat" name="sender_address" rows="2" required minlength="15" @input.debounce.1000ms="autoGeneratePickup()" class="uppercase w-full border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-black focus:border-black px-4 py-2.5 bg-white transition">{{ old('sender_address') }}</textarea>
+                            <textarea id="pengirim_alamat" name="pengirim_alamat" rows="2" required minlength="15" @input.debounce.1000ms="autoGeneratePickup()" class="uppercase w-full border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-black focus:border-black px-4 py-2.5 bg-white transition">{{ old('pengirim_alamat') }}</textarea>
                         </div>
                     </div>
                 </div>
@@ -243,7 +243,7 @@
 
                         <div class="col-span-2">
                             <label class="block text-xs font-medium text-gray-700 mb-1.5">ALAMAT JALAN PENERIMA <span class="text-red-500">*</span></label>
-                            <textarea id="penerima_alamat" name="receiver_address" rows="2" required minlength="15" class="uppercase w-full border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-black focus:border-black px-4 py-2.5 bg-white transition">{{ old('receiver_address') }}</textarea>
+                            <textarea id="penerima_alamat" name="penerima_alamat" rows="2" required minlength="15" class="uppercase w-full border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-black focus:border-black px-4 py-2.5 bg-white transition">{{ old('penerima_alamat') }}</textarea>
                         </div>
                     </div>
                 </div>
@@ -287,7 +287,7 @@
                                     <span class="text-[11px] font-medium text-gray-800">COD Ongkir Saja</span>
                                 </label>
                             </div>
-                            <input type="hidden" name="payment_method" x-bind:value="tipePesanan === 'cod' ? jenisCod : selectedPayment" :disabled="tipePesanan !== 'cod'">
+                            <input type="hidden" name="metode_pembayaran" x-bind:value="tipePesanan === 'cod' ? jenisCod : selectedPayment" :disabled="tipePesanan !== 'cod'">
                         </div>
 
                         <div class="grid grid-cols-2 gap-4">
@@ -484,7 +484,7 @@
                         </button>
 
                         <!-- HIDDEN INPUT METODE NON COD -->
-                        <input type="hidden" name="payment_method" :value="selectedPayment" :disabled="tipePesanan === 'cod'">
+                        <input type="hidden" name="metode_pembayaran" :value="selectedPayment" :disabled="tipePesanan === 'cod'">
 
                         <div x-show="selectedPayment === 'cash'" x-transition class="mt-4 p-4 border border-emerald-200 rounded-md text-xs text-black bg-emerald-50" x-cloak>
                             <span class="font-bold block mb-1 uppercase text-sm">Pembayaran Tunai (Cash)</span>
