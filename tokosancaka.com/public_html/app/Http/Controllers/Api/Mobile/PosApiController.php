@@ -32,8 +32,7 @@ class PosApiController extends Controller
                                 $q->where('seller_name', $sellerName)
                                   ->orWhere('store_id', $userId);
                             })
-                            ->where('status', 'active')
-                            ->where('stock', '>', 0);
+                            ->where('status', 'active');
             
             if ($request->filled('search')) {
                 $query->where('name', 'like', '%' . $request->search . '%');
@@ -162,6 +161,116 @@ class PosApiController extends Controller
             ]);
         } catch (\Throwable $e) {
             return response()->json(['success' => false, 'message' => 'Error: ' . $e->getMessage()], 500);
+        }
+    }
+
+    // ==============================================
+    // CRUD STOK PRODUK (TAMBAH, EDIT, HAPUS)
+    // ==============================================
+
+    // 1. Tambah Produk Baru
+    public function storeProduct(Request $request)
+    {
+        $request->validate([
+            'name'  => 'required|string|max:255',
+            'price' => 'required|numeric',
+            'stock' => 'required|numeric',
+            'sku'   => 'nullable|string|max:100'
+        ]);
+
+        $user = Auth::user() ?? auth('sanctum')->user();
+        if (!$user) return response()->json(['success' => false, 'message' => 'Unauthorized'], 401);
+
+        try {
+            // Generate slug otomatis dari nama
+            $slug = \Illuminate\Support\Str::slug($request->name) . '-' . uniqid();
+
+            $product = Product::create([
+                'store_id'    => $user->id_pengguna ?? $user->id,
+                'seller_name' => $user->nama_lengkap,
+                'name'        => $request->name,
+                'price'       => $request->price,
+                'stock'       => $request->stock,
+                'sku'         => $request->sku,
+                'status'      => 'active', // default status
+                'slug'        => $slug
+            ]);
+
+            return response()->json(['success' => true, 'message' => 'Produk berhasil ditambahkan', 'data' => $product]);
+        } catch (\Throwable $e) {
+            return response()->json(['success' => false, 'message' => 'Gagal: ' . $e->getMessage()], 500);
+        }
+    }
+
+    // 2. Edit Produk
+    public function updateProduct(Request $request, $id)
+    {
+        $request->validate([
+            'name'  => 'required|string|max:255',
+            'price' => 'required|numeric',
+            'stock' => 'required|numeric',
+            'sku'   => 'nullable|string|max:100'
+        ]);
+
+        $user = Auth::user() ?? auth('sanctum')->user();
+        if (!$user) return response()->json(['success' => false, 'message' => 'Unauthorized'], 401);
+
+        try {
+            $product = Product::find($id);
+            if (!$product) {
+                return response()->json(['success' => false, 'message' => 'Produk tidak ditemukan'], 404);
+            }
+
+            $product->update([
+                'name'  => $request->name,
+                'price' => $request->price,
+                'stock' => $request->stock,
+                'sku'   => $request->sku
+            ]);
+
+            return response()->json(['success' => true, 'message' => 'Produk berhasil diperbarui', 'data' => $product]);
+        } catch (\Throwable $e) {
+            return response()->json(['success' => false, 'message' => 'Gagal: ' . $e->getMessage()], 500);
+        }
+    }
+
+    // 3. Hapus Produk (Satuan)
+    public function destroyProduct($id)
+    {
+        $user = Auth::user() ?? auth('sanctum')->user();
+        if (!$user) return response()->json(['success' => false, 'message' => 'Unauthorized'], 401);
+
+        try {
+            $product = Product::find($id);
+            if (!$product) {
+                return response()->json(['success' => false, 'message' => 'Produk tidak ditemukan'], 404);
+            }
+
+            $product->delete();
+
+            return response()->json(['success' => true, 'message' => 'Produk berhasil dihapus']);
+        } catch (\Throwable $e) {
+            return response()->json(['success' => false, 'message' => 'Gagal: ' . $e->getMessage()], 500);
+        }
+    }
+
+    // 4. Hapus Produk (Massal)
+    public function bulkDestroyProducts(Request $request)
+    {
+        $request->validate([
+            'ids'   => 'required|array',
+            'ids.*' => 'integer'
+        ]);
+
+        $user = Auth::user() ?? auth('sanctum')->user();
+        if (!$user) return response()->json(['success' => false, 'message' => 'Unauthorized'], 401);
+
+        try {
+            Product::whereIn('id', $request->ids)->delete();
+
+            return response()->json(['success' => true, 'message' => count($request->ids) . ' produk berhasil dihapus']);
+        } catch (\Throwable $e) {
+            return response()->json(['success' => false, 'message' => 'Gagal: ' . $e->getMessage()], 500);
         }
     }
 }
