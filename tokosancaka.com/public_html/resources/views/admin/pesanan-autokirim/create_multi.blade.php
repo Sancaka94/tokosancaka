@@ -832,8 +832,12 @@ document.addEventListener('alpine:init', () => {
             }
         },
 
-        async searchAddress(type) {
+       async searchAddress(type) {
             let query = type === 'sender' ? this.senderQuery : this.receiverQuery;
+
+            // [DEBUG FRONTEND]
+            console.log(`[LOG LOG FRONTEND] Memulai pencarian alamat untuk: ${type} | Query: ${query}`);
+
             if (query.length < 3) {
                 if(type === 'sender') { this.senderResults = []; this.showSenderDropdown = false; }
                 else { this.receiverResults = []; this.showReceiverDropdown = false; }
@@ -844,16 +848,36 @@ document.addEventListener('alpine:init', () => {
             else { this.isSearchingReceiver = true; this.showReceiverDropdown = true; }
 
             try {
-                let response = await fetch(`/api/autokirim/search-address?q=${encodeURIComponent(query)}`);
+                let targetUrl = `/api/autokirim/search-address?q=${encodeURIComponent(query)}`;
+                console.log(`[LOG LOG FRONTEND] Fetching URL: ${targetUrl}`);
+
+                let response = await fetch(targetUrl);
+
+                // Cek status HTTP sebelum parse JSON
+                if (!response.ok) {
+                    console.error(`[LOG LOG FRONTEND] Server merespon dengan error HTTP Status: ${response.status}`);
+                }
+
                 let data = await response.json();
-                if(type === 'sender') this.senderResults = data;
-                else this.receiverResults = data;
-            } catch (error) { console.error(error); }
+
+                // [DEBUG FRONTEND]
+                console.log(`[LOG LOG FRONTEND] Data diterima dari server:`, data);
+
+                if(type === 'sender') {
+                    this.senderResults = data;
+                    if(data.length === 0) console.warn(`[LOG LOG FRONTEND] WARNING: Hasil pencarian Sender KOSONG! Cek file laravel.log di backend.`);
+                } else {
+                    this.receiverResults = data;
+                    if(data.length === 0) console.warn(`[LOG LOG FRONTEND] WARNING: Hasil pencarian Receiver KOSONG! Cek file laravel.log di backend.`);
+                }
+            } catch (error) {
+                console.error("[LOG LOG FRONTEND] Terjadi Error saat proses fetch API: ", error);
+            }
             finally {
                 if (type === 'sender') this.isSearchingSender = false;
                 else this.isSearchingReceiver = false;
             }
-        },
+        }
 
         selectAddress(type, res) {
             // Pecah Alamat dari "Desa, Kec, Kota, Prov, Zip"

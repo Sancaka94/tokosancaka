@@ -2084,10 +2084,11 @@ Route::middleware(['auth'])->prefix('customer')->name('customer.')->group(functi
         // ----------------------------
 
         // 🌟🌟 TAMBAHKAN DUA BARIS INI UNTUK MENU MULTI KOLI 🌟🌟
-        Route::get('/koli/create', [KoliController::class, 'create'])->name('koli.create');
-        Route::post('/koli/store', [KoliController::class, 'store'])->name('koli.store');
-        Route::post('/koli/store-single', [KoliController::class, 'storeSingle'])->name('koli.store_single');
-        // ----------------------------
+        Route::get('/koli/create', [PesananAutokirimController::class, 'createMultiAdmin'])->name('koli.create');
+        Route::post('/koli/store', [PesananAutokirimController::class, 'storeMulti'])->name('koli.store');
+    
+        Route::post('/pesanan-autokirim/ajax-pickup', [PesananAutokirimController::class, 'generatePickupPointAjax'])->name('pesanan-autokirim.ajax-pickup');
+
 
         // ---> TAMBAHKAN 2 ROUTE INI UNTUK FITUR EDIT <---
         Route::get('/pesanan-autokirim/{id}/edit', [PesananAutokirimController::class, 'editAdmin'])->name('pesanan-autokirim.edit');
@@ -2105,7 +2106,6 @@ Route::middleware(['auth'])->prefix('customer')->name('customer.')->group(functi
     Route::prefix('api/autokirim')->name('api.autokirim.')->group(function () {
         Route::get('/search-address', [PesananAutokirimController::class, 'searchAddressAjax'])->name('search_address');
         Route::post('/cek-ongkir', [PesananAutokirimController::class, 'cekOngkirAjax'])->name('cek_ongkir');
-        Route::post('/cek-ongkir-koli', [KoliController::class, 'cek_Ongkir'])->name('cek_ongkir_koli');
     });
 
 
