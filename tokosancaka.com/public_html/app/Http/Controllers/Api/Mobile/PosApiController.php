@@ -448,19 +448,23 @@ class PosApiController extends Controller
     // ==============================================
     private function generateDanaQrisMpm($invoiceNumber, $amount)
     {
-        Log::info('[API MOBILE - POS] Memulai request DANA Generate QRIS MPM: ' . $invoiceNumber);
+        Log::info('[API MOBILE - POS] === MULAI REQUEST DANA MPM ===');
+        Log::info('Invoice: ' . $invoiceNumber . ' | Amount: ' . $amount);
 
         $timestamp = \Carbon\Carbon::now('Asia/Jakarta')->format('Y-m-d\TH:i:sP');
         $validityPeriod = \Carbon\Carbon::now('Asia/Jakarta')->addMinutes(30)->format('Y-m-d\TH:i:sP');
         $amountValue = number_format((float)$amount, 2, '.', '');
 
-        // Endpoint spesifik untuk generate QRIS MPM
         $path = '/v1.0/qr/qr-mpm-generate.htm';
+        
+        // Ambil konfigurasi
+        $merchantId = config('services.dana.merchant_id');
+        $storeId = config('services.dana.external_store_id', '20050811210214220002');
 
         $body = [
-            "merchantId"         => config('services.dana.merchant_id'),
-            "storeId"            => config('services.dana.external_store_id', 'STORE_01'), // Wajib diisi sesuai ID Toko di DANA
-            "partnerReferenceNo" => (string) $invoiceNumber, // Maksimal 25 karakter
+            "merchantId"         => $merchantId,
+            "storeId"            => $storeId,
+            "partnerReferenceNo" => (string) $invoiceNumber,
             "amount"             => [
                 "value"    => $amountValue,
                 "currency" => "IDR"
@@ -493,25 +497,35 @@ class PosApiController extends Controller
                 'CHANNEL-ID'    => '95221'
             ];
 
+            // LOG PAYLOAD & HEADERS SEBELUM KIRIM
+            Log::info('DANA_REQUEST_URL: ' . $baseUrl . $path);
+            Log::info('DANA_REQUEST_HEADERS: ', $headers);
+            Log::info('DANA_REQUEST_BODY: ' . $jsonBody);
+
             $response = Http::withHeaders($headers)
                 ->withBody($jsonBody, 'application/json')
                 ->post($baseUrl . $path);
 
+            // LOG RAW RESPONSE DARI DANA
+            Log::info('DANA_RESPONSE_STATUS: ' . $response->status());
+            Log::info('DANA_RESPONSE_BODY: ' . $response->body());
+            Log::info('[API MOBILE - POS] === SELESAI REQUEST DANA MPM ===');
+
             $result = $response->json();
 
-            // Kode sukses khusus untuk API qr-mpm-generate adalah 2004700
             if (isset($result['responseCode']) && $result['responseCode'] === '2004700') {
                 return [
                     'success' => true,
-                    'qr_content' => $result['qrContent'] ?? null, // Raw String QRIS (Prioritas utama untuk dirender di frontend)
-                    'qr_image'   => $result['qrImage'] ?? null,   // Gambar base64 (Opsional jika ingin langsung tampilkan gambar)
-                    'qr_url'     => $result['qrUrl'] ?? null      // URL gambar (Opsional)
+                    'qr_content' => $result['qrContent'] ?? null, 
+                    'qr_image'   => $result['qrImage'] ?? null,   
+                    'qr_url'     => $result['qrUrl'] ?? null      
                 ];
             }
 
             return ['success' => false, 'message' => $result['responseMessage'] ?? 'Gagal generate QRIS DANA'];
 
         } catch (\Exception $e) {
+            Log::error('DANA_EXCEPTION: ' . $e->getMessage());
             return ['success' => false, 'message' => 'Koneksi DANA Error: ' . $e->getMessage()];
         }
     }
