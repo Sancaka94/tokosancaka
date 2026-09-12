@@ -327,6 +327,18 @@ class PosApiController extends Controller
                     "isDeeplink" => "N"
                 ]
             ],
+            // 👇 INI YANG SEBELUMNYA KELUPAAN (WAJIB ADA UNTUK DANA IPG)
+            "payOptionDetails"   => [
+                [
+                    "payMethod"   => "BALANCE",
+                    "payOption"   => "BALANCE",
+                    "transAmount" => [
+                        "value"    => $amountValue,
+                        "currency" => "IDR"
+                    ]
+                ]
+            ],
+            // 👆 ========================================================
             "additionalInfo"     => [
                 "order"   => [
                     "orderTitle" => substr("POS Sancaka - " . $invoiceNumber, 0, 64),
