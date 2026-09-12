@@ -72,6 +72,12 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/products', [PosApiController::class, 'getProducts']);
         Route::post('/checkout', [PosApiController::class, 'processTransaction']);
         Route::get('/history', [PosApiController::class, 'getHistory']);
+        
+        // --- TAMBAHAN ROUTE CRUD STOK PRODUK POS ---
+        Route::post('/products', [PosApiController::class, 'storeProduct']); // Tambah
+        Route::put('/products/{id}', [PosApiController::class, 'updateProduct']); // Edit
+        Route::delete('/products/{id}', [PosApiController::class, 'destroyProduct']); // Hapus Satuan
+        Route::post('/products/bulk-delete', [PosApiController::class, 'bulkDestroyProducts']); // Hapus Massal
     });
 
     });
