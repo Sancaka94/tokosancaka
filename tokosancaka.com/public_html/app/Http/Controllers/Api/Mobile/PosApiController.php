@@ -23,11 +23,11 @@ class PosApiController extends Controller
             ], 401);
         }
 
-        // Tentukan ID User (di log HP Anda terbaca 52)
-        $userId = $user->id_pengguna ?? $user->id;
+        // Karena tabel products tidak punya id_pengguna, 
+        // kita filter menggunakan kolom seller_name yang dicocokkan dengan nama_lengkap user.
+        $sellerName = $user->nama_lengkap;
 
-        // KITA GUNAKAN 'user_id' SEBAGAI NAMA KOLOM DI TABEL PRODUCTS
-        $query = Product::where('user_id', $userId)
+        $query = Product::where('seller_name', $sellerName)
                         ->where('status', 'active')
                         ->where('stock', '>', 0);
         
@@ -35,13 +35,16 @@ class PosApiController extends Controller
             $query->where('name', 'like', '%' . $request->search . '%');
         }
 
+        // Map data untuk menambahkan URL gambar yang valid
         $products = $query->latest()->get()->map(function ($item) {
             $imagePath = $item->image_url ?? $item->image ?? $item->foto ?? null;
+            
             if ($imagePath && !str_starts_with($imagePath, 'http')) {
                 $item->full_image_url = asset('storage/' . ltrim($imagePath, '/'));
             } else {
                 $item->full_image_url = $imagePath;
             }
+            
             return $item;
         });
 
