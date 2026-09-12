@@ -50,7 +50,8 @@ class PosApiController extends Controller
                 $query->where(function($q) use ($keyword) {
                     $q->where('name', 'like', '%' . $keyword . '%')
                       // 🔥 GANTI JADI 'LIKE' AGAR LEBIH FLEKSIBEL MEMBACA BARCODE
-                      ->orWhere('sku', 'like', '%' . $keyword . '%'); 
+                      ->orWhere('sku', 'like', '%' . $keyword . '%')
+                      ->orWhere('barcode', 'like', '%' . $keyword . '%');
                 });
             }
 
