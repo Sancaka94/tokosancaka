@@ -279,10 +279,17 @@
                                 <label class="block text-xs font-medium text-gray-700 mb-1.5">KATEGORI BARANG</label>
                                 <select name="item_type" x-model="kategoriBarang" required class="uppercase w-full border border-gray-300 rounded-md text-xs focus:outline-none focus:ring-1 focus:ring-black focus:border-black px-3 py-2.5 bg-white">
                                     <option value="" disabled selected>PILIH...</option>
-                                    <option value="1">ELEKTRONIK & GADGET</option>
-                                    <option value="2">PAKAIAN / BAJU</option>
-                                    <option value="4">DOKUMEN</option>
-                                    <option value="7">LAIN-LAIN</option>
+                                    <option value="ELK001">PERALATAN ELEKTRONIK & GADGET</option>
+                                    <option value="PAK001">PAKAIAN / BAJU / KAIN</option>
+                                    <option value="PCH001">PECAH BELAH</option>
+                                    <option value="DOC001">DOKUMEN / BERKAS / BUKU</option>
+                                    <option value="RTG001">PERALATAN RUMAH TANGGA</option>
+                                    <option value="AKS001">AKSESORIS</option>
+                                    <option value="OTH001">LAIN-LAIN</option>
+                                    <option value="DHS001">DOKUMEN BERHARGA</option>
+                                    <option value="KSM001">PERALATAN KESEHATAN / KECANTIKAN / KOSMETIK</option>
+                                    <option value="OLH001">PERALATAN OLAHRAGA & HIBURAN</option>
+                                    <option value="OTM001">PERLENGKAPAN MOBIL & MOTOR</option>
                                 </select>
                             </div>
                             <div>
@@ -818,7 +825,7 @@ function orderFormData() {
             if (type === 'sender') {
                 this.pengirimNama = kontak.nama || '';
                 document.getElementById('pengirim_hp').value = kontak.no_hp || '';
-                
+
                 // 1. Auto-fill Alamat Jalan Pengirim
                 if (kontak.alamat) {
                     document.getElementById('pengirim_alamat').value = kontak.alamat;
@@ -833,14 +840,14 @@ function orderFormData() {
                     this.senderRegency = kontak.regency || '';
                     this.senderDistrict = kontak.district || '';
                     this.senderVillage = kontak.village || '';
-                    
+
                     let display = [];
                     if(kontak.village) display.push(kontak.village);
                     if(kontak.district) display.push(kontak.district);
                     if(kontak.regency) display.push(kontak.regency);
                     if(kontak.province) display.push(kontak.province);
                     if(kontak.postal_code) display.push(kontak.postal_code);
-                    
+
                     if (display.length > 0) {
                         this.senderQuery = display.join(', ').toUpperCase();
                     }
@@ -848,14 +855,14 @@ function orderFormData() {
 
                 this.pickupPointCode = kontak.pickup_point_code || '';
                 this.showContactSender = false;
-                
+
                 // Trigger auto-pickup generation setelah data terisi
                 setTimeout(() => this.autoGeneratePickup(), 300);
-                
+
             } else {
                 this.penerimaNama = kontak.nama || '';
                 document.getElementById('penerima_hp').value = kontak.no_hp || '';
-                
+
                 // 1. Auto-fill Alamat Jalan Penerima
                 if (kontak.alamat) {
                     document.getElementById('penerima_alamat').value = kontak.alamat;
@@ -870,14 +877,14 @@ function orderFormData() {
                     this.receiverRegency = kontak.regency || '';
                     this.receiverDistrict = kontak.district || '';
                     this.receiverVillage = kontak.village || '';
-                    
+
                     let display = [];
                     if(kontak.village) display.push(kontak.village);
                     if(kontak.district) display.push(kontak.district);
                     if(kontak.regency) display.push(kontak.regency);
                     if(kontak.province) display.push(kontak.province);
                     if(kontak.postal_code) display.push(kontak.postal_code);
-                    
+
                     if (display.length > 0) {
                         this.receiverQuery = display.join(', ').toUpperCase();
                     }
