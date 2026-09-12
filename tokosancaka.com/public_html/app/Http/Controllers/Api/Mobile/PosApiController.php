@@ -793,16 +793,31 @@ class PosApiController extends Controller
             $storeId = $user->parent_id ?? $user->id_pengguna ?? $user->id;
             $userId = $user->id_pengguna ?? $user->id;
             $operatorName = $user->nama_lengkap;
-            $today = \Carbon\Carbon::now('Asia/Jakarta')->toDateString();
 
-            // 1. QUERY SAKTI: Hitung semua transaksi tunai HARI INI tanpa peduli jam buka shift
+            // Cek apakah ada Shift Aktif di tabel
+            $activeShift = \App\Models\ShiftKas::where('user_id', $userId)->where('status', 'open')->first();
+
+            // 🔥 PERBAIKAN 1: Jika SHIFT TUTUP, kembalikan semua saldo jadi 0
+            if (!$activeShift) {
+                return response()->json([
+                    'success' => true,
+                    'data' => [
+                        'is_open' => false,
+                        'modal_awal' => 0,
+                        'penjualan_tunai' => 0, 
+                        'kas_masuk' => 0,
+                        'kas_keluar' => 0,
+                        'riwayat' => []
+                    ]
+                ]);
+            }
+
+            // 🔥 PERBAIKAN 2: Jika BUKA, hitung HANYA sejak shift dibuka (bukan dari jam 00:00)
             $penjualanTunai = \App\Models\Order::where(function($q) use ($storeId, $operatorName, $userId) {
-                    // Cari transaksi skema baru (Berdasarkan ID Toko & Nama Kasir)
                     $q->where(function($q2) use ($storeId, $operatorName) {
                         $q2->where('user_id', $storeId)
                            ->where('shipping_address', $operatorName);
                     })
-                    // ATAU cari transaksi skema lama (Berdasarkan ID Kasir)
                     ->orWhere('user_id', $userId);
                 })
                 ->where(function($q) {
@@ -811,28 +826,9 @@ class PosApiController extends Controller
                       ->orWhere('payment_method', 'like', '%tunai%');
                 })
                 ->where('status', 'paid')
-                ->whereDate('created_at', $today) // Tarik semua hari ini
+                ->where('created_at', '>=', $activeShift->created_at) // <--- Kunci Perbaikan
                 ->sum('total_amount');
 
-            // 2. Cek apakah ada Shift Aktif di tabel
-            $activeShift = \App\Models\ShiftKas::where('user_id', $userId)->where('status', 'open')->first();
-
-            // 3. Jika SHIFT TUTUP, penjualan_tunai TETAP DIMUNCULKAN
-            if (!$activeShift) {
-                return response()->json([
-                    'success' => true,
-                    'data' => [
-                        'is_open' => false,
-                        'modal_awal' => 0,
-                        'penjualan_tunai' => (int) $penjualanTunai, // <--- Bikin tetap muncul walau tutup
-                        'kas_masuk' => 0,
-                        'kas_keluar' => 0,
-                        'riwayat' => []
-                    ]
-                ]);
-            }
-
-            // 4. Jika SHIFT BUKA, ambil modal dan flow kas dari tabel
             $kasMasuk = \App\Models\ShiftFlow::where('shift_id', $activeShift->id)->where('type', 'masuk')->sum('nominal');
             $kasKeluar = \App\Models\ShiftFlow::where('shift_id', $activeShift->id)->where('type', 'keluar')->sum('nominal');
             
@@ -848,6 +844,15 @@ class PosApiController extends Controller
                         'time' => $r->created_at->format('H:i')
                     ];
                 });
+
+            // Sisipkan Modal Awal ke Riwayat agar tampil di UI aplikasi
+            $riwayat->prepend([
+                'id' => 'modal_awal_flow',
+                'type' => 'masuk',
+                'nominal' => $activeShift->modal_awal,
+                'ket' => 'Modal Awal Laci',
+                'time' => $activeShift->created_at->format('H:i')
+            ]);
 
             return response()->json([
                 'success' => true,
