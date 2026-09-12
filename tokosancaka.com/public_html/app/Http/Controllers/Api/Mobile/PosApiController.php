@@ -80,6 +80,7 @@ class PosApiController extends Controller
                 'subtotal'       => $grandTotal,
                 'shipping_cost'  => 0, // POS tidak ada ongkir
                 'shipping_method' => 'Di Tempat (POS)',
+                'shipping_address' => 'Pembelian di Toko (POS)',
                 'total_amount'   => $grandTotal,
                 'payment_method' => $request->payment_method,
                 'status'         => 'paid', // Langsung lunas

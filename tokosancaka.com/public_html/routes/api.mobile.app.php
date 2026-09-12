@@ -71,9 +71,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::prefix('pos')->group(function () {
         Route::get('/products', [PosApiController::class, 'getProducts']);
         Route::post('/checkout', [PosApiController::class, 'processTransaction']);
+        Route::get('/history', [PosApiController::class, 'getHistory']);
     });
-
-});
 
 
 /*
