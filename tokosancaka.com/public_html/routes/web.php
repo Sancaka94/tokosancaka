@@ -373,16 +373,22 @@ Route::get('/api/search-kontak', function (\Illuminate\Http\Request $request) {
         return response()->json([]);
     }
 
-    $kontaks = \App\Models\Kontak::where('user_id', auth()->id())
-        ->where(function($q) use ($keyword) {
+    $query = \App\Models\Kontak::query();
+
+    // Jika yang login BUKAN Admin (User ID 4), batasi hanya kontaknya sendiri
+    if (auth()->id() != 4) {
+        $query->where('user_id', auth()->id());
+    }
+
+    $kontaks = $query->where(function($q) use ($keyword) {
             $q->where('nama', 'like', "%{$keyword}%")
               ->orWhere('no_hp', 'like', "%{$keyword}%");
         })
-        ->limit(10)
+        ->limit(15) // Limit sedikit dilebarkan untuk admin
         ->get();
 
     return response()->json($kontaks);
-})->middleware('auth'); // Wajib middleware auth agar auth()->id() tidak error
+})->middleware('auth');
 
 // =========================================================================
 // RUTE PESANAN PUBLIK (FIX ERROR ROUTE NOT FOUND)
