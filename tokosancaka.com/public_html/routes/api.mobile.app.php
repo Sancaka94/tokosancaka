@@ -193,6 +193,7 @@ Route::prefix('public')->group(function () {
 // -------------------------------------------------------------------------
 Route::get('/suratjalan/download/{kode_surat_jalan}', [ScanSpxController::class, 'downloadSuratJalan'])->name('api.suratjalan.download');
 
+Route::get('/pos/download-qris/{invoice}', [PosApiController::class, 'downloadQris']);
 
 // =========================================================================
 // 2. PROTECTED ROUTES (WAJIB BAWA TOKEN DARI HP - SANCTUM)

@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Http;
+use SimpleSoftwareIO\QrCode\Facades\QrCode;
 
 class PosApiController extends Controller
 {
@@ -531,4 +532,26 @@ class PosApiController extends Controller
             return ['success' => false, 'message' => 'Koneksi DANA Error: ' . $e->getMessage()];
         }
     }
+
+    // Tambahkan fungsi ini di dalam class
+public function downloadQris($invoice)
+{
+    // 1. Cari pesanan berdasarkan invoice
+    $order = Order::where('invoice_number', $invoice)->first();
+
+    if (!$order || !$order->payment_url) {
+        return response('QRIS tidak ditemukan', 404);
+    }
+
+    // 2. Generate gambar QR Code dari string payment_url
+    $image = QrCode::format('png')
+                   ->size(400)
+                   ->margin(2)
+                   ->generate($order->payment_url);
+
+    // 3. Return sebagai response download gambar
+    return response($image)
+            ->header('Content-type', 'image/png')
+            ->header('Content-Disposition', 'attachment; filename="QRIS_'.$invoice.'.png"');
+}
 }
