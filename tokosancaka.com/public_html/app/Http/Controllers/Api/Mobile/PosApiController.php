@@ -120,7 +120,7 @@ class PosApiController extends Controller
         }
     }
 
-    public function getHistory(Request $request)
+   public function getHistory(Request $request)
     {
         try {
             $user = Auth::user() ?? auth('sanctum')->user();
@@ -128,9 +128,29 @@ class PosApiController extends Controller
 
             $userId = $user->id_pengguna ?? $user->id;
 
-            $history = Order::where('user_id', $userId)
+            // Mengambil riwayat beserta detail item dan produknya
+            $history = Order::with(['items.product'])
+                            ->where('user_id', $userId)
                             ->orderBy('created_at', 'desc')
                             ->get();
+
+            // Memformat URL gambar produk agar bisa dibaca oleh aplikasi
+            $history->map(function ($order) {
+                if ($order->items) {
+                    $order->items->map(function ($item) {
+                        if ($item->product) {
+                            $imagePath = $item->product->image_url ?? $item->product->image ?? $item->product->foto ?? null;
+                            if ($imagePath && strpos($imagePath, 'http') !== 0) {
+                                $item->product->full_image_url = asset('storage/' . ltrim($imagePath, '/'));
+                            } else {
+                                $item->product->full_image_url = $imagePath;
+                            }
+                        }
+                        return $item;
+                    });
+                }
+                return $order;
+            });
 
             return response()->json([
                 'success' => true,
