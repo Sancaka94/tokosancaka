@@ -887,38 +887,22 @@ class PosApiController extends Controller
         return response()->json(['success' => true, 'message' => 'Shift berhasil dibuka']);
     }
 
-    public function closeShift(Request $request)
+    public function cashFlowShift(Request $request)
     {
         $user = Auth::user() ?? auth('sanctum')->user();
         if (!$user) return response()->json(['success' => false, 'message' => 'Unauthorized'], 401);
 
+        $storeId = $user->parent_id ?? $user->id_pengguna ?? $user->id;
         $userId = $user->id_pengguna ?? $user->id;
 
+        // 🔥 AUTO-RECOVERY: Jika shift di database tidak ada, otomatis buatkan agar tombol tidak gagal
         $activeShift = ShiftKas::where('user_id', $userId)->where('status', 'open')->first();
         if (!$activeShift) {
-            return response()->json(['success' => false, 'message' => 'Tidak ada shift aktif di database.']);
-        }
-
-        $activeShift->update([
-            'status' => 'closed',
-            'uang_fisik' => $request->uang_fisik ?? 0
-        ]);
-
-        return response()->json(['success' => true, 'message' => 'Shift berhasil ditutup']);
-    }
-
-   public function cashFlowShift(Request $request)
-    {
-        $user = Auth::user() ?? auth('sanctum')->user();
-        if (!$user) return response()->json(['success' => false, 'message' => 'Unauthorized'], 401);
-
-        $userId = $user->id_pengguna ?? $user->id;
-
-        $activeShift = ShiftKas::where('user_id', $userId)->where('status', 'open')->first();
-        if (!$activeShift) {
-            return response()->json([
-                'success' => false, 
-                'message' => 'Shift belum terbuka di database. Silakan klik Buka Shift terlebih dahulu.'
+            $activeShift = ShiftKas::create([
+                'store_id' => $storeId,
+                'user_id' => $userId,
+                'status' => 'open',
+                'modal_awal' => 0
             ]);
         }
 
@@ -930,6 +914,25 @@ class PosApiController extends Controller
         ]);
 
         return response()->json(['success' => true, 'message' => 'Data kas berhasil dicatat.']);
+    }
+
+    public function closeShift(Request $request)
+    {
+        $user = Auth::user() ?? auth('sanctum')->user();
+        if (!$user) return response()->json(['success' => false, 'message' => 'Unauthorized'], 401);
+
+        $userId = $user->id_pengguna ?? $user->id;
+
+        $activeShift = ShiftKas::where('user_id', $userId)->where('status', 'open')->first();
+        
+        if ($activeShift) {
+            $activeShift->update([
+                'status' => 'closed',
+                'uang_fisik' => $request->uang_fisik ?? 0
+            ]);
+        }
+
+        return response()->json(['success' => true, 'message' => 'Shift berhasil ditutup']);
     }
 
    
