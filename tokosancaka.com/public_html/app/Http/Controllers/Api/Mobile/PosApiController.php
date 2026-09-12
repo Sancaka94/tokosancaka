@@ -576,7 +576,7 @@ class PosApiController extends Controller
     }
 
     // ==============================================
-    // GET REPORT PENJUALAN (DINAMIS)
+    // GET REPORT PENJUALAN & PROFIT (DINAMIS)
     // ==============================================
     public function getReport(Request $request)
     {
@@ -587,8 +587,9 @@ class PosApiController extends Controller
             $userId = $user->id_pengguna ?? $user->id;
             $filter = $request->query('filter', 'Minggu Ini');
             
-            // Ambil data dari database (Khusus tipe POS & Status Lunas)
-            $query = Order::where('user_id', $userId)
+            // Ambil data dari database (Khusus tipe POS & Status Lunas) beserta relasi item dan produk
+            $query = Order::with('items.product')
+                        ->where('user_id', $userId)
                         ->where('shipping_method', 'Di Tempat (POS)')
                         ->where('status', 'paid');
 
@@ -605,17 +606,38 @@ class PosApiController extends Controller
 
             $orders = $query->get();
 
-            // 1. Hitung Summary Card
-            $totalPendapatan = (float) $orders->sum('total_amount');
+            $totalPendapatan = 0;
+            $totalProfit = 0;
+            $productSales = []; // Untuk Chart Lingkaran
+
+            // 1. Hitung Summary Card & Profit
+            foreach ($orders as $order) {
+                $totalPendapatan += $order->total_amount;
+                
+                foreach ($order->items as $item) {
+                    // Hitung Profit: Jika ada kolom 'modal' atau 'harga_beli' di tabel produk, gunakan itu. 
+                    // Jika tidak ada, fallback estimasi profit 20% dari harga jual.
+                    $modal = $item->product->modal ?? $item->product->harga_beli ?? ($item->price * 0.8);
+                    $profit = ($item->price - $modal) * $item->quantity;
+                    $totalProfit += $profit;
+
+                    // Kumpulkan data penjualan produk untuk Pie Chart
+                    $prodName = $item->product ? substr($item->product->name, 0, 15) : 'Produk';
+                    if (!isset($productSales[$prodName])) {
+                        $productSales[$prodName] = 0;
+                    }
+                    $productSales[$prodName] += $item->quantity;
+                }
+            }
+
             $totalTransaksi = $orders->count();
             $rataRata = $totalTransaksi > 0 ? $totalPendapatan / $totalTransaksi : 0;
 
-            // 2. Siapkan Data Grafik berdasarkan Filter
+            // 2. Siapkan Data Line Chart (Grafik Garis Pendapatan)
             $labels = [];
             $data = [];
 
             if ($filter === 'Hari Ini') {
-                // Kelompokkan per jam
                 $labels = ['08:00', '12:00', '16:00', '20:00', '23:59'];
                 $data = [0, 0, 0, 0, 0];
                 foreach ($orders as $o) {
@@ -627,8 +649,7 @@ class PosApiController extends Controller
                     else $data[4] += $o->total_amount;
                 }
             } elseif ($filter === 'Bulan Ini') {
-                // Kelompokkan per minggu dalam 1 bulan
-                $labels = ['Minggu 1', 'Minggu 2', 'Minggu 3', 'Minggu 4'];
+                $labels = ['Mg 1', 'Mg 2', 'Mg 3', 'Mg 4'];
                 $data = [0, 0, 0, 0];
                 foreach ($orders as $o) {
                     $day = \Carbon\Carbon::parse($o->created_at)->timezone('Asia/Jakarta')->day;
@@ -638,33 +659,59 @@ class PosApiController extends Controller
                     else $data[3] += $o->total_amount;
                 }
             } else { 
-                // Default: Minggu Ini (Kelompokkan per Hari)
                 $labels = ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'];
                 $data = [0, 0, 0, 0, 0, 0, 0];
                 foreach ($orders as $o) {
-                    // dayOfWeekIso: 1 = Senin, 7 = Minggu
                     $dayIdx = \Carbon\Carbon::parse($o->created_at)->timezone('Asia/Jakarta')->dayOfWeekIso - 1; 
                     $data[$dayIdx] += $o->total_amount;
                 }
             }
 
-            // Cegah error grafik di aplikasi jika belum ada penjualan (semua nilainya 0)
             if (empty($data) || max($data) == 0) {
                 $data = array_fill(0, count($labels), 0); 
+            }
+
+            // 3. Siapkan Data Pie Chart (Produk Terlaris)
+            arsort($productSales);
+            $topProducts = array_slice($productSales, 0, 4, true); // Ambil 4 terlaris
+            $pieData = [];
+            $colors = ["#2563EB", "#10B981", "#F59E0B", "#EF4444", "#8B5CF6"];
+            $i = 0;
+            
+            foreach ($topProducts as $name => $qty) {
+                $pieData[] = [
+                    "name" => $name,
+                    "population" => $qty,
+                    "color" => $colors[$i % count($colors)],
+                    "legendFontColor" => "#374151",
+                    "legendFontSize" => 11
+                ];
+                $i++;
+            }
+
+            // Jika kosong
+            if (empty($pieData)) {
+                $pieData[] = [
+                    "name" => "Belum ada",
+                    "population" => 1,
+                    "color" => "#E5E7EB",
+                    "legendFontColor" => "#9CA3AF",
+                    "legendFontSize" => 11
+                ];
             }
 
             return response()->json([
                 'success' => true,
                 'data' => [
                     'totalPendapatan' => $totalPendapatan,
+                    'totalProfit'     => $totalProfit,
                     'totalTransaksi'  => $totalTransaksi,
                     'rataRata'        => $rataRata,
                     'grafik'          => [
                         'labels'   => $labels,
-                        'datasets' => [
-                            ['data' => $data]
-                        ]
-                    ]
+                        'datasets' => [['data' => $data]]
+                    ],
+                    'pieData'         => $pieData
                 ]
             ]);
 
