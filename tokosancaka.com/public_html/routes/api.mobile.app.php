@@ -35,6 +35,7 @@ use App\Http\Controllers\Api\Mobile\AdminDriverController;
 use App\Http\Controllers\Api\Mobile\PesananAutokirimMobileController; // <-- TAMBAHKAN INI
 use App\Http\Controllers\Api\Mobile\KomisiMobileController;
 use App\Http\Controllers\Api\Mobile\PenggunaController;
+use App\Http\Controllers\Api\Mobile\PosApiController;
 
 Route::prefix('mapbox')->group(function () {
     Route::post('/cek-tarif', [ApiMapboxController::class, 'cek_tarif']);
@@ -63,6 +64,14 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/order/detail/{order_id}', [ApiMapboxController::class, 'get_order_resi_detail']);
     Route::post('/order/update-status', [ApiMapboxController::class, 'update_status_order']);
     Route::get('/order/history', [ApiMapboxController::class, 'get_history']);
+
+    // ==========================================
+    // MODULE: POS / KASIR OFFLINE
+    // ==========================================
+    Route::prefix('pos')->group(function () {
+        Route::get('/products', [PosApiController::class, 'getProducts']);
+        Route::post('/checkout', [PosApiController::class, 'processTransaction']);
+    });
 
 });
 
