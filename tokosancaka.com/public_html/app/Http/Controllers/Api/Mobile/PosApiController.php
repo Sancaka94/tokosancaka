@@ -423,6 +423,7 @@ class PosApiController extends Controller
                 'services.dana.dana_env'      => 'PRODUCTION',
                 'services.dana.base_url'      => 'https://api.saas.dana.id',
                 'services.dana.merchant_id'   => $settings['dana_prod_merchant_id'] ?? env('DANA_PROD_MERCHANT_ID'),
+                'services.dana.external_store_id' => $settings['dana_prod_store_id'] ?? env('DANA_PROD_STORE_ID'), // Tambahkan baris ini
                 'services.dana.client_id'     => $settings['dana_prod_client_id'] ?? env('DANA_PROD_CLIENT_ID'),
                 'services.dana.x_partner_id'  => $settings['dana_prod_client_id'] ?? env('DANA_PROD_CLIENT_ID'),
                 'services.dana.private_key'   => $settings['dana_prod_private_key'] ?? env('DANA_PROD_PRIVATE_KEY'),
@@ -434,6 +435,7 @@ class PosApiController extends Controller
                 'services.dana.dana_env'      => 'SANDBOX',
                 'services.dana.base_url'      => 'https://api.sandbox.dana.id',
                 'services.dana.merchant_id'   => $settings['dana_sandbox_merchant_id'] ?? env('DANA_MERCHANT_ID'),
+                'services.dana.external_store_id' => $settings['dana_sandbox_store_id'] ?? env('DANA_STORE_ID'), // Tambahkan baris ini
                 'services.dana.client_id'     => $settings['dana_sandbox_client_id'] ?? env('DANA_X_PARTNER_ID'),
                 'services.dana.x_partner_id'  => $settings['dana_sandbox_client_id'] ?? env('DANA_X_PARTNER_ID'),
                 'services.dana.private_key'   => $settings['dana_sandbox_private_key'] ?? env('DANA_PRIVATE_KEY'),
