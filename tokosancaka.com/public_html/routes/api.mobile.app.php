@@ -265,6 +265,8 @@ Route::prefix('seller')->group(function () {
     Route::get('/profile', [ProfileController::class, 'show']);
     Route::post('/profile/update', [ProfileController::class, 'update']);
 
+    Route::post('/karyawan/register', [ProfileController::class, 'registerKaryawan']);
+
 
     Route::get('/customer/pesanan/riwayat', [\App\Http\Controllers\Api\Mobile\PesananController::class, 'riwayat']);
 

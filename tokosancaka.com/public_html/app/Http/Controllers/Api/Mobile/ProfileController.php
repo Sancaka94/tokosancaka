@@ -91,4 +91,88 @@ class ProfileController extends Controller
             ], 500);
         }
     }
+
+    /**
+     * Mendaftarkan Sub-Role / Karyawan (Hanya untuk Seller & Agent)
+     */
+    public function registerKaryawan(Request $request)
+    {
+        $user = $request->user();
+
+        // 1. Pengecekan Otorisasi: Pastikan hanya Agent / Seller yang bisa akses
+        if (!in_array(strtolower($user->role), ['agent', 'seller'])) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Akses ditolak. Hanya Agent atau Seller yang dapat mendaftarkan karyawan.'
+            ], 403);
+        }
+
+        // 2. Validasi Input Karyawan
+        $validator = Validator::make($request->all(), [
+            'nama_lengkap'  => ['required', 'string', 'max:255'],
+            'jenis_kelamin' => ['nullable', 'string', 'in:Laki-laki,Perempuan'],
+            'no_wa'         => ['required', 'string', 'max:20', 'unique:Pengguna,no_wa'],
+            'email'         => ['nullable', 'email', 'max:255', 'unique:Pengguna,email'],
+            'password'      => ['required', 'string', 'min:6'],
+            'pin'           => ['nullable', 'string', 'digits:6'], // Jika karyawan butuh PIN kasir
+        ], [
+            'no_wa.unique' => 'Nomor WhatsApp ini sudah terdaftar sebagai pengguna lain.',
+            'email.unique' => 'Email ini sudah digunakan.'
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Data tidak valid. Silakan cek kembali.',
+                'errors'  => $validator->errors()
+            ], 422);
+        }
+
+        try {
+            // 3. Buat Data Karyawan Baru
+            $karyawan = new User();
+            $karyawan->parent_id    = $user->id_pengguna; // 🔥 Relasi ke Pemilik Toko
+            $karyawan->nama_lengkap = $request->nama_lengkap;
+            $karyawan->no_wa        = $request->no_wa;
+            $karyawan->email        = $request->email;
+            $karyawan->jenis_kelamin = $request->jenis_kelamin;
+            
+            // Enkripsi Password & PIN
+            $karyawan->password_hash = bcrypt($request->password);
+            if ($request->filled('pin')) {
+                $karyawan->pin = bcrypt($request->pin); 
+            }
+
+            // Set Role Khusus
+            $karyawan->role = 'Karyawan'; // Atau 'Kasir', sesuaikan dengan kebutuhan aplikasi Anda
+            
+            // Wariskan Data Toko dari Pemilik (Agent/Seller)
+            $karyawan->store_name       = $user->store_name;
+            $karyawan->store_logo_path  = $user->store_logo_path;
+            $karyawan->province         = $user->province;
+            $karyawan->regency          = $user->regency;
+            $karyawan->district         = $user->district;
+            $karyawan->village          = $user->village;
+            $karyawan->address_detail   = $user->address_detail;
+
+            // Status Default
+            $karyawan->status      = 'Aktif';
+            $karyawan->is_verified = 1; // Anggap otomatis terverifikasi karena didaftarkan owner
+            
+            $karyawan->save();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Karyawan berhasil didaftarkan!',
+                'data'    => $karyawan
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('API Register Karyawan Error: '.$e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan sistem saat mendaftarkan karyawan.'
+            ], 500);
+        }
+    }
 }
