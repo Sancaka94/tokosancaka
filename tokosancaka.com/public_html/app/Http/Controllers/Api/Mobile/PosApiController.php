@@ -8,6 +8,7 @@ use App\Models\Product;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Api;
+use App\Models\User;
 use App\Services\DanaSignatureService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
@@ -721,6 +722,63 @@ class PosApiController extends Controller
 
         } catch (\Throwable $e) {
             return response()->json(['success' => false, 'message' => 'Gagal: ' . $e->getMessage()], 500);
+        }
+    }
+
+    public function getKaryawanShifts(Request $request)
+    {
+        try {
+            $user = Auth::user() ?? auth('sanctum')->user();
+            if (!$user) return response()->json(['success' => false, 'message' => 'Unauthorized'], 401);
+
+            $storeId = $user->id_pengguna ?? $user->id;
+            $now = \Carbon\Carbon::now('Asia/Jakarta')->toDateString();
+
+            // 1. Ambil data karyawan yang terikat dengan toko ini
+            $karyawans = User::where('parent_id', $storeId)->get();
+            $data = [];
+
+            foreach ($karyawans as $k) {
+                // Hitung Penjualan Tunai Karyawan berdasarkan nama di shipping_address
+                $penjualanTunai = Order::where('user_id', $storeId)
+                    ->where('shipping_address', $k->nama_lengkap)
+                    ->where(function($q) {
+                        $q->where('payment_method', 'like', '%tunai%')
+                          ->orWhere('payment_method', 'like', '%cash%');
+                    })
+                    ->where('status', 'paid')
+                    ->whereDate('created_at', $now)
+                    ->sum('total_amount');
+
+                $data[] = [
+                    'id' => $k->id_pengguna ?? $k->id,
+                    'nama_lengkap' => $k->nama_lengkap,
+                    'total_cash' => $penjualanTunai
+                ];
+            }
+
+            // 2. Tambahkan juga diri sendiri (Pemilik) jika ada transaksi kasir atas nama sendiri
+            $penjualanOwner = Order::where('user_id', $storeId)
+                    ->where('shipping_address', $user->nama_lengkap)
+                    ->where(function($q) {
+                        $q->where('payment_method', 'like', '%tunai%')
+                          ->orWhere('payment_method', 'like', '%cash%');
+                    })
+                    ->where('status', 'paid')
+                    ->whereDate('created_at', $now)
+                    ->sum('total_amount');
+
+            // Selalu munculkan owner di urutan pertama
+            array_unshift($data, [
+                'id' => $storeId,
+                'nama_lengkap' => $user->nama_lengkap . ' (Anda)',
+                'total_cash' => $penjualanOwner
+            ]);
+
+            return response()->json(['success' => true, 'data' => $data]);
+
+        } catch (\Throwable $e) {
+            return response()->json(['success' => false, 'message' => 'Error: ' . $e->getMessage()], 500);
         }
     }
 }
