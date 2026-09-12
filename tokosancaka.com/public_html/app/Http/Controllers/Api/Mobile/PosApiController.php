@@ -79,6 +79,7 @@ class PosApiController extends Controller
                 'user_id'        => $user->id_pengguna ?? $user->id, // ID Kasir yang bertugas
                 'subtotal'       => $grandTotal,
                 'shipping_cost'  => 0, // POS tidak ada ongkir
+                'shipping_method' => 'Di Tempat (POS)',
                 'total_amount'   => $grandTotal,
                 'payment_method' => $request->payment_method,
                 'status'         => 'paid', // Langsung lunas
@@ -110,5 +111,25 @@ class PosApiController extends Controller
             DB::rollBack();
             return response()->json(['success' => false, 'message' => 'Gagal: ' . $e->getMessage()], 500);
         }
+    }
+
+    // 3. API BARU UNTUK HALAMAN RIWAYAT KASIR
+    public function getHistory(Request $request)
+    {
+        $user = Auth::user() ?? auth('sanctum')->user();
+        if (!$user) return response()->json(['success' => false, 'message' => 'Unauthorized'], 401);
+
+        $userId = $user->id_pengguna ?? $user->id;
+
+        // Ambil riwayat pesanan khusus POS milik kasir ini
+        $history = Order::where('user_id', $userId)
+                        // ->where('type', 'pos') // Hapus komentar ini jika di database ada kolom 'type'
+                        ->orderBy('created_at', 'desc')
+                        ->get();
+
+        return response()->json([
+            'success' => true,
+            'data' => $history
+        ]);
     }
 }
