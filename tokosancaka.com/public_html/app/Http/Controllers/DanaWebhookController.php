@@ -641,6 +641,33 @@ class DanaWebhookController extends Controller
                         }
                     }
                     // =========================================================
+
+                    else if (Str::startsWith($orderId, 'POS-')) {
+                        Log::info("🛒 LOG POS QRIS: Webhook DANA Masuk untuk Kasir: $orderId");
+                        
+                        try {
+                            $posOrder = \App\Models\Order::where('invoice_number', $orderId)->first();
+                            if ($posOrder) {
+                                if ($posOrder->status !== 'paid') {
+                                    $posOrder->status = 'paid';
+                                    $posOrder->payment_url = null; 
+                                    $posOrder->updated_at = now()->timezone('Asia/Jakarta');
+                                    $posOrder->save();
+                                    
+                                    Log::info("✅ TRANSAKSI POS BERHASIL: Status $orderId telah diubah menjadi PAID.");
+                                    $this->sendExpoPaymentNotification($orderId);
+                                } else {
+                                    Log::info("⚠️ Transaksi POS $orderId sudah diproses menjadi PAID sebelumnya.");
+                                }
+                            } else {
+                                Log::error("❌ Order POS tidak ditemukan di database: $orderId");
+                            }
+                        } catch (\Exception $e) {
+                            Log::error("❌ CRITICAL ERROR POS QRIS: " . $e->getMessage());
+                        }
+                    }
+                    // 👆👆👆 ================================= 👆👆👆
+
                     else if (Str::startsWith($orderId, 'TRF') || Str::startsWith($orderId, 'TUP')) {
                         // PENANGANAN DISBURSEMENT (TRANSFER BANK / TOP UP CORPORATE)
                         $danaTrx = DB::table('dana_transactions')->where('reference_no', $orderId)->first();
@@ -714,6 +741,24 @@ class DanaWebhookController extends Controller
                     Log::info("❌ Webhook DANA (GAGAL): Meneruskan $orderId ke NotaController");
                     \App\Http\Controllers\NotaController::processCallback($orderId, $internalStatus);
                 }
+
+                // 👇👇👇 TARUH KODE GAGAL POS DI SINI 👇👇👇
+                elseif (Str::startsWith($orderId, 'POS-')) {
+                    $posOrder = \App\Models\Order::where('invoice_number', $orderId)->first();
+                    if ($posOrder && $posOrder->status !== 'paid') {
+                        $posOrder->status = 'failed';
+                        $posOrder->payment_url = null;
+                        $posOrder->save();
+
+                        $orderItems = \App\Models\OrderItem::where('order_id', $posOrder->id)->get();
+                        foreach ($orderItems as $item) {
+                            \App\Models\Product::where('id', $item->product_id)->increment('stock', $item->quantity);
+                        }
+                        Log::info("❌ Transaksi POS $orderId GAGAL/EXPIRED. Stok telah dikembalikan.");
+                    }
+                }
+                // 👆👆👆 ================================= 👆👆👆
+                
                 elseif (is_numeric($orderId) && strlen($orderId) >= 14) {
                     Log::info("❌ Webhook DANA (GAGAL): Meneruskan $orderId ke PesananAutokirimController");
                     app(\App\Http\Controllers\PesananAutokirimController::class)->processPaymentCallback($orderId, $internalStatus, $payloadData);
