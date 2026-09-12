@@ -80,9 +80,15 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::put('/products/{id}', [PosApiController::class, 'updateProduct']); // Edit
         Route::delete('/products/{id}', [PosApiController::class, 'destroyProduct']); // Hapus Satuan
         Route::post('/products/bulk-delete', [PosApiController::class, 'bulkDestroyProducts']); // Hapus Massal
+
+        Route::get('/karyawan-shifts', [PosApiController::class, 'getKaryawanShifts']);
+        Route::get('/shift/status', [PosApiController::class, 'getShiftStatus']);
+        Route::post('/shift/open', [PosApiController::class, 'openShift']);
+        Route::post('/shift/close', [PosApiController::class, 'closeShift']);
+        Route::post('/shift/cash-flow', [PosApiController::class, 'cashFlowShift']);
     });
 
-    });
+});
 
 /*
 | API ROUTES KHUSUS APLIKASI MOBILE SANCAKA EXPRESS (EXPO)
