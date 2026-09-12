@@ -21,9 +21,24 @@ class PosApiController extends Controller
             $query->where('name', 'like', '%' . $request->search . '%');
         }
 
+        // Map data untuk menambahkan URL gambar yang valid
+        $products = $query->latest()->get()->map(function ($item) {
+            // Cek berbagai kemungkinan nama kolom gambar di database Anda
+            $imagePath = $item->image_url ?? $item->image ?? $item->foto ?? null;
+            
+            // Konversi path relatif menjadi URL absolut
+            if ($imagePath && !str_starts_with($imagePath, 'http')) {
+                $item->full_image_url = asset('storage/' . ltrim($imagePath, '/'));
+            } else {
+                $item->full_image_url = $imagePath;
+            }
+            
+            return $item;
+        });
+
         return response()->json([
             'success' => true,
-            'data' => $query->latest()->get()
+            'data' => $products
         ]);
     }
 
