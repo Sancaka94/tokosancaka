@@ -2122,9 +2122,13 @@ class PesananAutokirimController extends Controller
         // ==========================================================
         // EKSEKUSI PEMBUATAN PESANAN (CREATE ORDER)
         // ==========================================================
+        // $isSenderPp = $requestData ? (int) $requestData->input('is_sender_pp', 1) : 1;
+        // $qtyInput = $requestData ? (string) $requestData->input('qty', 1) : "1";
+        // $serviceCode = $requestData ? (string) $requestData->service_code_terpilih : (string) $pesanan->service_code;
+
         $isSenderPp = $requestData ? (int) $requestData->input('is_sender_pp', 1) : 1;
-        $qtyInput = $requestData ? (string) $requestData->input('qty', 1) : "1";
-        $serviceCode = $requestData ? (string) $requestData->service_code_terpilih : (string) $pesanan->service_code;
+        $qtyInput = $requestData && $requestData->has('qty') ? (string) $requestData->input('qty') : "1";
+        $serviceCode = !empty($requestData->service_code_terpilih) ? (string) $requestData->service_code_terpilih : (string) $pesanan->service_code;
 
         $isCod = in_array(strtolower($pesanan->metode_pembayaran), ['cod', 'codbarang', 'cod_barang', 'cod_ongkir']);
         $codValue = $isCod ? ($requestData ? (int) $requestData->grand_total : 0) : 0;
