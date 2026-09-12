@@ -2091,7 +2091,7 @@ Route::middleware(['auth'])->prefix('customer')->name('customer.')->group(functi
 
         // 🌟🌟 TAMBAHKAN DUA BARIS INI UNTUK MENU MULTI KOLI 🌟🌟
         Route::get('/koli/create', [PesananAutokirimController::class, 'createMultiAdmin'])->name('koli.create');
-        Route::post('/koli/store', [PesananAutokirimController::class, 'storeMulti'])->name('koli.store');
+        Route::post('/koli/store', [PesananAutokirimController::class, 'storeMulti'])->name('autokirim.koli.store');
     
         Route::post('/pesanan-autokirim/ajax-pickup', [PesananAutokirimController::class, 'generatePickupPointAjax'])->name('pesanan-autokirim.ajax-pickup');
 

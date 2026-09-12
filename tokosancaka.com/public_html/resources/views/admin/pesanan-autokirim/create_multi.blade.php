@@ -45,7 +45,7 @@
     @endif
 
     <!-- FORM UTAMA -->
-    <form x-ref="orderForm" action="{{ route('admin.koli.store') }}" method="POST" @submit="validateForm($event)" class="space-y-8">
+    <form x-ref="orderForm" action="{{ route('admin.autokirim.koli.store') }}" method="POST" @submit="validateForm($event)" class="space-y-8">
         @csrf
         <input type="hidden" name="idempotency_key" value="{{ $idempotencyKey }}">
 
