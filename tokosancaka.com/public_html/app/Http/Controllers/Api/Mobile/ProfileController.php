@@ -195,4 +195,57 @@ class ProfileController extends Controller
             ], 500);
         }
     }
+
+    /**
+     * Menampilkan daftar Karyawan milik Seller/Agent
+     */
+    public function listKaryawan(Request $request)
+    {
+        $user = $request->user();
+        $userId = $user->id_pengguna ?? $user->id;
+
+        // Ambil semua pengguna yang parent_id nya adalah pemilik ini
+        // 🔥 PASTIKAN TABEL PENGGUNA ANDA SUDAH ADA KOLOM 'can_access_pos' (TINYINT 1 DEFAULT 0)
+        $karyawans = User::where('parent_id', $userId)->get();
+
+        return response()->json([
+            'success' => true,
+            'data'    => $karyawans
+        ]);
+    }
+
+    /**
+     * Toggle/Ubah Hak Akses Menu Kasir untuk Karyawan
+     */
+    public function toggleAksesKasir(Request $request)
+    {
+        $user = $request->user();
+        $userId = $user->id_pengguna ?? $user->id;
+
+        $request->validate([
+            'karyawan_id' => 'required|integer',
+            'akses_pos'   => 'required|in:0,1'
+        ]);
+
+        // Pastikan karyawan yang mau diubah benar-benar milik owner ini
+        $karyawan = User::where('id_pengguna', $request->karyawan_id)
+                        ->where('parent_id', $userId)
+                        ->first();
+
+        if (!$karyawan) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Karyawan tidak ditemukan atau Anda tidak memiliki akses ke akun ini.'
+            ], 404);
+        }
+
+        // Simpan Hak Akses
+        $karyawan->can_access_pos = $request->akses_pos;
+        $karyawan->save();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Hak akses berhasil diperbarui.'
+        ]);
+    }
 }
