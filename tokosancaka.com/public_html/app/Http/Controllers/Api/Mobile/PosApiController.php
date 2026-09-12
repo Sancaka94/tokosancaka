@@ -742,16 +742,14 @@ class PosApiController extends Controller
 
             foreach ($karyawans as $k) {
                 // Hitung Penjualan Tunai Karyawan berdasarkan nama di shipping_address
-                $today = \Carbon\Carbon::now('Asia/Jakarta')->toDateString();
-
                 $penjualanTunai = Order::where('user_id', $storeId)
-                    ->where('shipping_address', $operatorName)
+                    ->where('shipping_address', $k->nama_lengkap)
                     ->where(function($q) {
-                        $q->where('payment_method', 'like', '%CASH%')
-                        ->orWhere('payment_method', 'like', '%tunai%');
+                        $q->where('payment_method', 'like', '%tunai%')
+                          ->orWhere('payment_method', 'like', '%cash%');
                     })
                     ->where('status', 'paid')
-                    ->whereDate('created_at', $today) // <--- MENGHITUNG SEMUA TRANSAKSI HARI INI
+                    ->whereDate('created_at', $now)
                     ->sum('total_amount');
 
                 $data[] = [
@@ -786,8 +784,7 @@ class PosApiController extends Controller
         }
     }
 
-   // 1. GET STATUS & RIWAYAT SHIFT SAAT INI
-    public function getShiftStatus(Request $request)
+ public function getShiftStatus(Request $request)
     {
         try {
             $user = Auth::user() ?? auth('sanctum')->user();
@@ -796,17 +793,38 @@ class PosApiController extends Controller
             $storeId = $user->parent_id ?? $user->id_pengguna ?? $user->id;
             $userId = $user->id_pengguna ?? $user->id;
             $operatorName = $user->nama_lengkap;
+            $today = \Carbon\Carbon::now('Asia/Jakarta')->toDateString();
 
-            // Cari shift yang sedang 'open' milik kasir ini
-            $activeShift = ShiftKas::where('user_id', $userId)->where('status', 'open')->first();
+            // 1. QUERY SAKTI: Hitung semua transaksi tunai HARI INI tanpa peduli jam buka shift
+            $penjualanTunai = \App\Models\Order::where(function($q) use ($storeId, $operatorName, $userId) {
+                    // Cari transaksi skema baru (Berdasarkan ID Toko & Nama Kasir)
+                    $q->where(function($q2) use ($storeId, $operatorName) {
+                        $q2->where('user_id', $storeId)
+                           ->where('shipping_address', $operatorName);
+                    })
+                    // ATAU cari transaksi skema lama (Berdasarkan ID Kasir)
+                    ->orWhere('user_id', $userId);
+                })
+                ->where(function($q) {
+                    $q->where('payment_method', 'like', '%CASH%')
+                      ->orWhere('payment_method', 'like', '%cash%')
+                      ->orWhere('payment_method', 'like', '%tunai%');
+                })
+                ->where('status', 'paid')
+                ->whereDate('created_at', $today) // Tarik semua hari ini
+                ->sum('total_amount');
 
+            // 2. Cek apakah ada Shift Aktif di tabel
+            $activeShift = \App\Models\ShiftKas::where('user_id', $userId)->where('status', 'open')->first();
+
+            // 3. Jika SHIFT TUTUP, penjualan_tunai TETAP DIMUNCULKAN
             if (!$activeShift) {
                 return response()->json([
                     'success' => true,
                     'data' => [
                         'is_open' => false,
                         'modal_awal' => 0,
-                        'penjualan_tunai' => 0,
+                        'penjualan_tunai' => (int) $penjualanTunai, // <--- Bikin tetap muncul walau tutup
                         'kas_masuk' => 0,
                         'kas_keluar' => 0,
                         'riwayat' => []
@@ -814,23 +832,11 @@ class PosApiController extends Controller
                 ]);
             }
 
-            // Hitung uang cash yang masuk dari Orders SEJAK shift dibuka
-            $penjualanTunai = Order::where('user_id', $storeId)
-                ->where('shipping_address', $operatorName)
-                ->where(function($q) {
-                    $q->where('payment_method', 'like', '%CASH%')
-                      ->orWhere('payment_method', 'like', '%tunai%');
-                })
-                ->where('status', 'paid')
-                ->where('created_at', '>=', $activeShift->created_at)
-                ->sum('total_amount');
-
-            // Hitung Kas Masuk / Keluar dari tabel shift_flows
-            $kasMasuk = ShiftFlow::where('shift_id', $activeShift->id)->where('type', 'masuk')->sum('nominal');
-            $kasKeluar = ShiftFlow::where('shift_id', $activeShift->id)->where('type', 'keluar')->sum('nominal');
+            // 4. Jika SHIFT BUKA, ambil modal dan flow kas dari tabel
+            $kasMasuk = \App\Models\ShiftFlow::where('shift_id', $activeShift->id)->where('type', 'masuk')->sum('nominal');
+            $kasKeluar = \App\Models\ShiftFlow::where('shift_id', $activeShift->id)->where('type', 'keluar')->sum('nominal');
             
-            // Tarik Riwayat
-            $riwayat = ShiftFlow::where('shift_id', $activeShift->id)
+            $riwayat = \App\Models\ShiftFlow::where('shift_id', $activeShift->id)
                 ->orderBy('created_at', 'desc')
                 ->get()
                 ->map(function($r) {
