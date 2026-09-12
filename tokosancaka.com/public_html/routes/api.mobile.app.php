@@ -271,6 +271,9 @@ Route::prefix('seller')->group(function () {
     Route::post('/karyawan/toggle-akses', [\App\Http\Controllers\Api\Mobile\ProfileController::class, 'toggleAksesKasir']);
 
 
+    Route::post('/karyawan/update-akses', [\App\Http\Controllers\Api\Mobile\ProfileController::class, 'updateAksesKaryawan']);
+
+
     Route::get('/customer/pesanan/riwayat', [\App\Http\Controllers\Api\Mobile\PesananController::class, 'riwayat']);
 
     // --- A. GENERAL AUTH & USER ---

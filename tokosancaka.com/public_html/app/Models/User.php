@@ -35,6 +35,8 @@ class User extends Authenticatable
      * Atribut yang dapat diisi massal
      */
     protected $fillable = [
+        'parent_id', // <-- DITAMBAHKAN
+        'akses_menu', // <-- DITAMBAHKAN
         'nomor_rm', 'nama_lengkap', 'email', 'password', 'no_wa',
         'store_name', 'province', 'regency', 'district', 'village',
         'postal_code', 'address_detail', 'bank_name', 'bank_account_name',
@@ -59,6 +61,7 @@ class User extends Authenticatable
     protected function casts(): array
     {
         return [
+            'akses_menu'       => 'array',
             'profile_setup_at' => 'datetime',
             'token_expiry'     => 'datetime',
             'last_seen_at'     => 'datetime',
