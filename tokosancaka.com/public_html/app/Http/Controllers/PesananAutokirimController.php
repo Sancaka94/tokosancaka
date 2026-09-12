@@ -136,7 +136,7 @@ class PesananAutokirimController extends Controller
 
         // 4. PERCABANGAN ROUTING VIEW (INI YANG MEMPERBAIKI BUG ANDA)
         if ($roleType === 'admin_multi') {
-            return view('admin.pesanan_autokirim.create_multi', compact('kategoriBarang', 'metodePembayaran'));
+            return view('admin.pesanan-autokirim.create_multi', compact('kategoriBarang', 'metodePembayaran'));
         }
 
         if ($roleType === 'admin') {
