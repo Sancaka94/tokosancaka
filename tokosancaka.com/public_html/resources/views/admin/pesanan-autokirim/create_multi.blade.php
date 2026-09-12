@@ -290,7 +290,8 @@
                             <input type="hidden" name="metode_pembayaran" x-bind:value="tipePesanan === 'cod' ? jenisCod : selectedPayment" :disabled="tipePesanan !== 'cod'">
                         </div>
 
-                        <div class="grid grid-cols-2 gap-4">
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <!-- 1. Kategori -->
                             <div>
                                 <label class="block text-xs font-medium text-gray-700 mb-1.5">KATEGORI BARANG</label>
                                 <select name="item_type" x-model="kategoriBarang" required class="uppercase w-full border border-gray-300 rounded-md text-xs focus:outline-none focus:ring-1 focus:ring-black focus:border-black px-3 py-2.5 bg-white">
@@ -308,11 +309,22 @@
                                     <option value="OTM001">PERLENGKAPAN MOBIL & MOTOR</option>
                                 </select>
                             </div>
+
+                            <!-- 2. Asuransi -->
                             <div>
                                 <label class="block text-xs font-medium text-gray-700 mb-1.5">ASURANSI PENGIRIMAN</label>
                                 <select name="ansuransi" x-model="asuransi" @change="resetSemuaOngkir()" class="uppercase w-full border border-gray-300 rounded-md text-xs focus:outline-none focus:ring-1 focus:ring-black focus:border-black px-3 py-2.5 bg-white">
                                     <option value="tidak">TIDAK</option>
                                     <option value="iya">YA, ASURANSIKAN</option>
+                                </select>
+                            </div>
+
+                            <!-- 3. Metode Serah Terima (BARU) -->
+                            <div>
+                                <label class="block text-xs font-medium text-gray-700 mb-1.5">METODE SERAH TERIMA</label>
+                                <select name="is_sender_pp" x-model="isSenderPp" @change="resetSemuaOngkir()" class="uppercase w-full border border-gray-300 rounded-md text-xs focus:outline-none focus:ring-1 focus:ring-black focus:border-black px-3 py-2.5 bg-white text-gray-800">
+                                    <option value="1">KURIR JEMPUT (PICKUP)</option>
+                                    <option value="0">ANTAR KE CABANG (DROPOFF)</option>
                                 </select>
                             </div>
                         </div>
@@ -360,11 +372,6 @@
                                         <input type="text" x-model="paket.tinggi" @input="paket.tinggi = $event.target.value.replace(/\D/g, ''); paket.selectedOngkir = 0;" placeholder="T" class="w-1/3 border border-gray-300 rounded text-center text-xs py-2 focus:border-black">
                                     </div>
                                 </div>
-                            </div>
-
-                            <div class="text-[10px] text-gray-500 bg-gray-50 p-2 rounded flex justify-between mb-4 border border-gray-100">
-                                <span>Vol: <span class="font-bold text-gray-800" x-text="getVolumetrik(paket) + ' kg'"></span></span>
-                                <span>Tagihan: <span class="font-bold text-red-600" x-text="getChargeable(paket) + ' kg'"></span></span>
                             </div>
 
                             <!-- Tombol Cek Ongkir Koli -->
@@ -658,6 +665,7 @@ function orderFormData() {
         displayNilaiBarang: '',
         asuransi: 'tidak',
         jenisCod: 'CODBARANG',
+        isSenderPp: 1,
 
         simpanPengirim: false,
         simpanPenerima: false,
@@ -740,19 +748,6 @@ function orderFormData() {
         removePackage(index) {
             this.packages.splice(index, 1);
             this.checkFormValidity();
-        },
-
-        getVolumetrik(paket) {
-            let p = parseInt(paket.panjang) || 10;
-            let l = parseInt(paket.lebar) || 10;
-            let t = parseInt(paket.tinggi) || 10;
-            return ((p * l * t) / 6000).toFixed(2);
-        },
-
-        getChargeable(paket) {
-            let v = parseFloat(this.getVolumetrik(paket)) * 1000;
-            let b = parseInt(paket.berat) || 1000;
-            return (Math.max(v, b) / 1000).toFixed(2);
         },
 
         resetSemuaOngkir() {
@@ -1010,6 +1005,7 @@ function orderFormData() {
                 fd.append('destination_id', this.receiverDistrictId);
                 fd.append('berat_gram', pkt.berat);
                 fd.append('qty', 1);
+                fd.append('is_sender_pp', this.isSenderPp);
                 fd.append('panjang_cm', pkt.panjang || 10);
                 fd.append('lebar_cm', pkt.lebar || 10);
                 fd.append('tinggi_cm', pkt.tinggi || 10);
