@@ -34,8 +34,11 @@ class PosApiController extends Controller
                             })
                             ->where('status', 'active');
             
-            if ($request->filled('search')) {
-                $query->where('name', 'like', '%' . $request->search . '%');
+           if ($request->filled('search')) {
+                $query->where(function($q) use ($request) {
+                    $q->where('name', 'like', '%' . $request->search . '%')
+                      ->orWhere('sku', $request->search); // <--- Tambahan untuk scan barcode
+                });
             }
 
             // Ambil data produk
