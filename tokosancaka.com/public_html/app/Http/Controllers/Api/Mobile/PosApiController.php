@@ -91,13 +91,17 @@ class PosApiController extends Controller
             // 🔥 KUNCI PERBAIKAN: Pesanan menjadi milik Toko (Owner)
             $storeId = $user->parent_id ?? $user->id_pengguna ?? $user->id;
 
+            // 🔥 TANGKAP NAMA OPERATOR / KARYAWAN YANG SEDANG LOGIN
+            $operatorName = $user->nama_lengkap ?? 'Kasir';
+
             $order = Order::create([
                 'invoice_number'   => $invoiceNumber,
-                'user_id'          => $storeId, // <--- UBAH DI SINI
+                'user_id'          => $storeId, // ID Pemilik Toko
                 'subtotal'         => $grandTotal,
                 'shipping_cost'    => 0, 
                 'shipping_method'  => 'Di Tempat (POS)',
-                'shipping_address' => 'Pembelian di Toko (POS)',
+                // 🔥 SIMPAN NAMA KASIR DI SINI AGAR TIDAK PERLU UBAH DATABASE
+                'shipping_address' => $operatorName, 
                 'total_amount'     => $grandTotal,
                 'payment_method'   => $request->payment_method,
                 'status'           => $status, 
