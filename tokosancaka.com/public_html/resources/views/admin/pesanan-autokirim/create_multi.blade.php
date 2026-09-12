@@ -44,6 +44,22 @@
         </div>
     @endif
 
+    <!-- TAMBAHKAN BLOK INI -->
+    <!-- Alert Error Validasi Input Form -->
+    @if ($errors->any())
+        <div class="p-4 mb-6 text-sm text-red-700 bg-red-50 rounded-md border border-red-200 shadow-sm">
+            <div class="flex items-center gap-3 mb-2">
+                <i class="fa-solid fa-triangle-exclamation text-lg text-red-600"></i>
+                <span class="font-bold">Periksa kembali data Anda!</span>
+            </div>
+            <ul class="list-disc pl-9">
+                @foreach ($errors->all() as $error)
+                    <li>{{ $error }}</li>
+                @endforeach
+            </ul>
+        </div>
+    @endif
+
     <!-- FORM UTAMA -->
     <form x-ref="orderForm" action="{{ route('admin.autokirim.koli.store') }}" method="POST" @submit="validateForm($event)" class="space-y-8">
         @csrf
@@ -82,7 +98,7 @@
                         <div class="col-span-2 sm:col-span-1 relative" @click.away="showContactSender = false">
                             <label class="block text-xs font-medium text-gray-700 mb-1.5">NAMA LENGKAP PENGIRIM <span class="text-red-500">*</span></label>
                             <div class="relative">
-                                <input type="text" id="pengirim_nama" name="sender_name" x-model="pengirimNama" @input.debounce.400ms="searchContact('sender')" @focus="if(pengirimNama.length >= 2) showContactSender = true" required placeholder="Ketik nama kontak..." class="uppercase w-full border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-black focus:border-black px-4 py-2.5 bg-white transition duration-200" autocomplete="off">
+                                <input type="text" id="pengirim_nama" name="pengirim_nama" x-model="pengirimNama" @input.debounce.400ms="searchContact('sender')" @focus="if(pengirimNama.length >= 2) showContactSender = true" required placeholder="Ketik nama kontak..." class="uppercase w-full border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-black focus:border-black px-4 py-2.5 bg-white transition duration-200" autocomplete="off">
                                 <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
                                     <i class="fa-solid fa-spinner fa-spin text-black" x-show="isSearchingContactSender" x-cloak></i>
                                 </div>
@@ -105,7 +121,7 @@
 
                         <div class="col-span-2 sm:col-span-1">
                             <label class="block text-xs font-medium text-gray-700 mb-1.5">NOMOR HP / WA <span class="text-red-500">*</span></label>
-                            <input type="text" id="pengirim_hp" name="sender_phone" value="{{ old('sender_phone') }}" required @input.debounce.1000ms="autoGeneratePickup()" class="uppercase w-full border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-black focus:border-black px-4 py-2.5 bg-white transition duration-200">
+                            <input type="text" id="pengirim_hp" name="pengirim_hp" value="{{ old('pengirim_hp') }}" required @input.debounce.1000ms="autoGeneratePickup()" class="uppercase w-full border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-black focus:border-black px-4 py-2.5 bg-white transition duration-200">
                         </div>
 
                         <!-- Autocomplete Alamat Pengirim -->
@@ -119,13 +135,13 @@
                                 </div>
                             </div>
 
-                            <input type="hidden" name="sender_district_id" x-model="senderDistrictId">
-                            <input type="hidden" name="sender_subdistrict_id" x-model="senderSubdistrictId">
-                            <input type="hidden" name="sender_postal_code" x-model="senderPostalCode">
-                            <input type="hidden" name="sender_province" x-model="senderProvince">
-                            <input type="hidden" name="sender_regency" x-model="senderRegency">
-                            <input type="hidden" name="sender_district" x-model="senderDistrict">
-                            <input type="hidden" name="sender_village" x-model="senderVillage">
+                            <input type="hidden" name="pengirim_district_id" x-model="senderDistrictId">
+                            <input type="hidden" name="pengirim_subdistrict_id" x-model="senderSubdistrictId">
+                            <input type="hidden" name="pengirim_postal_code" x-model="senderPostalCode">
+                            <input type="hidden" name="pengirim_province" x-model="senderProvince">
+                            <input type="hidden" name="pengirim_regency" x-model="senderRegency">
+                            <input type="hidden" name="pengirim_district" x-model="senderDistrict">
+                            <input type="hidden" name="pengirim_village" x-model="senderVillage">
 
                             <div x-show="showSenderDropdown" x-transition class="absolute z-[110] w-full mt-1 bg-white rounded-md shadow-lg border border-gray-200 max-h-48 overflow-y-auto" x-cloak>
                                 <template x-if="senderResults.length > 0">
@@ -167,7 +183,7 @@
                         <div class="col-span-2 sm:col-span-1 relative" @click.away="showContactReceiver = false">
                             <label class="block text-xs font-medium text-gray-700 mb-1.5">NAMA LENGKAP PENERIMA <span class="text-red-500">*</span></label>
                             <div class="relative">
-                                <input type="text" id="penerima_nama" name="receiver_name" x-model="penerimaNama" @input.debounce.400ms="searchContact('receiver')" @focus="if(penerimaNama.length >= 2) showContactReceiver = true" required placeholder="Ketik nama kontak..." class="uppercase w-full border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-black focus:border-black px-4 py-2.5 bg-white transition" autocomplete="off">
+                                <input type="text" id="penerima_nama" name="penerima_nama" x-model="penerimaNama" @input.debounce.400ms="searchContact('receiver')" @focus="if(penerimaNama.length >= 2) showContactReceiver = true" required placeholder="Ketik nama kontak..." class="uppercase w-full border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-black focus:border-black px-4 py-2.5 bg-white transition" autocomplete="off">
                             </div>
 
                             <div x-show="showContactReceiver" x-transition class="absolute z-[120] w-full mt-1 bg-white rounded-md shadow-lg border border-gray-200 max-h-48 overflow-y-auto" x-cloak>
@@ -186,7 +202,7 @@
 
                         <div class="col-span-2 sm:col-span-1">
                             <label class="block text-xs font-medium text-gray-700 mb-1.5">NOMOR HP / WA <span class="text-red-500">*</span></label>
-                            <input type="text" id="penerima_hp" name="receiver_phone" value="{{ old('receiver_phone') }}" required class="uppercase w-full border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-black focus:border-black px-4 py-2.5 bg-white transition">
+                            <input type="text" id="penerima_hp" name="penerima_hp" value="{{ old('penerima_hp') }}" required class="uppercase w-full border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-black focus:border-black px-4 py-2.5 bg-white transition">
                         </div>
 
                         <!-- Autocomplete Alamat Penerima -->
@@ -200,13 +216,13 @@
                                 </div>
                             </div>
 
-                            <input type="hidden" name="receiver_district_id" x-model="receiverDistrictId">
-                            <input type="hidden" name="receiver_subdistrict_id" x-model="receiverSubdistrictId">
-                            <input type="hidden" name="receiver_postal_code" x-model="receiverPostalCode">
-                            <input type="hidden" name="receiver_province" x-model="receiverProvince">
-                            <input type="hidden" name="receiver_regency" x-model="receiverRegency">
-                            <input type="hidden" name="receiver_district" x-model="receiverDistrict">
-                            <input type="hidden" name="receiver_village" x-model="receiverVillage">
+                            <input type="hidden" name="penerima_district_id" x-model="receiverDistrictId">
+                            <input type="hidden" name="penerima_subdistrict_id" x-model="receiverSubdistrictId">
+                            <input type="hidden" name="penerima_postal_code" x-model="receiverPostalCode">
+                            <input type="hidden" name="penerima_province" x-model="receiverProvince">
+                            <input type="hidden" name="penerima_regency" x-model="receiverRegency">
+                            <input type="hidden" name="penerima_district" x-model="receiverDistrict">
+                            <input type="hidden" name="penerima_village" x-model="receiverVillage">
 
                             <div x-show="showReceiverDropdown" x-transition class="absolute z-[110] w-full mt-1 bg-white rounded-md shadow-lg border border-gray-200 max-h-48 overflow-y-auto" x-cloak>
                                 <template x-if="receiverResults.length > 0">
