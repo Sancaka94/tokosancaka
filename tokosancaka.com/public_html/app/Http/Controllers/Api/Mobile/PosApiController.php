@@ -12,7 +12,7 @@ use Illuminate\Support\Facades\Auth;
 
 class PosApiController extends Controller
 {
-    public function getProducts(Request $request)
+   public function getProducts(Request $request)
     {
         try {
             $user = Auth::user() ?? auth('sanctum')->user();
@@ -25,8 +25,13 @@ class PosApiController extends Controller
             }
 
             $sellerName = $user->nama_lengkap;
+            $userId = $user->id_pengguna ?? $user->id; // Mengambil ID untuk mencocokkan Admin
 
-            $query = Product::where('seller_name', $sellerName)
+            // 🔥 PERBAIKAN: Filter Kombinasi (Cari seller_name ATAU store_id)
+            $query = Product::where(function($q) use ($sellerName, $userId) {
+                                $q->where('seller_name', $sellerName)
+                                  ->orWhere('store_id', $userId);
+                            })
                             ->where('status', 'active')
                             ->where('stock', '>', 0);
             
@@ -37,7 +42,7 @@ class PosApiController extends Controller
             // Ambil data produk
             $products = $query->latest()->get();
 
-            // Format URL Gambar (Menggunakan strpos agar aman di semua versi PHP)
+            // Format URL Gambar (Aman di semua versi PHP)
             $products->map(function ($item) {
                 $imagePath = $item->image_url ?? $item->image ?? $item->foto ?? null;
                 
@@ -56,7 +61,6 @@ class PosApiController extends Controller
             ]);
 
         } catch (\Throwable $e) { 
-            // 🔴 MENGGUNAKAN \Throwable AGAR FATAL ERROR PHP TERTANGKAP KE HP
             return response()->json([
                 'success' => false,
                 'message' => 'ERROR ASLI: ' . $e->getMessage() . ' | Baris: ' . $e->getLine()
