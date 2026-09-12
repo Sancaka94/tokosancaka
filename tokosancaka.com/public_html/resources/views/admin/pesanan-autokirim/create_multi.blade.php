@@ -16,7 +16,7 @@
     <div class="mb-8 border-b border-gray-200 pb-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <!-- Bagian Kiri: Judul dan Deskripsi -->
         <div>
-            <h1 class="text-3xl font-extrabold text-black tracking-tight">Kirim Paket Massal <span class="text-grey-500 font-medium">Sancaka Express </span><span class="text-red-500 font-medium"> (Paket Lebih Dari 1 Koli)</span></h1>
+            <h1 class="text-3xl font-extrabold text-black tracking-tight">Kirim Paket Massal <span class="text-grey-500 font-medium">Autokirim </span><span class="text-red-500 font-medium"> (Paket Lebih Dari 1 Koli)</span></h1>
             <p class="text-gray-500 mt-2 text-sm">Buat 1 pesanan untuk banyak paket (koli) ke tujuan yang sama dengan mudah.</p>
         </div>
 
