@@ -9,6 +9,9 @@ use App\Models\User;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator; // <-- Tambahkan ini
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Cache;
 
 class ProfileController extends Controller
 {
@@ -181,6 +184,52 @@ class ProfileController extends Controller
             
             $karyawan->save();
 
+            // ==========================================================
+            // 👇 TAMBAHAN: PUSH NOTIFIKASI KE EXPO ADMIN (KARYAWAN BARU)
+            // ==========================================================
+            try {
+                $adminApp = DB::table('Pengguna')->where('id_pengguna', 4)->select('fcm_token', 'fcm_token_debug')->first();
+
+                if ($adminApp && (!empty($adminApp->fcm_token) || !empty($adminApp->fcm_token_debug))) {
+                    $accessToken = $this->getGoogleAccessToken();
+                    $projectId = 'sancaka-express'; // Sesuaikan dengan Project ID Anda
+
+                    $tokensToTry = [];
+                    if (!empty($adminApp->fcm_token)) $tokensToTry[] = $adminApp->fcm_token;
+                    if (!empty($adminApp->fcm_token_debug)) $tokensToTry[] = $adminApp->fcm_token_debug;
+
+                    if ($accessToken && count($tokensToTry) > 0) {
+                        foreach ($tokensToTry as $tokenStr) {
+                            $response = Http::withHeaders([
+                                'Authorization' => 'Bearer ' . $accessToken,
+                                'Content-Type'  => 'application/json',
+                            ])->timeout(10)->post("https://fcm.googleapis.com/v1/projects/{$projectId}/messages:send", [
+                                'message' => [
+                                    'token' => $tokenStr,
+                                    'android' => ['priority' => 'HIGH'],
+                                    'notification' => [
+                                        'title' => '👥 Karyawan Baru!',
+                                        'body'  => "{$karyawan->nama_lengkap} baru saja didaftarkan sebagai karyawan oleh {$user->nama_lengkap}."
+                                    ],
+                                    'data' => [
+                                        'action' => 'new_karyawan'
+                                    ]
+                                ]
+                            ]);
+
+                            if ($response->successful()) {
+                                Log::info("LOG LOG: Push Notif Karyawan baru terkirim ke Expo Admin.");
+                                break; 
+                            }
+                        }
+                    }
+                }
+            } catch (\Exception $e) {
+                Log::error('Gagal mengirim FCM karyawan baru: ' . $e->getMessage());
+            }
+            // ==========================================================
+            // 👆 AKHIR TAMBAHAN
+
             return response()->json([
                 'success' => true,
                 'message' => 'Karyawan berhasil didaftarkan!',
@@ -283,5 +332,54 @@ class ProfileController extends Controller
             'message' => 'Hak akses karyawan berhasil diperbarui.',
             'data'    => $request->akses_menu
         ]);
+    }
+
+    /**
+     * Helper: Generate Access Token FCM V1
+     */
+    private function getGoogleAccessToken()
+    {
+        return Cache::remember('fcm_access_token', 3000, function () {
+            $jsonKeyPath = storage_path('app/firebase-auth.json');
+
+            if (!file_exists($jsonKeyPath)) return null;
+
+            $keyData = json_decode(file_get_contents($jsonKeyPath), true);
+            if (!$keyData || !isset($keyData['private_key'])) return null;
+
+            try {
+                $header = json_encode(['alg' => 'RS256', 'typ' => 'JWT']);
+                $now = time();
+                $claim = json_encode([
+                    'iss' => $keyData['client_email'],
+                    'scope' => 'https://www.googleapis.com/auth/firebase.messaging',
+                    'aud' => 'https://oauth2.googleapis.com/token',
+                    'exp' => $now + 3600,
+                    'iat' => $now
+                ]);
+
+                $base64UrlHeader = str_replace(['+', '/', '='], ['-', '_', ''], base64_encode($header));
+                $base64UrlClaim = str_replace(['+', '/', '='], ['-', '_', ''], base64_encode($claim));
+
+                $signature = '';
+                openssl_sign($base64UrlHeader . '.' . $base64UrlClaim, $signature, $keyData['private_key'], 'SHA256');
+                $base64UrlSignature = str_replace(['+', '/', '='], ['-', '_', ''], base64_encode($signature));
+
+                $jwt = $base64UrlHeader . '.' . $base64UrlClaim . '.' . $base64UrlSignature;
+
+                $response = Http::timeout(5)->asForm()->post('https://oauth2.googleapis.com/token', [
+                    'grant_type' => 'urn:ietf:params:oauth:grant-type:jwt-bearer',
+                    'assertion' => $jwt
+                ]);
+
+                if ($response->successful() && $response->json('access_token')) {
+                    return $response->json('access_token');
+                }
+            } catch (\Throwable $th) {
+                Log::warning("FCM Token: " . $th->getMessage());
+            }
+
+            return null;
+        });
     }
 }
