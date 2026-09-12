@@ -742,14 +742,16 @@ class PosApiController extends Controller
 
             foreach ($karyawans as $k) {
                 // Hitung Penjualan Tunai Karyawan berdasarkan nama di shipping_address
+                $today = \Carbon\Carbon::now('Asia/Jakarta')->toDateString();
+
                 $penjualanTunai = Order::where('user_id', $storeId)
-                    ->where('shipping_address', $k->nama_lengkap)
+                    ->where('shipping_address', $operatorName)
                     ->where(function($q) {
-                        $q->where('payment_method', 'like', '%tunai%')
-                          ->orWhere('payment_method', 'like', '%cash%');
+                        $q->where('payment_method', 'like', '%CASH%')
+                        ->orWhere('payment_method', 'like', '%tunai%');
                     })
                     ->where('status', 'paid')
-                    ->whereDate('created_at', $now)
+                    ->whereDate('created_at', $today) // <--- MENGHITUNG SEMUA TRANSAKSI HARI INI
                     ->sum('total_amount');
 
                 $data[] = [
