@@ -42,7 +42,7 @@ class PesananAutokirimController extends Controller
         return $this->_renderCreateForm('admin');
     }
 
-    private function _renderCreateForm($roleType)
+   private function _renderCreateForm($roleType)
     {
         $kategoriBarang = [
             'Pakaian / Fashion', 'Elektronik & Gadget', 'Dokumen / Surat',
@@ -77,8 +77,8 @@ class PesananAutokirimController extends Controller
             ]
         ];
 
-        // --- TAMBAHAN KODE: METODE CASH & CUSTOMER PAY KHUSUS ADMIN ---
-        if ($roleType === 'admin') {
+        // --- TAMBAHAN KODE: METODE CASH & CUSTOMER PAY KHUSUS ADMIN DAN MULTI KOLI ---
+        if ($roleType === 'admin' || $roleType === 'admin_multi') {
             array_unshift($metodePembayaran, [
                 'id'          => 'customer_pay',
                 'nama'        => 'Customer Pay (Bayar Mandiri via Invoice)',
@@ -92,7 +92,6 @@ class PesananAutokirimController extends Controller
                 'deskripsi'   => 'Terima tunai dari pelanggan. Resi (AWB) langsung terbit tanpa potong saldo.'
             ]);
         }
-        // ------------------------------------------------
 
         // 2. MENGAMBIL METODE TRIPAY SECARA DINAMIS DARI API
         $currentMode = \App\Models\Api::getValue('TRIPAY_MODE', 'global', 'sandbox');
@@ -133,6 +132,11 @@ class PesananAutokirimController extends Controller
                     'deskripsi' => 'Biaya Admin Tripay: Rp ' . number_format($channel['total_fee']['flat'] ?? 0, 0, ',', '.')
                 ];
             }
+        }
+
+        // 4. PERCABANGAN ROUTING VIEW (INI YANG MEMPERBAIKI BUG ANDA)
+        if ($roleType === 'admin_multi') {
+            return view('admin.pesanan_autokirim.create_multi', compact('kategoriBarang', 'metodePembayaran'));
         }
 
         if ($roleType === 'admin') {
