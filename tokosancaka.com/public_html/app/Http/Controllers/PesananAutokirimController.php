@@ -2704,60 +2704,6 @@ return redirect()->route('admin.pesanan-autokirim.index')->with('success', "Orde
         return $this->_renderCreateForm('admin_multi');
     }
 
-    private function _renderCreateForm($roleType)
-{
-    $kategoriBarang = [
-        'Pakaian / Fashion', 'Elektronik & Gadget', 'Dokumen / Surat',
-        'Makanan Kering / Herbal', 'Kosmetik & Kecantikan', 'Aksesoris & Sparepart', 'Lainnya'
-    ];
-
-    $metodePembayaran = [
-        ['id' => 'potong_saldo', 'nama' => 'Potong Saldo Akun / Wallet', 'icon' => 'fa-solid fa-wallet text-blue-600', 'deskripsi' => 'Potong saldo otomatis dari akun Anda (Proses Instan)'],
-        ['id' => 'dana_binding', 'nama' => 'DANA (One-Click Binding)', 'icon' => 'fa-solid fa-mobile-screen-button text-blue-500', 'deskripsi' => 'Bayar instan dengan akun DANA yang sudah terhubung'],
-        ['id' => 'dana_pg', 'nama' => 'DANA Payment Gateway', 'icon' => 'fa-solid fa-qrcode text-blue-400', 'deskripsi' => 'Redirect ke aplikasi atau web DANA untuk pembayaran'],
-        ['id' => 'doku_jokul', 'nama' => 'DOKU Payment Gateway', 'icon' => 'fa-solid fa-shield-halved text-red-600', 'deskripsi' => 'Bayar via DOKU (Kartu Kredit, VA, Retail, E-Wallet)']
-    ];
-
-    // Jika yang akses adalah admin atau admin_multi, tambahkan Cash & Customer Pay
-    if ($roleType === 'admin' || $roleType === 'admin_multi') {
-        array_unshift($metodePembayaran, ['id' => 'customer_pay', 'nama' => 'Customer Pay (Bayar Mandiri via Invoice)', 'icon' => 'fa-solid fa-link text-indigo-600', 'deskripsi' => 'Generate pesanan pending, lalu arahkan ke Invoice agar customer bayar sendiri.']);
-        array_unshift($metodePembayaran, ['id' => 'cash', 'nama' => 'Cash / Tunai', 'icon' => 'fa-solid fa-money-bill-wave text-emerald-600', 'deskripsi' => 'Terima tunai dari pelanggan. Resi (AWB) langsung terbit tanpa potong saldo.']);
-    }
-
-    $currentMode = \App\Models\Api::getValue('TRIPAY_MODE', 'global', 'sandbox');
-    $cacheKey = 'tripay_channels_list_' . $currentMode;
-    $tripayChannels = json_decode(\Illuminate\Support\Facades\Redis::get($cacheKey), true);
-
-    if (!$tripayChannels) {
-        $baseUrlTripay = ($currentMode === 'production') ? 'https://tripay.co.id/api' : 'https://tripay.co.id/api-sandbox';
-        $apiKeyTripay  = \App\Models\Api::getValue('TRIPAY_API_KEY', $currentMode);
-
-        try {
-            $response = \Illuminate\Support\Facades\Http::withToken($apiKeyTripay)->timeout(10)->get($baseUrlTripay . '/merchant/payment-channel');
-            if ($response->successful()) {
-                $tripayChannels = $response->json()['data'] ?? [];
-                \Illuminate\Support\Facades\Redis::setex($cacheKey, 86400, json_encode($tripayChannels));
-            } else { $tripayChannels = []; }
-        } catch (\Exception $e) { $tripayChannels = []; }
-    }
-
-    foreach ($tripayChannels as $channel) {
-        if ($channel['active']) {
-            $metodePembayaran[] = ['id' => 'tripay_' . $channel['code'], 'nama' => $channel['name'], 'icon' => $channel['icon_url'], 'deskripsi' => 'Biaya Admin Tripay: Rp ' . number_format($channel['total_fee']['flat'] ?? 0, 0, ',', '.')];
-        }
-    }
-
-    // PENGECEKAN VIEW YANG TEPAT (INI YANG MEMPERBAIKI MASALAH ANDA)
-    if ($roleType === 'admin_multi') {
-        return view('admin.pesanan_autokirim.create_multi', compact('kategoriBarang', 'metodePembayaran'));
-    }
-
-    if ($roleType === 'admin') {
-        return view('admin.pesanan_autokirim.create', compact('kategoriBarang', 'metodePembayaran'));
-    }
-
-    return view('customer.pesanan_autokirim.create', compact('kategoriBarang', 'metodePembayaran'));
-}
 
     // 3. Fungsi Store Multi Koli Utama
     public function storeMulti(Request $request)
