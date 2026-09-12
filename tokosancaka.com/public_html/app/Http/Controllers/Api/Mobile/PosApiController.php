@@ -297,7 +297,7 @@ class PosApiController extends Controller
    // ==============================================
     // HELPER: DANA GATEWAY (GAPURA IPG FULL)
     // ==============================================
-    private function createDanaPaymentGateway($invoiceNumber, $amount, $user)
+    private function createDanaPaymentGateway($invoiceNumber, $amount, $user, $paymentMethod = 'ALL')
     {
         Log::info('[API MOBILE - POS] Memulai request DANA untuk POS: ' . $invoiceNumber);
 
@@ -327,12 +327,9 @@ class PosApiController extends Controller
                     "isDeeplink" => "N"
                 ]
             ],
-            // Catatan: payOptionDetails sengaja dihapus agar SEMUA metode bayar di Gapura terbuka
-
             "additionalInfo"     => [
                 "order"   => [
                     "orderTitle"        => substr("POS - " . $invoiceNumber, 0, 64),
-                    // 👇 INI YANG BIKIN INVALID FORMAT SEBELUMNYA KARENA TIDAK ADA
                     "merchantTransType" => "01", 
                     "scenario"          => "REDIRECT",
                     "buyer"             => [
@@ -340,16 +337,26 @@ class PosApiController extends Controller
                         "externalUserType" => "MERCHANT_USER",
                         "nickname"         => substr($user->nama_lengkap ?? 'Customer', 0, 40)
                     ]
-                    // 👆 ========================================================
                 ],
                 "mcc"     => "5732",
                 "envInfo" => [
                     "sourcePlatform"    => "IPG",
                     "terminalType"      => "SYSTEM",
-                    "orderTerminalType" => "WEB" // Ubah ke WEB agar tampil penuh seperti di browser PC
+                    "orderTerminalType" => "WEB" 
                 ]
             ]
         ];
+
+        // WAJIB UNTUK QRIS: Tambahkan externalStoreId dan tentukan payMethod
+        if (strtoupper($paymentMethod) === 'QRIS') {
+            // Gunakan Store ID dari DANA Sandbox/Production Anda
+            $body['externalStoreId'] = config('services.dana.external_store_id', '20050811210214220002'); 
+            $body['payOptionDetails'] = [
+                [
+                    "payMethod" => "QR_CODE"
+                ]
+            ];
+        }
 
         $jsonBody = json_encode($body, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 
@@ -376,9 +383,24 @@ class PosApiController extends Controller
             $result = $response->json();
 
             if (isset($result['responseCode']) && $result['responseCode'] === '2005400') {
+                
+                // 1. Tangkap Raw String QRIS (Jika metode = QRIS)
+                if (isset($result['additionalInfo']['paymentCode'])) {
+                    return [
+                        'success' => true, 
+                        'redirect_url' => $result['additionalInfo']['paymentCode'], // Berisi String QRIS (000201010212...)
+                        'is_qris' => true
+                    ];
+                }
+
+                // 2. Tangkap URL Web (Jika metode = ALL / E-Wallet)
                 $redirectUrl = $result['appLinkUrl'] ?? $result['webRedirectUrl'] ?? null;
                 if (!empty($redirectUrl)) {
-                    return ['success' => true, 'redirect_url' => $redirectUrl];
+                    return [
+                        'success' => true, 
+                        'redirect_url' => $redirectUrl,
+                        'is_qris' => false
+                    ];
                 }
             }
 
