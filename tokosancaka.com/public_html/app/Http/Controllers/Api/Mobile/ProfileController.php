@@ -15,14 +15,27 @@ use Illuminate\Support\Facades\Cache;
 
 class ProfileController extends Controller
 {
-    /**
-     * Mengambil data profil user saat ini
-     */
     public function show(Request $request)
     {
+        $user = $request->user();
+
+        // 🔥 TAMBAHAN: Tarik nomor WA Pusat (Owner) jika login sebagai Karyawan
+        $waPusat = $user->no_wa; // Default pakai nomor sendiri
+        
+        if (!empty($user->parent_id)) {
+            // Cari data bos/pemilik toko
+            $owner = \App\Models\User::where('id_pengguna', $user->parent_id)->first();
+            if ($owner) {
+                $waPusat = $owner->no_wa; // Timpa dengan nomor bos
+            }
+        }
+        
+        // Sisipkan variabel wa_pusat ke dalam data user yang dikirim ke HP
+        $user->wa_pusat = $waPusat;
+
         return response()->json([
             'success' => true,
-            'data' => $request->user()
+            'data' => $user
         ]);
     }
 
