@@ -841,7 +841,8 @@ class PosApiController extends Controller
                         'type' => $r->type,
                         'nominal' => $r->nominal,
                         'ket' => $r->keterangan,
-                        'time' => $r->created_at->format('H:i')
+                        'time' => $r->created_at->format('H:i'),
+                        'foto' => $r->foto ? asset('storage/' . $r->foto) : null,
                     ];
                 });
 
@@ -892,15 +893,24 @@ class PosApiController extends Controller
         return response()->json(['success' => true, 'message' => 'Shift berhasil dibuka']);
     }
 
-    public function cashFlowShift(Request $request)
+   public function cashFlowShift(Request $request)
     {
         $user = Auth::user() ?? auth('sanctum')->user();
         if (!$user) return response()->json(['success' => false, 'message' => 'Unauthorized'], 401);
 
+        $request->validate([
+            'type' => 'required|in:masuk,keluar',
+            'nominal' => 'required|numeric',
+            'keterangan' => 'required|string',
+            // Wajib foto jika tipe = keluar
+            'foto' => 'required_if:type,keluar|image|mimes:jpeg,png,jpg|max:3072' 
+        ], [
+            'foto.required_if' => 'Foto nota / bukti pengeluaran wajib dilampirkan!'
+        ]);
+
         $storeId = $user->parent_id ?? $user->id_pengguna ?? $user->id;
         $userId = $user->id_pengguna ?? $user->id;
 
-        // 🔥 AUTO-RECOVERY: Jika shift di database tidak ada, otomatis buatkan agar tombol tidak gagal
         $activeShift = ShiftKas::where('user_id', $userId)->where('status', 'open')->first();
         if (!$activeShift) {
             $activeShift = ShiftKas::create([
@@ -911,11 +921,21 @@ class PosApiController extends Controller
             ]);
         }
 
+        // Proses Upload Foto
+        $fotoPath = null;
+        if ($request->hasFile('foto')) {
+            $fotoPath = $request->file('foto')->store('bukti_kas', 'public');
+        }
+
         ShiftFlow::create([
             'shift_id' => $activeShift->id,
-            'type' => $request->type, // 'masuk' atau 'keluar'
+            'type' => $request->type,
             'nominal' => $request->nominal,
-            'keterangan' => $request->keterangan
+            'keterangan' => $request->keterangan,
+            'foto' => $fotoPath,
+            'latitude' => $request->latitude,
+            'longitude' => $request->longitude,
+            'waktu_capture' => $request->waktu_capture,
         ]);
 
         return response()->json(['success' => true, 'message' => 'Data kas berhasil dicatat.']);
