@@ -171,22 +171,28 @@ class PosApiController extends Controller
     // CRUD STOK PRODUK (TAMBAH, EDIT, HAPUS)
     // ==============================================
 
-    // 1. Tambah Produk Baru
+   // 1. Tambah Produk Baru
     public function storeProduct(Request $request)
     {
         $request->validate([
             'name'  => 'required|string|max:255',
             'price' => 'required|numeric',
             'stock' => 'required|numeric',
-            'sku'   => 'nullable|string|max:100'
+            'sku'   => 'nullable|string|max:100',
+            'image' => 'nullable|image|mimes:jpeg,png,jpg|max:2048' // Validasi gambar
         ]);
 
         $user = Auth::user() ?? auth('sanctum')->user();
         if (!$user) return response()->json(['success' => false, 'message' => 'Unauthorized'], 401);
 
         try {
-            // Generate slug otomatis dari nama
             $slug = \Illuminate\Support\Str::slug($request->name) . '-' . uniqid();
+            
+            // Proses Upload Gambar
+            $imagePath = null;
+            if ($request->hasFile('image')) {
+                $imagePath = $request->file('image')->store('products', 'public');
+            }
 
             $product = Product::create([
                 'store_id'    => $user->id_pengguna ?? $user->id,
@@ -195,7 +201,8 @@ class PosApiController extends Controller
                 'price'       => $request->price,
                 'stock'       => $request->stock,
                 'sku'         => $request->sku,
-                'status'      => 'active', // default status
+                'image_url'   => $imagePath, // Simpan path gambar
+                'status'      => 'active',
                 'slug'        => $slug
             ]);
 
@@ -212,7 +219,8 @@ class PosApiController extends Controller
             'name'  => 'required|string|max:255',
             'price' => 'required|numeric',
             'stock' => 'required|numeric',
-            'sku'   => 'nullable|string|max:100'
+            'sku'   => 'nullable|string|max:100',
+            'image' => 'nullable|image|mimes:jpeg,png,jpg|max:2048'
         ]);
 
         $user = Auth::user() ?? auth('sanctum')->user();
@@ -224,12 +232,19 @@ class PosApiController extends Controller
                 return response()->json(['success' => false, 'message' => 'Produk tidak ditemukan'], 404);
             }
 
-            $product->update([
+            $updateData = [
                 'name'  => $request->name,
                 'price' => $request->price,
                 'stock' => $request->stock,
                 'sku'   => $request->sku
-            ]);
+            ];
+
+            // Jika user upload gambar baru saat edit
+            if ($request->hasFile('image')) {
+                $updateData['image_url'] = $request->file('image')->store('products', 'public');
+            }
+
+            $product->update($updateData);
 
             return response()->json(['success' => true, 'message' => 'Produk berhasil diperbarui', 'data' => $product]);
         } catch (\Throwable $e) {
