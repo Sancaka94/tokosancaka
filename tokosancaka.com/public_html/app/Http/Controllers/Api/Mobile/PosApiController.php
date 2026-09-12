@@ -193,14 +193,15 @@ class PosApiController extends Controller
         }
     }
 
-    // ==============================================
+   // ==============================================
     // CRUD STOK PRODUK
     // ==============================================
     public function storeProduct(Request $request)
     {
         $request->validate([
             'name'  => 'required|string|max:255',
-            'price' => 'required|numeric',
+            'price' => 'required|numeric', // Harga Jual
+            'modal' => 'required|numeric', // 🔥 Harga Beli (Modal)
             'stock' => 'required|numeric',
             'sku'   => 'nullable|string|max:100',
             'image' => 'nullable|image|mimes:jpeg,png,jpg|max:2048'
@@ -221,6 +222,7 @@ class PosApiController extends Controller
                 'seller_name' => $user->nama_lengkap,
                 'name'        => $request->name,
                 'price'       => $request->price,
+                'modal'       => $request->modal, // 🔥 Simpan modal
                 'stock'       => $request->stock,
                 'sku'         => $request->sku,
                 'image_url'   => $imagePath,
@@ -238,7 +240,8 @@ class PosApiController extends Controller
     {
         $request->validate([
             'name'  => 'required|string|max:255',
-            'price' => 'required|numeric',
+            'price' => 'required|numeric', // Harga Jual
+            'modal' => 'required|numeric', // 🔥 Harga Beli (Modal)
             'stock' => 'required|numeric',
             'sku'   => 'nullable|string|max:100',
             'image' => 'nullable|image|mimes:jpeg,png,jpg|max:2048'
@@ -254,6 +257,7 @@ class PosApiController extends Controller
             $updateData = [
                 'name'  => $request->name,
                 'price' => $request->price,
+                'modal' => $request->modal, // 🔥 Update modal
                 'stock' => $request->stock,
                 'sku'   => $request->sku
             ];
