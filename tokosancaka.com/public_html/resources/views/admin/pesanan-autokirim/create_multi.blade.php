@@ -816,14 +816,73 @@ function orderFormData() {
 
         selectContact(type, kontak) {
             if (type === 'sender') {
-                this.pengirimNama = kontak.nama;
-                document.getElementById('pengirim_hp').value = kontak.no_hp;
+                this.pengirimNama = kontak.nama || '';
+                document.getElementById('pengirim_hp').value = kontak.no_hp || '';
+                
+                // 1. Auto-fill Alamat Jalan Pengirim
+                if (kontak.alamat) {
+                    document.getElementById('pengirim_alamat').value = kontak.alamat;
+                }
+
+                // 2. Auto-fill Wilayah Pengirim (Kecamatan/Kota/Provinsi) jika ada di database
+                if (kontak.district_id) {
+                    this.senderDistrictId = kontak.district_id;
+                    this.senderPostalCode = kontak.postal_code || '';
+                    this.senderSubdistrictId = kontak.subdistrict_id || '';
+                    this.senderProvince = kontak.province || '';
+                    this.senderRegency = kontak.regency || '';
+                    this.senderDistrict = kontak.district || '';
+                    this.senderVillage = kontak.village || '';
+                    
+                    let display = [];
+                    if(kontak.village) display.push(kontak.village);
+                    if(kontak.district) display.push(kontak.district);
+                    if(kontak.regency) display.push(kontak.regency);
+                    if(kontak.province) display.push(kontak.province);
+                    if(kontak.postal_code) display.push(kontak.postal_code);
+                    
+                    if (display.length > 0) {
+                        this.senderQuery = display.join(', ').toUpperCase();
+                    }
+                }
+
                 this.pickupPointCode = kontak.pickup_point_code || '';
                 this.showContactSender = false;
-                setTimeout(() => this.autoGeneratePickup(), 200);
+                
+                // Trigger auto-pickup generation setelah data terisi
+                setTimeout(() => this.autoGeneratePickup(), 300);
+                
             } else {
-                this.penerimaNama = kontak.nama;
-                document.getElementById('penerima_hp').value = kontak.no_hp;
+                this.penerimaNama = kontak.nama || '';
+                document.getElementById('penerima_hp').value = kontak.no_hp || '';
+                
+                // 1. Auto-fill Alamat Jalan Penerima
+                if (kontak.alamat) {
+                    document.getElementById('penerima_alamat').value = kontak.alamat;
+                }
+
+                // 2. Auto-fill Wilayah Penerima jika ada di database
+                if (kontak.district_id) {
+                    this.receiverDistrictId = kontak.district_id;
+                    this.receiverPostalCode = kontak.postal_code || '';
+                    this.receiverSubdistrictId = kontak.subdistrict_id || '';
+                    this.receiverProvince = kontak.province || '';
+                    this.receiverRegency = kontak.regency || '';
+                    this.receiverDistrict = kontak.district || '';
+                    this.receiverVillage = kontak.village || '';
+                    
+                    let display = [];
+                    if(kontak.village) display.push(kontak.village);
+                    if(kontak.district) display.push(kontak.district);
+                    if(kontak.regency) display.push(kontak.regency);
+                    if(kontak.province) display.push(kontak.province);
+                    if(kontak.postal_code) display.push(kontak.postal_code);
+                    
+                    if (display.length > 0) {
+                        this.receiverQuery = display.join(', ').toUpperCase();
+                    }
+                }
+
                 this.showContactReceiver = false;
             }
         },
