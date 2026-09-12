@@ -12,10 +12,24 @@ use Illuminate\Support\Facades\Auth;
 
 class PosApiController extends Controller
 {
-    // 1. Ambil daftar produk untuk layar Kasir
+    // 1. Ambil daftar produk untuk layar Kasir (Difilter berdasarkan User Login)
     public function getProducts(Request $request)
     {
-        $query = Product::where('status', 'active')->where('stock', '>', 0);
+        // AMBIL DATA USER YANG SEDANG LOGIN
+        $user = Auth::user() ?? auth('sanctum')->user();
+        
+        if (!$user) {
+            return response()->json(['success' => false, 'message' => 'Unauthorized'], 401);
+        }
+
+        // Tentukan ID User (sesuai dengan logic di processTransaction Anda)
+        $userId = $user->id_pengguna ?? $user->id;
+
+        // TAMBAHKAN FILTER user_id DI SINI
+        // Catatan: Jika kolom di tabel products Anda bernama 'id_pengguna', ganti 'user_id' menjadi 'id_pengguna'
+        $query = Product::where('user_id', $userId)
+                        ->where('status', 'active')
+                        ->where('stock', '>', 0);
         
         if ($request->filled('search')) {
             $query->where('name', 'like', '%' . $request->search . '%');
