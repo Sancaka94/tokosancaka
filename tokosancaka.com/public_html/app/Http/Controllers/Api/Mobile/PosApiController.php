@@ -34,22 +34,17 @@ class PosApiController extends Controller
                 return response()->json(['success' => false, 'message' => 'Unauthorized - Token tidak valid'], 401);
             }
 
-            $sellerName = $user->nama_lengkap;
-            $userId = $user->id_pengguna ?? $user->id;
+            // 🔥 KUNCI PERBAIKAN: Gunakan parent_id jika yang login adalah Karyawan
+            $storeId = $user->parent_id ?? $user->id_pengguna ?? $user->id;
 
-            $query = Product::where(function($q) use ($sellerName, $userId) {
-                                $q->where('seller_name', $sellerName)
-                                  ->orWhere('store_id', $userId);
-                            })
+            // Fokus pencarian berdasarkan store_id pemilik
+            $query = Product::where('store_id', $storeId)
                             ->where('status', 'active');
             
             if ($request->filled('search')) {
-                // 🔥 Bersihkan keyword dari PHP juga
                 $keyword = trim($request->search); 
-
                 $query->where(function($q) use ($keyword) {
                     $q->where('name', 'like', '%' . $keyword . '%')
-                      // 🔥 Ganti jadi 'like' agar scan SKU/Barcode jadi super fleksibel
                       ->orWhere('sku', 'like', '%' . $keyword . '%'); 
                 });
             }
@@ -90,13 +85,15 @@ class PosApiController extends Controller
                 return $item['price'] * $item['qty'];
             });
 
-            // Cek apakah metode pembayaran QRIS
             $isQris = strtoupper($request->payment_method) === 'QRIS';
             $status = $isQris ? 'pending' : 'paid';
 
+            // 🔥 KUNCI PERBAIKAN: Pesanan menjadi milik Toko (Owner)
+            $storeId = $user->parent_id ?? $user->id_pengguna ?? $user->id;
+
             $order = Order::create([
                 'invoice_number'   => $invoiceNumber,
-                'user_id'          => $user->id_pengguna ?? $user->id, 
+                'user_id'          => $storeId, // <--- UBAH DI SINI
                 'subtotal'         => $grandTotal,
                 'shipping_cost'    => 0, 
                 'shipping_method'  => 'Di Tempat (POS)',
@@ -162,11 +159,12 @@ class PosApiController extends Controller
             $user = Auth::user() ?? auth('sanctum')->user();
             if (!$user) return response()->json(['success' => false, 'message' => 'Unauthorized'], 401);
 
-            $userId = $user->id_pengguna ?? $user->id;
+            // 🔥 KUNCI PERBAIKAN: Gunakan ID Toko
+            $storeId = $user->parent_id ?? $user->id_pengguna ?? $user->id;
 
             $history = Order::with(['items.product'])
-                ->where('user_id', $userId)
-                ->where('shipping_method', 'Di Tempat (POS)') // <--- Gunakan ini sebagai penanda POS
+                ->where('user_id', $storeId) // <--- Ubah ini jadi $storeId
+                ->where('shipping_method', 'Di Tempat (POS)')
                 ->orderBy('created_at', 'desc')
                 ->get();
 
@@ -579,21 +577,19 @@ class PosApiController extends Controller
         }
     }
 
-    // ==============================================
-    // GET REPORT PENJUALAN & PROFIT (DINAMIS)
-    // ==============================================
     public function getReport(Request $request)
     {
         try {
             $user = Auth::user() ?? auth('sanctum')->user();
             if (!$user) return response()->json(['success' => false, 'message' => 'Unauthorized'], 401);
 
-            $userId = $user->id_pengguna ?? $user->id;
+            // 🔥 KUNCI PERBAIKAN: Gunakan ID Toko
+            $storeId = $user->parent_id ?? $user->id_pengguna ?? $user->id;
             $filter = $request->query('filter', 'Minggu Ini');
             
-            // Ambil data dari database (Khusus tipe POS & Status Lunas) beserta relasi item dan produk
+            // Ambil data dari database (Khusus tipe POS & Status Lunas)
             $query = Order::with('items.product')
-                        ->where('user_id', $userId)
+                        ->where('user_id', $storeId) // <--- Ubah ini jadi $storeId
                         ->where('shipping_method', 'Di Tempat (POS)')
                         ->where('status', 'paid');
 
