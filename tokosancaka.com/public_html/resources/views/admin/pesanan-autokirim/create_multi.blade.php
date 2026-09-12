@@ -308,7 +308,7 @@
 
                         <div class="bg-blue-50 p-4 border border-blue-200 rounded-md" x-show="asuransi === 'iya' || tipePesanan === 'cod'">
                             <label class="block text-xs font-bold text-gray-800 mb-1.5">NILAI HARGA BARANG (TOTAL RP) <span class="text-red-500">*</span></label>
-                            <input type="hidden" name="item_price" :value="nilaiBarang">
+                            <input type="hidden" name="item_price" :value="nilaiBarang || 1000">
                             <input type="text" inputmode="numeric" x-model="displayNilaiBarang"
                                    @input="let clean = $event.target.value.replace(/\D/g, ''); nilaiBarang = clean; displayNilaiBarang = clean ? new Intl.NumberFormat('id-ID').format(clean) : ''; resetSemuaOngkir();"
                                    @focus="displayNilaiBarang = nilaiBarang ? new Intl.NumberFormat('id-ID').format(nilaiBarang) : ''"

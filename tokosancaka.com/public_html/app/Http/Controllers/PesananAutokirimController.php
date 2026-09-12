@@ -664,6 +664,7 @@ class PesananAutokirimController extends Controller
 
   public function store(Request $request)
     {
+
         $appMode = app()->environment('production') ? 'PRODUCTION' : 'DEV';
 
         $userRole = strtolower(auth()->user()->role ?? 'pelanggan');
@@ -2712,6 +2713,8 @@ return redirect()->route('admin.pesanan-autokirim.index')->with('success', "Orde
     // 3. Fungsi Store Multi Koli Utama
     public function storeMulti(Request $request)
     {
+        dd('BENAR: MASUK KE PesananAutokirimController@storeMulti', $request->all());
+
         $appMode = app()->environment('production') ? 'PRODUCTION' : 'DEV';
         $userRole = strtolower(auth()->user()->role ?? 'pelanggan');
         $redirectRoute = ($userRole === 'admin') ? 'admin.pesanan-autokirim.index' : 'customer.pesanan-autokirim.index';
