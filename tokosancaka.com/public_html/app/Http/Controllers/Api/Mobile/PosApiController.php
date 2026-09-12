@@ -352,7 +352,7 @@ class PosApiController extends Controller
         // WAJIB UNTUK QRIS: Tambahkan externalStoreId dan tentukan payMethod
         if (strtoupper($paymentMethod) === 'QRIS') {
             // Gunakan Store ID dari DANA Sandbox/Production Anda
-            $body['externalStoreId'] = config('services.dana.external_store_id', '20050811210214220002'); 
+            $body['externalStoreId'] = config('services.dana.external_store_id', '216620050026029338146'); 
             $body['payOptionDetails'] = [
                 [
                     "payMethod" => "QR_CODE"
@@ -459,7 +459,7 @@ class PosApiController extends Controller
         
         // Ambil konfigurasi
         $merchantId = config('services.dana.merchant_id');
-        $storeId = config('services.dana.external_store_id', '20050811210214220002');
+        $storeId = config('services.dana.external_store_id', '216620050026029338146');
 
         $body = [
             "merchantId"         => $merchantId,
