@@ -137,7 +137,7 @@
 
                             <input type="hidden" name="pengirim_district_id" x-model="senderDistrictId">
                             <input type="hidden" name="pengirim_subdistrict_id" x-model="senderSubdistrictId">
-                            <input type="hidden" name="pengirim_postal_code" x-model="senderPostalCode">
+                            <input type="hidden" name="pengirim_kodepos" x-model="senderPostalCode">
                             <input type="hidden" name="pengirim_province" x-model="senderProvince">
                             <input type="hidden" name="pengirim_regency" x-model="senderRegency">
                             <input type="hidden" name="pengirim_district" x-model="senderDistrict">
@@ -218,7 +218,7 @@
 
                             <input type="hidden" name="penerima_district_id" x-model="receiverDistrictId">
                             <input type="hidden" name="penerima_subdistrict_id" x-model="receiverSubdistrictId">
-                            <input type="hidden" name="penerima_postal_code" x-model="receiverPostalCode">
+                            <input type="hidden" name="penerima_kodepos" x-model="receiverPostalCode">
                             <input type="hidden" name="penerima_province" x-model="receiverProvince">
                             <input type="hidden" name="penerima_regency" x-model="receiverRegency">
                             <input type="hidden" name="penerima_district" x-model="receiverDistrict">
