@@ -44,14 +44,13 @@ class PosApiController extends Controller
                             ->where('status', 'active');
             
             if ($request->filled('search')) {
-                // 🔥 Bersihkan keyword dari spasi depan/belakang
+                // 🔥 Bersihkan keyword dari PHP juga
                 $keyword = trim($request->search); 
 
                 $query->where(function($q) use ($keyword) {
                     $q->where('name', 'like', '%' . $keyword . '%')
-                      // 🔥 GANTI JADI 'LIKE' AGAR LEBIH FLEKSIBEL MEMBACA BARCODE
-                      ->orWhere('sku', 'like', '%' . $keyword . '%')
-                      ->orWhere('barcode', 'like', '%' . $keyword . '%');
+                      // 🔥 Ganti jadi 'like' agar scan SKU/Barcode jadi super fleksibel
+                      ->orWhere('sku', 'like', '%' . $keyword . '%'); 
                 });
             }
 
