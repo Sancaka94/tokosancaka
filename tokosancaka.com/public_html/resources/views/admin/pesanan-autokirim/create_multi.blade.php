@@ -293,7 +293,7 @@
                         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                             <!-- 1. Kategori -->
                             <div>
-                                <label class="block text-xs font-medium text-gray-700 mb-1.5">KATEGORI BARANG</label>
+                                <label class="block text-xs font-medium text-gray-700 mb-1.5">KATEGORI BARANG PAKET</label>
                                 <select name="item_type" x-model="kategoriBarang" required class="uppercase w-full border border-gray-300 rounded-md text-xs focus:outline-none focus:ring-1 focus:ring-black focus:border-black px-3 py-2.5 bg-white">
                                     <option value="" disabled selected>PILIH...</option>
                                     <option value="ELK001">PERALATAN ELEKTRONIK & GADGET</option>
