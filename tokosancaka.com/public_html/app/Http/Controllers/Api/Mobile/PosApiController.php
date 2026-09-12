@@ -14,47 +14,56 @@ class PosApiController extends Controller
 {
     public function getProducts(Request $request)
     {
-        $user = Auth::user() ?? auth('sanctum')->user();
-        
-        if (!$user) {
-            return response()->json([
-                'success' => false, 
-                'message' => 'Unauthorized - Token tidak valid'
-            ], 401);
-        }
-
-        // Karena tabel products tidak punya id_pengguna, 
-        // kita filter menggunakan kolom seller_name yang dicocokkan dengan nama_lengkap user.
-        $sellerName = $user->nama_lengkap;
-
-        $query = Product::where('seller_name', $sellerName)
-                        ->where('status', 'active')
-                        ->where('stock', '>', 0);
-        
-        if ($request->filled('search')) {
-            $query->where('name', 'like', '%' . $request->search . '%');
-        }
-
-        // Map data untuk menambahkan URL gambar yang valid
-        $products = $query->latest()->get()->map(function ($item) {
-            $imagePath = $item->image_url ?? $item->image ?? $item->foto ?? null;
+        try {
+            $user = Auth::user() ?? auth('sanctum')->user();
             
-            if ($imagePath && !str_starts_with($imagePath, 'http')) {
-                $item->full_image_url = asset('storage/' . ltrim($imagePath, '/'));
-            } else {
-                $item->full_image_url = $imagePath;
+            if (!$user) {
+                return response()->json([
+                    'success' => false, 
+                    'message' => 'Unauthorized - Token tidak valid'
+                ], 401);
             }
-            
-            return $item;
-        });
 
-        return response()->json([
-            'success' => true,
-            'data' => $products
-        ]);
+            $sellerName = $user->nama_lengkap;
+
+            $query = Product::where('seller_name', $sellerName)
+                            ->where('status', 'active')
+                            ->where('stock', '>', 0);
+            
+            if ($request->filled('search')) {
+                $query->where('name', 'like', '%' . $request->search . '%');
+            }
+
+            // Ambil data produk
+            $products = $query->latest()->get();
+
+            // Format URL Gambar (Menggunakan strpos agar aman di semua versi PHP)
+            $products->map(function ($item) {
+                $imagePath = $item->image_url ?? $item->image ?? $item->foto ?? null;
+                
+                if ($imagePath && strpos($imagePath, 'http') !== 0) {
+                    $item->full_image_url = asset('storage/' . ltrim($imagePath, '/'));
+                } else {
+                    $item->full_image_url = $imagePath;
+                }
+                
+                return $item;
+            });
+
+            return response()->json([
+                'success' => true,
+                'data' => $products
+            ]);
+
+        } catch (\Throwable $e) { 
+            // 🔴 MENGGUNAKAN \Throwable AGAR FATAL ERROR PHP TERTANGKAP KE HP
+            return response()->json([
+                'success' => false,
+                'message' => 'ERROR ASLI: ' . $e->getMessage() . ' | Baris: ' . $e->getLine()
+            ], 500);
+        }
     }
 
-    // 2. Proses transaksi Kasir (Langsung potong stok, tanpa ongkir)
     public function processTransaction(Request $request)
     {
         $request->validate([
@@ -73,21 +82,19 @@ class PosApiController extends Controller
                 return $item['price'] * $item['qty'];
             });
 
-            // Buat Data Pesanan Khusus Kasir (Offline)
             $order = Order::create([
-                'invoice_number' => $invoiceNumber,
-                'user_id'        => $user->id_pengguna ?? $user->id, // ID Kasir yang bertugas
-                'subtotal'       => $grandTotal,
-                'shipping_cost'  => 0, // POS tidak ada ongkir
-                'shipping_method' => 'Di Tempat (POS)',
+                'invoice_number'   => $invoiceNumber,
+                'user_id'          => $user->id_pengguna ?? $user->id, 
+                'subtotal'         => $grandTotal,
+                'shipping_cost'    => 0, 
+                'shipping_method'  => 'Di Tempat (POS)',
                 'shipping_address' => 'Pembelian di Toko (POS)',
-                'total_amount'   => $grandTotal,
-                'payment_method' => $request->payment_method,
-                'status'         => 'paid', // Langsung lunas
-                'type'           => 'pos'   // Penanda order dari kasir offline
+                'total_amount'     => $grandTotal,
+                'payment_method'   => $request->payment_method,
+                'status'           => 'paid', 
+                'type'             => 'pos'   
             ]);
 
-            // Simpan Item & Potong Stok
             foreach ($request->items as $item) {
                 OrderItem::create([
                     'order_id'   => $order->id,
@@ -96,7 +103,6 @@ class PosApiController extends Controller
                     'price'      => $item['price']
                 ]);
 
-                // Langsung potong stok gudang
                 Product::where('id', $item['id'])->decrement('stock', $item['qty']);
             }
 
@@ -108,29 +114,30 @@ class PosApiController extends Controller
                 'data' => ['invoice' => $invoiceNumber, 'total' => $grandTotal]
             ]);
 
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             DB::rollBack();
             return response()->json(['success' => false, 'message' => 'Gagal: ' . $e->getMessage()], 500);
         }
     }
 
-    // 3. API BARU UNTUK HALAMAN RIWAYAT KASIR
     public function getHistory(Request $request)
     {
-        $user = Auth::user() ?? auth('sanctum')->user();
-        if (!$user) return response()->json(['success' => false, 'message' => 'Unauthorized'], 401);
+        try {
+            $user = Auth::user() ?? auth('sanctum')->user();
+            if (!$user) return response()->json(['success' => false, 'message' => 'Unauthorized'], 401);
 
-        $userId = $user->id_pengguna ?? $user->id;
+            $userId = $user->id_pengguna ?? $user->id;
 
-        // Ambil riwayat pesanan khusus POS milik kasir ini
-        $history = Order::where('user_id', $userId)
-                        // ->where('type', 'pos') // Hapus komentar ini jika di database ada kolom 'type'
-                        ->orderBy('created_at', 'desc')
-                        ->get();
+            $history = Order::where('user_id', $userId)
+                            ->orderBy('created_at', 'desc')
+                            ->get();
 
-        return response()->json([
-            'success' => true,
-            'data' => $history
-        ]);
+            return response()->json([
+                'success' => true,
+                'data' => $history
+            ]);
+        } catch (\Throwable $e) {
+            return response()->json(['success' => false, 'message' => 'Error: ' . $e->getMessage()], 500);
+        }
     }
 }
