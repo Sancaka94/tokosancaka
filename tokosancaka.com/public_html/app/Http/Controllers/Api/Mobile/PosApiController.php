@@ -574,4 +574,102 @@ class PosApiController extends Controller
                     ->header('Content-Disposition', 'attachment; filename="QRIS_'.$invoice.'.svg"');
         }
     }
+
+    // ==============================================
+    // GET REPORT PENJUALAN (DINAMIS)
+    // ==============================================
+    public function getReport(Request $request)
+    {
+        try {
+            $user = Auth::user() ?? auth('sanctum')->user();
+            if (!$user) return response()->json(['success' => false, 'message' => 'Unauthorized'], 401);
+
+            $userId = $user->id_pengguna ?? $user->id;
+            $filter = $request->query('filter', 'Minggu Ini');
+            
+            // Ambil data dari database (Khusus tipe POS & Status Lunas)
+            $query = Order::where('user_id', $userId)
+                        ->where('shipping_method', 'Di Tempat (POS)')
+                        ->where('status', 'paid');
+
+            $now = \Carbon\Carbon::now('Asia/Jakarta');
+            
+            // Filter berdasarkan tanggal
+            if ($filter === 'Hari Ini') {
+                $query->whereDate('created_at', $now->toDateString());
+            } elseif ($filter === 'Minggu Ini') {
+                $query->whereBetween('created_at', [$now->copy()->startOfWeek(), $now->copy()->endOfWeek()]);
+            } elseif ($filter === 'Bulan Ini') {
+                $query->whereMonth('created_at', $now->month)->whereYear('created_at', $now->year);
+            }
+
+            $orders = $query->get();
+
+            // 1. Hitung Summary Card
+            $totalPendapatan = (float) $orders->sum('total_amount');
+            $totalTransaksi = $orders->count();
+            $rataRata = $totalTransaksi > 0 ? $totalPendapatan / $totalTransaksi : 0;
+
+            // 2. Siapkan Data Grafik berdasarkan Filter
+            $labels = [];
+            $data = [];
+
+            if ($filter === 'Hari Ini') {
+                // Kelompokkan per jam
+                $labels = ['08:00', '12:00', '16:00', '20:00', '23:59'];
+                $data = [0, 0, 0, 0, 0];
+                foreach ($orders as $o) {
+                    $hour = \Carbon\Carbon::parse($o->created_at)->timezone('Asia/Jakarta')->hour;
+                    if ($hour < 12) $data[0] += $o->total_amount;
+                    elseif ($hour < 16) $data[1] += $o->total_amount;
+                    elseif ($hour < 20) $data[2] += $o->total_amount;
+                    elseif ($hour < 24) $data[3] += $o->total_amount;
+                    else $data[4] += $o->total_amount;
+                }
+            } elseif ($filter === 'Bulan Ini') {
+                // Kelompokkan per minggu dalam 1 bulan
+                $labels = ['Minggu 1', 'Minggu 2', 'Minggu 3', 'Minggu 4'];
+                $data = [0, 0, 0, 0];
+                foreach ($orders as $o) {
+                    $day = \Carbon\Carbon::parse($o->created_at)->timezone('Asia/Jakarta')->day;
+                    if ($day <= 7) $data[0] += $o->total_amount;
+                    elseif ($day <= 14) $data[1] += $o->total_amount;
+                    elseif ($day <= 21) $data[2] += $o->total_amount;
+                    else $data[3] += $o->total_amount;
+                }
+            } else { 
+                // Default: Minggu Ini (Kelompokkan per Hari)
+                $labels = ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'];
+                $data = [0, 0, 0, 0, 0, 0, 0];
+                foreach ($orders as $o) {
+                    // dayOfWeekIso: 1 = Senin, 7 = Minggu
+                    $dayIdx = \Carbon\Carbon::parse($o->created_at)->timezone('Asia/Jakarta')->dayOfWeekIso - 1; 
+                    $data[$dayIdx] += $o->total_amount;
+                }
+            }
+
+            // Cegah error grafik di aplikasi jika belum ada penjualan (semua nilainya 0)
+            if (empty($data) || max($data) == 0) {
+                $data = array_fill(0, count($labels), 0); 
+            }
+
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'totalPendapatan' => $totalPendapatan,
+                    'totalTransaksi'  => $totalTransaksi,
+                    'rataRata'        => $rataRata,
+                    'grafik'          => [
+                        'labels'   => $labels,
+                        'datasets' => [
+                            ['data' => $data]
+                        ]
+                    ]
+                ]
+            ]);
+
+        } catch (\Throwable $e) {
+            return response()->json(['success' => false, 'message' => 'Gagal: ' . $e->getMessage()], 500);
+        }
+    }
 }

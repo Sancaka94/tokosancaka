@@ -72,6 +72,8 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/products', [PosApiController::class, 'getProducts']);
         Route::post('/checkout', [PosApiController::class, 'processTransaction']);
         Route::get('/history', [PosApiController::class, 'getHistory']);
+
+        Route::get('/report', [PosApiController::class, 'getReport']);
         
         // --- TAMBAHAN ROUTE CRUD STOK PRODUK POS ---
         Route::post('/products', [PosApiController::class, 'storeProduct']); // Tambah
