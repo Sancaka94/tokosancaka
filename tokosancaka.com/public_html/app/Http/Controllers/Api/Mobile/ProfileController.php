@@ -111,17 +111,31 @@ class ProfileController extends Controller
             ], 403);
         }
 
+        // 🔥 PERBAIKAN 1: Tangkap string kosong dari frontend dan paksa jadi NULL SEBELUM di validasi
+        $input = $request->all();
+        if (empty($input['email'])) {
+            $input['email'] = null;
+        }
+        if (empty($input['pin'])) {
+            $input['pin'] = null;
+        }
+        // Masukkan kembali input yang sudah dibersihkan ke dalam request
+        $request->merge($input);
+
         // 2. Validasi Input Karyawan
         $validator = Validator::make($request->all(), [
             'nama_lengkap'  => ['required', 'string', 'max:255'],
             'jenis_kelamin' => ['nullable', 'string', 'in:Laki-laki,Perempuan'],
-            'no_wa'         => ['required', 'string', 'max:20', 'unique:Pengguna,no_wa'],
-            'email'         => ['nullable', 'email', 'max:255', 'unique:Pengguna,email'],
+            
+            // 🔥 PERBAIKAN 2: Tambahkan ->whereNull('deleted_at') agar data yang sudah dihapus tidak dianggap
+            'no_wa'         => ['required', 'string', 'max:20', Rule::unique('Pengguna', 'no_wa')->whereNull('deleted_at')],
+            'email'         => ['nullable', 'email', 'max:255', Rule::unique('Pengguna', 'email')->whereNull('deleted_at')],
+            
             'password'      => ['required', 'string', 'min:6'],
             'pin'           => ['nullable', 'string', 'max:6'], 
         ], [
             'no_wa.unique' => 'Nomor WhatsApp ini sudah terdaftar sebagai pengguna lain.',
-            'email.unique' => 'Email ini sudah digunakan.'
+            'email.unique' => 'Email ini sudah digunakan oleh akun lain.'
         ]);
 
         if ($validator->fails()) {
@@ -134,13 +148,13 @@ class ProfileController extends Controller
 
         try {
             // 3. Buat Data Karyawan Baru
-            $karyawan = new User(); // Sesuaikan dengan model pengguna Anda
-            $karyawan->parent_id    = $userId; // 🔥 Relasi ke Pemilik Toko
+            $karyawan = new User(); 
+            $karyawan->parent_id    = $userId; // Relasi ke Pemilik Toko
             $karyawan->nama_lengkap = $request->nama_lengkap;
             $karyawan->no_wa        = $request->no_wa;
             
-            // Konversi string kosong dari frontend menjadi null agar tidak error unique database
-            $karyawan->email        = $request->filled('email') ? $request->email : null;
+            // Data opsional, karena sudah dipaksa jadi null di atas, langsung aman disimpan
+            $karyawan->email         = $request->email;
             $karyawan->jenis_kelamin = $request->filled('jenis_kelamin') ? $request->jenis_kelamin : null;
             
             // Enkripsi Password & PIN
@@ -153,7 +167,6 @@ class ProfileController extends Controller
             $karyawan->role = 'Karyawan'; 
             
             // Wariskan Data Toko dari Pemilik (Admin/Agent/Seller)
-            // Jika nama toko pemilik kosong, pakai default nama pemilik
             $karyawan->store_name       = $user->store_name ?? ('Cabang ' . $user->nama_lengkap);
             $karyawan->store_logo_path  = $user->store_logo_path;
             $karyawan->province         = $user->province;
@@ -178,7 +191,7 @@ class ProfileController extends Controller
             Log::error('API Register Karyawan Error: '.$e->getMessage());
             return response()->json([
                 'success' => false,
-                'message' => 'Terjadi kesalahan sistem saat menyimpan data: ' . $e->getMessage()
+                'message' => 'Terjadi kesalahan sistem saat menyimpan data.'
             ], 500);
         }
     }
