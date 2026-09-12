@@ -17,65 +17,15 @@ use App\Models\ProductImage;
 use App\Models\ProductReview;
 use App\Models\PpobProduct;
 
-
 class Product extends Model
 {
     use HasFactory;
 
     /**
-     * Atribut yang dapat diisi secara massal.
+     * Atribut yang TIDAK BOLEH diisi secara massal.
+     * Menggunakan guarded jauh lebih ringkas daripada fillable.
      */
-    protected $fillable = [
-        // --- ATRIBUT PRODUK UMUM (FISIK) ---
-        'name',
-        'slug',
-        'store_id',
-        'sku',
-        'category_id',
-        'id_master_layanan',
-        'supporting_images',
-        'category', // Nama kategori (string)
-        'tags',
-        'description',
-        'image_url', 
-        'store_name',
-        'seller_name',
-        'seller_city',
-        'seller_logo',
-        'seller_wa',
-        'price',
-        'original_price',
-        'discount_percentage',
-        'stock',
-        'weight',
-        'status',
-        'is_new',
-        'is_bestseller',
-        'rating',
-        'sold_count',
-        'width',
-        'height',
-        'length',
-        'jenis_barang', // 1=Fisik, 2=Dokumen, 3=Mudah Pecah, dll
-        'is_promo',             
-        'is_shipping_discount', 
-        'is_free_shipping',     
-
-        // --- ATRIBUT PPOB (DIGITAL) ---
-        'is_digital',           // Boolean: 1 = PPOB/Digital, 0 = Fisik
-        'buyer_sku_code',       // Kode SKU dari Provider PPOB (Digiflazz/Tripay)
-        'brand',                // Nama Operator (Telkomsel, PLN, dll)
-        'type',                 // Tipe PPOB (Pulsa, Data, E-Money, Game)
-        'start_cut_off',        // Jam mulai gangguan (00:00)
-        'end_cut_off',          // Jam selesai gangguan
-        'seller_product_status', // Status dari Provider (1=Aktif, 0=Gangguan)
-        'multi',                // Boolean: Bisa transaksi ganda/tidak
-        'unlimited_stock',      // Boolean: Stok tak terbatas (untuk digital)
-
-        'digital_url',
-        'digital_file_path', 
-        'digital_sn_list'
-    ];
+    protected $guarded = ['id'];
 
     /**
      * Casting tipe data.
@@ -106,7 +56,7 @@ class Product extends Model
     /**
      * Relasi ke Category.
      */
-    public function categoryRelation(): BelongsTo // Nama func diganti agar tidak bentrok dengan kolom 'category'
+    public function categoryRelation(): BelongsTo 
     {
         return $this->belongsTo(Category::class, 'category_id'); 
     }
@@ -174,8 +124,7 @@ class Product extends Model
     }
 
     public function category()
-{
-    return $this->belongsTo(Category::class);
-}
-
+    {
+        return $this->belongsTo(Category::class);
+    }
 }
