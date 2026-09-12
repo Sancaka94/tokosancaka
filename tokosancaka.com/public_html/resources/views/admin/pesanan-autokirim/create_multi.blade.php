@@ -12,7 +12,7 @@
 @endphp
 
 @section('content')
-<div class="max-w-6xl mx-auto px-4 py-8 font-sans" x-data="orderForm">
+<div class="max-w-6xl mx-auto px-4 py-8 font-sans" x-data="orderFormData()">
     <div class="mb-8 border-b border-gray-200 pb-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <!-- Bagian Kiri: Judul dan Deskripsi -->
         <div>
@@ -622,11 +622,11 @@
 </div>
 
 <!-- ========================================== -->
-<!-- SCRIPTS ENGINE LOGIC (ALPINE.JS V3) -->
+<!-- SCRIPTS ENGINE LOGIC (COMPATIBLE MODE) -->
 <!-- ========================================== -->
 <script>
-document.addEventListener('alpine:init', () => {
-    Alpine.data('orderForm', () => ({
+function orderFormData() {
+    return {
         // Data Global Koli
         kategoriBarang: '',
         tipePesanan: 'reguler',
@@ -647,7 +647,7 @@ document.addEventListener('alpine:init', () => {
         activePackageIndex: null,
 
         // Kontak Pengirim
-        pengirimNama: '{!! old('sender_name') !!}',
+        pengirimNama: @json(old('sender_name', '')),
         senderQuery: '',
         senderDistrictId: '',
         senderSubdistrictId: '',
@@ -665,7 +665,7 @@ document.addEventListener('alpine:init', () => {
         pickupPointCode: '{{ auth()->user()->pickup_point_code ?? '' }}',
 
         // Kontak Penerima
-        penerimaNama: '{!! old('receiver_name') !!}',
+        penerimaNama: @json(old('receiver_name', '')),
         receiverQuery: '',
         receiverDistrictId: '',
         receiverSubdistrictId: '',
@@ -694,10 +694,7 @@ document.addEventListener('alpine:init', () => {
         selectedPaymentIcon: '',
 
         init() {
-            // Inisialisasi Koli Pertama
             this.addPackage();
-
-            // Watch perubahan array untuk update validasi realtime
             this.$watch('packages', () => this.checkFormValidity(), { deep: true });
         },
 
@@ -794,7 +791,6 @@ document.addEventListener('alpine:init', () => {
             return true;
         },
 
-        // Sama persis dengan aslinya (API Search Contacts, Address, Auto-generate Pickup)
         async searchContact(type) {
             let query = type === 'sender' ? this.pengirimNama : this.penerimaNama;
             if (query.length < 2) {
@@ -832,12 +828,8 @@ document.addEventListener('alpine:init', () => {
             }
         },
 
-       async searchAddress(type) {
+        async searchAddress(type) {
             let query = type === 'sender' ? this.senderQuery : this.receiverQuery;
-
-            // [DEBUG FRONTEND]
-            console.log(`[LOG LOG FRONTEND] Memulai pencarian alamat untuk: ${type} | Query: ${query}`);
-
             if (query.length < 3) {
                 if(type === 'sender') { this.senderResults = []; this.showSenderDropdown = false; }
                 else { this.receiverResults = []; this.showReceiverDropdown = false; }
@@ -848,39 +840,18 @@ document.addEventListener('alpine:init', () => {
             else { this.isSearchingReceiver = true; this.showReceiverDropdown = true; }
 
             try {
-                let targetUrl = `/api/autokirim/search-address?q=${encodeURIComponent(query)}`;
-                console.log(`[LOG LOG FRONTEND] Fetching URL: ${targetUrl}`);
-
-                let response = await fetch(targetUrl);
-
-                // Cek status HTTP sebelum parse JSON
-                if (!response.ok) {
-                    console.error(`[LOG LOG FRONTEND] Server merespon dengan error HTTP Status: ${response.status}`);
-                }
-
+                let response = await fetch(`/api/autokirim/search-address?q=${encodeURIComponent(query)}`);
                 let data = await response.json();
-
-                // [DEBUG FRONTEND]
-                console.log(`[LOG LOG FRONTEND] Data diterima dari server:`, data);
-
-                if(type === 'sender') {
-                    this.senderResults = data;
-                    if(data.length === 0) console.warn(`[LOG LOG FRONTEND] WARNING: Hasil pencarian Sender KOSONG! Cek file laravel.log di backend.`);
-                } else {
-                    this.receiverResults = data;
-                    if(data.length === 0) console.warn(`[LOG LOG FRONTEND] WARNING: Hasil pencarian Receiver KOSONG! Cek file laravel.log di backend.`);
-                }
-            } catch (error) {
-                console.error("[LOG LOG FRONTEND] Terjadi Error saat proses fetch API: ", error);
-            }
+                if(type === 'sender') this.senderResults = data;
+                else this.receiverResults = data;
+            } catch (error) { console.error(error); }
             finally {
                 if (type === 'sender') this.isSearchingSender = false;
                 else this.isSearchingReceiver = false;
             }
-        }
+        },
 
         selectAddress(type, res) {
-            // Pecah Alamat dari "Desa, Kec, Kota, Prov, Zip"
             let parts = res.full_address ? res.full_address.split(',').map(s => s.trim()) : [];
             let vDesa="", vKec="", vKota="", vProv="";
             if(parts.length >= 4) { vDesa=parts[0]; vKec=parts[1]; vKota=parts[2]; vProv=parts[3]; }
@@ -956,7 +927,7 @@ document.addEventListener('alpine:init', () => {
                 fd.append('origin_id', this.senderDistrictId);
                 fd.append('destination_id', this.receiverDistrictId);
                 fd.append('berat_gram', pkt.berat);
-                fd.append('qty', 1); // 1 Koli per API request
+                fd.append('qty', 1);
                 fd.append('panjang_cm', pkt.panjang || 10);
                 fd.append('lebar_cm', pkt.lebar || 10);
                 fd.append('tinggi_cm', pkt.tinggi || 10);
@@ -1021,8 +992,8 @@ document.addEventListener('alpine:init', () => {
             if (this.isSubmitting) { e.preventDefault(); return; }
             this.isSubmitting = true;
         }
-    }));
-});
+    };
+}
 </script>
 
 <style>
