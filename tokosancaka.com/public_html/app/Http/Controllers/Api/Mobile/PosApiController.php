@@ -537,25 +537,41 @@ class PosApiController extends Controller
         }
     }
 
-    // Tambahkan fungsi ini di dalam class
-public function downloadQris($invoice)
-{
-    // 1. Cari pesanan berdasarkan invoice
-    $order = Order::where('invoice_number', $invoice)->first();
+    public function downloadQris($invoice)
+    {
+        $order = \App\Models\Order::where('invoice_number', $invoice)->first();
 
-    if (!$order || !$order->payment_url) {
-        return response('QRIS tidak ditemukan', 404);
+        if (!$order || !$order->payment_url) {
+            return response('QRIS tidak ditemukan', 404);
+        }
+
+        // 🔥 1. BERSIHKAN SAMPAH SPASI (Ini yang sering bikin gambar rusak/corrupt)
+        if (ob_get_level()) {
+            ob_end_clean();
+        }
+
+        try {
+            // 🔥 2. Coba Generate dalam bentuk PNG
+            $image = QrCode::format('png')
+                           ->size(400)
+                           ->margin(2)
+                           ->generate($order->payment_url);
+
+            return response($image)
+                    ->header('Content-type', 'image/png')
+                    ->header('Content-Disposition', 'attachment; filename="QRIS_'.$invoice.'.png"');
+                    
+        } catch (\Exception $e) {
+            // 🔥 3. JIKA GAGAL (karena ekstensi Imagick di hosting mati), OTOMATIS GANTI KE SVG
+            // SVG adalah format gambar vektor web yang pasti jalan di semua server tanpa ekstensi tambahan
+            
+            $image = QrCode::size(400)
+                           ->margin(2)
+                           ->generate($order->payment_url);
+
+            return response($image)
+                    ->header('Content-type', 'image/svg+xml')
+                    ->header('Content-Disposition', 'attachment; filename="QRIS_'.$invoice.'.svg"');
+        }
     }
-
-    // 2. Generate gambar QR Code dari string payment_url
-    $image = QrCode::format('png')
-                   ->size(400)
-                   ->margin(2)
-                   ->generate($order->payment_url);
-
-    // 3. Return sebagai response download gambar
-    return response($image)
-            ->header('Content-type', 'image/png')
-            ->header('Content-Disposition', 'attachment; filename="QRIS_'.$invoice.'.png"');
-}
 }
