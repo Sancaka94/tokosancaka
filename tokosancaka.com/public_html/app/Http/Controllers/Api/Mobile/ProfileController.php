@@ -81,30 +81,45 @@ class ProfileController extends Controller
             // Proses Upload Gambar Logo Toko
             if ($request->hasFile('store_logo')) {
                 if ($user->store_logo_path) {
-                    Storage::disk('public')->delete($user->store_logo_path);
+                    \Illuminate\Support\Facades\Storage::disk('public')->delete($user->store_logo_path);
                 }
                 $path = $request->file('store_logo')->store('uploads/store-logos', 'public');
                 $user->store_logo_path = $path;
-
-                // Hapus key store_logo dari $validated agar tidak ikut di $user->fill()
                 unset($validated['store_logo']);
             }
 
             $user->fill($validated);
             $user->save();
 
+            // 🔥 SINKRONISASI OTOMATIS ALAMAT & LOGO KE TABEL `stores` 🔥
+            if (!empty($user->store_name)) {
+                $userId = $user->id_pengguna ?? $user->id;
+                \Illuminate\Support\Facades\DB::table('stores')->updateOrInsert(
+                    ['user_id' => $userId],
+                    [
+                        'name' => $user->store_name,
+                        'slug' => \Illuminate\Support\Str::slug($user->store_name . '-' . $userId),
+                        'province' => $user->province,
+                        'regency' => $user->regency,
+                        'district' => $user->district,
+                        'village' => $user->village,
+                        'address_detail' => $user->address_detail,
+                        'zip_code' => $user->postal_code,
+                        'seller_logo' => $user->store_logo_path,
+                        'updated_at' => now()
+                    ]
+                );
+            }
+
             return response()->json([
                 'success' => true,
-                'message' => 'Profil berhasil diperbarui!',
+                'message' => 'Profil dan Pengaturan Toko berhasil diperbarui!',
                 'data' => $user
             ]);
 
         } catch (\Exception $e) {
-            Log::error('API Profile Update Error: '.$e->getMessage());
-            return response()->json([
-                'success' => false,
-                'message' => 'Terjadi kesalahan sistem: ' . $e->getMessage()
-            ], 500);
+            \Illuminate\Support\Facades\Log::error('API Profile Update Error: '.$e->getMessage());
+            return response()->json(['success' => false, 'message' => 'Sistem Error: ' . $e->getMessage()], 500);
         }
     }
 

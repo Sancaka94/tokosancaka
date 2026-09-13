@@ -89,53 +89,49 @@ class UserUpgradeController extends Controller
         }
     }
 
-    /**
-     * 3. Mendaftar Buka Toko (Seller)
-     */
-    public function registerStore(Request $request)
+   public function registerStore(Request $request)
     {
         $user = $request->user();
 
-        $validator = Validator::make($request->all(), [
+        $validator = \Illuminate\Support\Facades\Validator::make($request->all(), [
             'store_name' => ['required', 'string', 'max:255'],
         ]);
 
         if ($validator->fails()) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Nama toko tidak boleh kosong.',
-                'errors'  => $validator->errors()
-            ], 422);
+            return response()->json(['success' => false, 'message' => 'Nama toko tidak boleh kosong.'], 422);
         }
 
         try {
-            // Update data toko
+            // 1. Simpan ke tabel Pengguna
             $user->store_name = $request->store_name;
             
-            // Ubah role menjadi Seller HANYA JIKA saat ini role-nya Pelanggan, Member, atau Kosong
-            // (Agar jika dia sudah jadi 'Agent' atau 'Driver', role utamanya tidak tertimpa)
             $currentRole = strtolower($user->role ?? '');
             if (in_array($currentRole, ['member', 'pelanggan', ''])) {
                 $user->role = 'Seller';
             }
-            
             $user->save();
+
+            // 2. 🔥 SINKRONISASI OTOMATIS KE TABEL `stores` 🔥
+            $userId = $user->id_pengguna ?? $user->id;
+            \Illuminate\Support\Facades\DB::table('stores')->updateOrInsert(
+                ['user_id' => $userId], // Kunci pencarian: Jika user_id ini sudah punya toko, maka update. Jika belum, buat baru.
+                [
+                    'name' => $request->store_name,
+                    'slug' => \Illuminate\Support\Str::slug($request->store_name . '-' . $userId),
+                    'created_at' => now(),
+                    'updated_at' => now()
+                ]
+            );
 
             return response()->json([
                 'success' => true,
                 'message' => 'Toko berhasil dibuat! Anda sekarang dapat mulai berjualan.',
-                'data' => [
-                    'store_name' => $user->store_name,
-                    'role' => $user->role
-                ]
+                'data' => $user
             ]);
 
         } catch (\Exception $e) {
-            Log::error('API Register Store Error: '.$e->getMessage());
-            return response()->json([
-                'success' => false,
-                'message' => 'Terjadi kesalahan saat membuka toko: ' . $e->getMessage()
-            ], 500);
+            \Illuminate\Support\Facades\Log::error('API Register Store Error: '.$e->getMessage());
+            return response()->json(['success' => false, 'message' => 'Terjadi kesalahan: ' . $e->getMessage()], 500);
         }
     }
 
