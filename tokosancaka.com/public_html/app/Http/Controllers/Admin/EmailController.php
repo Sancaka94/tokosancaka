@@ -37,6 +37,7 @@ class EmailController extends Controller
         // SKENARIO 1: KOTAK MASUK (MURNI DARI IMAP SERVER)
         // =========================================================
         if ($folder === 'inbox') {
+            ini_set('memory_limit', '512M');
             try {
                 $client = Client::account('default');
                 $client->connect();
