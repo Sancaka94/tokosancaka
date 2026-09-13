@@ -286,6 +286,10 @@ Route::prefix('seller')->group(function () {
 
     Route::post('/karyawan/update/{id}', [\App\Http\Controllers\Api\Mobile\ProfileController::class, 'updateKaryawan']);
 
+    Route::delete('/karyawan/{id}', [\App\Http\Controllers\Api\Mobile\ProfileController::class, 'destroyKaryawan']);
+    Route::post('/karyawan/bulk-delete', [\App\Http\Controllers\Api\Mobile\ProfileController::class, 'bulkDestroyKaryawan']);
+
+
     Route::get('/customer/pesanan/riwayat', [\App\Http\Controllers\Api\Mobile\PesananController::class, 'riwayat']);
 
     // --- A. GENERAL AUTH & USER ---

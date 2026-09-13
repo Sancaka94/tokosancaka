@@ -428,6 +428,75 @@ class ProfileController extends Controller
     }
 
     /**
+     * =========================================================================
+     * MENGHAPUS 1 DATA KARYAWAN
+     * =========================================================================
+     */
+    public function destroyKaryawan(Request $request, $id)
+    {
+        $user = $request->user();
+        $userId = $user->id_pengguna ?? $user->id;
+
+        $karyawan = User::where('id_pengguna', $id)->first();
+
+        if (!$karyawan) {
+            return response()->json(['success' => false, 'message' => 'Data karyawan tidak ditemukan.'], 404);
+        }
+
+        // Pastikan hanya owner (atau Admin Pusat) yang bisa menghapus
+        if ($karyawan->parent_id != $userId && $userId != 4 && strtolower($user->role) !== 'admin') {
+            return response()->json(['success' => false, 'message' => 'Akses ditolak. Karyawan ini bukan milik toko Anda.'], 403);
+        }
+
+        try {
+            $karyawan->delete(); // Akan terhapus secara Soft Delete (jika menggunakan SoftDeletes) atau Hard Delete
+            return response()->json([
+                'success' => true, 
+                'message' => 'Data karyawan berhasil dihapus.'
+            ]);
+        } catch (\Exception $e) {
+            Log::error('API Delete Karyawan Error: ' . $e->getMessage());
+            return response()->json(['success' => false, 'message' => 'Sistem Error saat menghapus data.'], 500);
+        }
+    }
+
+    /**
+     * =========================================================================
+     * MENGHAPUS DATA KARYAWAN SECARA MASSAL (BULK DELETE)
+     * =========================================================================
+     */
+    public function bulkDestroyKaryawan(Request $request)
+    {
+        $user = $request->user();
+        $userId = $user->id_pengguna ?? $user->id;
+
+        // Validasi input: pastikan 'ids' adalah sebuah array
+        $request->validate([
+            'ids'   => 'required|array',
+            'ids.*' => 'integer' // Isi array harus berupa angka (ID)
+        ]);
+
+        try {
+            $query = User::whereIn('id_pengguna', $request->ids);
+            
+            // Jika bukan admin pusat, pastikan hanya bisa menghapus anak buahnya sendiri
+            if ($userId != 4 && strtolower($user->role) !== 'admin') {
+                $query->where('parent_id', $userId);
+            }
+
+            $deletedCount = $query->delete();
+
+            return response()->json([
+                'success' => true, 
+                'message' => "$deletedCount karyawan berhasil dihapus."
+            ]);
+        } catch (\Exception $e) {
+            Log::error('API Bulk Delete Karyawan Error: ' . $e->getMessage());
+            return response()->json(['success' => false, 'message' => 'Sistem Error saat menghapus massal.'], 500);
+        }
+    }
+
+    /**
      * Helper: Generate Access Token FCM V1
      */
     private function getGoogleAccessToken()
