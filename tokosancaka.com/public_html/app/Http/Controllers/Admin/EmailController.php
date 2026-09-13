@@ -299,8 +299,10 @@ class EmailController extends Controller
 
                     // 4. Set URL untuk dikembalikan ke Response JSON
                     $fileUrl = asset('storage/email_attachments/' . $id . '/' . $cleanName);
-                    $thumbUrl = null;
+                    // Gunakan URL file gambar orisinal sebagai default thumbnail
+                    $thumbUrl = $fileUrl;
 
+                    // Khusus PDF, timpa thumbnail menggunakan file hasil render Imagick
                     if (strtolower($extension) === 'pdf' && \Illuminate\Support\Facades\Storage::exists($thumbRelPath)) {
                         $thumbUrl = asset('storage/email_attachments/' . $id . '/' . $thumbName);
                     }
