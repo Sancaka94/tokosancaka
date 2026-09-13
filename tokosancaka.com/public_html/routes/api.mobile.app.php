@@ -575,6 +575,8 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::post('/admin/pengguna/{id}/freeze', [PenggunaController::class, 'freeze']);
     Route::post('/admin/pengguna/{id}/unfreeze', [PenggunaController::class, 'unfreeze']);
 
+    Route::post('/admin/pengguna/{id}/set-koordinator', [PenggunaController::class, 'setKoordinator']); // Tombol Jadikan Koordinator
+
     Route::delete('/admin/pengguna/{id}', [PenggunaController::class, 'destroy']); // Tombol Hapus
 
 

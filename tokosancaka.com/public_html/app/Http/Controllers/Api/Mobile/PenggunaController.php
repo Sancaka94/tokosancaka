@@ -120,7 +120,53 @@ class PenggunaController extends Controller
 
         return response()->json(['success' => true, 'message' => "Akun {$user->nama_lengkap} berhasil diaktifkan kembali."]);
     }
+
     // ====================================================
+    // FITUR BARU: SET KOORDINATOR WILAYAH
+    // ====================================================
+    public function setKoordinator(Request $request, $id)
+    {
+        try {
+            $admin = $request->user();
+
+            // Proteksi: Hanya Admin / ID 4 yang boleh mengakses
+            if ($admin->id_pengguna != 4 && strtolower($admin->role) !== 'admin') {
+                return response()->json([
+                    'success' => false, 
+                    'message' => 'Akses ditolak. Hanya Admin Pusat yang dapat menetapkan Koordinator Wilayah.'
+                ], 403);
+            }
+
+            // Validasi input wilayah
+            $request->validate([
+                'district' => 'required|string|max:255', // Kecamatan (Wajib)
+            ]);
+
+            // Cari pengguna (misal driver) yang akan diangkat jadi koordinator
+            $targetUser = User::where('id_pengguna', $id)->first();
+
+            if (!$targetUser) {
+                return response()->json(['success' => false, 'message' => 'Data pengguna tidak ditemukan.'], 404);
+            }
+
+            // Eksekusi perubahan ke database
+            $targetUser->role = 'Koordinator';
+            $targetUser->district = $request->district;
+            $targetUser->status = 'Aktif'; 
+
+            $targetUser->save();
+
+            return response()->json([
+                'success' => true,
+                'message' => "Selamat! {$targetUser->nama_lengkap} resmi ditetapkan sebagai Koordinator Wilayah Kec. {$request->district}.",
+                'data' => $targetUser
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error("Error Set Koordinator: " . $e->getMessage());
+            return response()->json(['success' => false, 'message' => 'Terjadi kesalahan sistem.'], 500);
+        }
+    }
 
     public function destroy($id)
     {

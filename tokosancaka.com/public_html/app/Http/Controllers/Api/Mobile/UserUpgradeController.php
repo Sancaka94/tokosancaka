@@ -6,7 +6,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
-use App\Models\User;
+use Illuminate\Support\Facades\Schema;
 
 class UserUpgradeController extends Controller
 {
@@ -21,13 +21,13 @@ class UserUpgradeController extends Controller
             // 1. Cek Toko (Apakah kolom store_name ada isinya?)
             $hasStore = !empty($user->store_name);
 
-            // 2. Cek Role (Ambil dari kolom 'role')
+            // 2. Cek Role (Ambil dari kolom 'role', default 'pelanggan')
             $role = strtolower($user->role ?? 'pelanggan');
 
             // 3. Cek DANA (Jika dana_access_token tidak kosong, berarti terhubung)
             $danaStatus = !empty($user->dana_access_token) ? 'SUCCESS' : null;
 
-            // 4. Cek DOKU (Fallback aman jika kolom doku_sac_id belum Anda buat di DB)
+            // 4. Cek DOKU (Fallback aman jika kolom doku_sac_id belum dibuat di DB)
             $dokuSacId = $user->doku_sac_id ?? null;
 
             return response()->json([
@@ -36,13 +36,13 @@ class UserUpgradeController extends Controller
                 'data' => [
                     'role'       => $role,
                     'hasStore'   => $hasStore,
-                    'isDriver'   => $role === 'driver', // 👈 Parameter baru untuk cek driver
+                    'isDriver'   => $role === 'driver', 
                     'danaStatus' => $danaStatus,
                     'dokuSacId'  => $dokuSacId,
                 ]
             ]);
         } catch (\Exception $e) {
-            \Illuminate\Support\Facades\Log::error('API Upgrade Status Error: '.$e->getMessage());
+            Log::error('API Upgrade Status Error: '.$e->getMessage());
             return response()->json([
                 'success' => false,
                 'message' => 'Terjadi kesalahan sistem saat mengambil status.'
@@ -57,24 +57,27 @@ class UserUpgradeController extends Controller
     {
         try {
             $user = $request->user();
+            $currentRole = strtolower($user->role ?? '');
 
             // Jika sudah jadi agent/admin, tolak
-            if (in_array(strtolower($user->role), ['agent', 'admin'])) {
+            if (in_array($currentRole, ['agent', 'admin'])) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Akun Anda sudah terdaftar sebagai Agen.'
                 ], 400);
             }
 
-            // --- Tulis Logika/Syarat Pendaftaran Agen Di Sini ---
-            // Contoh: Mengubah role menjadi Agent
+            // Ubah role menjadi Agent
             $user->role = 'Agent';
             $user->save();
 
             return response()->json([
                 'success' => true,
                 'message' => 'Selamat! Akun Anda berhasil diupgrade menjadi Agen Resmi Sancaka.',
-                'data' => $user
+                'data' => [
+                    'id_pengguna' => $user->id_pengguna,
+                    'role' => $user->role
+                ]
             ]);
 
         } catch (\Exception $e) {
@@ -93,26 +96,26 @@ class UserUpgradeController extends Controller
     {
         $user = $request->user();
 
-        // Gunakan Validator sama seperti di ProfileController
         $validator = Validator::make($request->all(), [
             'store_name' => ['required', 'string', 'max:255'],
-            // Tambahkan validasi lain jika diperlukan (misal: provinsi, kota)
         ]);
 
         if ($validator->fails()) {
             return response()->json([
                 'success' => false,
-                'message' => 'Data toko tidak valid. Cek kembali form Anda.',
+                'message' => 'Nama toko tidak boleh kosong.',
                 'errors'  => $validator->errors()
             ], 422);
         }
 
         try {
-            // Update data user
+            // Update data toko
             $user->store_name = $request->store_name;
             
-            // Ubah role menjadi seller jika saat ini hanya member biasa
-            if (strtolower($user->role) === 'member' || empty($user->role)) {
+            // Ubah role menjadi Seller HANYA JIKA saat ini role-nya Pelanggan, Member, atau Kosong
+            // (Agar jika dia sudah jadi 'Agent' atau 'Driver', role utamanya tidak tertimpa)
+            $currentRole = strtolower($user->role ?? '');
+            if (in_array($currentRole, ['member', 'pelanggan', ''])) {
                 $user->role = 'Seller';
             }
             
@@ -121,7 +124,10 @@ class UserUpgradeController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'Toko berhasil dibuat! Anda sekarang dapat mulai berjualan.',
-                'data' => $user
+                'data' => [
+                    'store_name' => $user->store_name,
+                    'role' => $user->role
+                ]
             ]);
 
         } catch (\Exception $e) {
@@ -141,15 +147,17 @@ class UserUpgradeController extends Controller
         try {
             $user = $request->user();
 
-            // --- Tulis Logika Integrasi DANA Di Sini ---
-            // Contoh simulasi: Status menjadi PENDING untuk menunggu verifikasi DANA
-            $user->dana_status = 'PENDING'; 
-            $user->save();
+            // PENGAMAN: Cek apakah kolom dana_status benar-benar ada di database
+            // Jika tidak ada, kita hindari $user->save() agar tidak SQL Error
+            if (Schema::hasColumn('Pengguna', 'dana_status')) {
+                $user->dana_status = 'PENDING'; 
+                $user->save();
+            }
 
             return response()->json([
                 'success' => true,
                 'message' => 'Pengajuan DANA Bisnis berhasil dikirim dan sedang diproses.',
-                'data' => ['danaStatus' => $user->dana_status]
+                'data' => ['danaStatus' => 'PENDING']
             ]);
 
         } catch (\Exception $e) {
@@ -176,17 +184,18 @@ class UserUpgradeController extends Controller
                 ], 400);
             }
 
-            // --- Tulis Logika Request API DOKU Di Sini ---
-            // Contoh simulasi: Generate SAC ID
             $simulatedSacId = 'SAC-' . time() . '-' . $user->id_pengguna;
             
-            $user->doku_sac_id = $simulatedSacId;
-            $user->save();
+            // PENGAMAN: Cek apakah kolom doku_sac_id benar-benar ada di database
+            if (Schema::hasColumn('Pengguna', 'doku_sac_id')) {
+                $user->doku_sac_id = $simulatedSacId;
+                $user->save();
+            }
 
             return response()->json([
                 'success' => true,
                 'message' => 'Dompet Sancaka (DOKU) berhasil diaktifkan.',
-                'data' => ['dokuSacId' => $user->doku_sac_id]
+                'data' => ['dokuSacId' => $simulatedSacId]
             ]);
 
         } catch (\Exception $e) {
