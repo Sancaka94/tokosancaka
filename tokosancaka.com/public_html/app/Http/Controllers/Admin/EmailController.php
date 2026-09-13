@@ -223,122 +223,138 @@ class EmailController extends Controller
         }
 
        // Cek Server IMAP
-        try {
-            ini_set('memory_limit', '512M');
-            $client = Client::account('default');
-            $client->connect();
-            $inboxFolder = $client->getFolder('INBOX');
-            $message = $inboxFolder->query()->getMessageByUid((int) $id);
+       try {
+           ini_set('memory_limit', '512M');
+           $client = Client::account('default');
+           $client->connect();
+           $inboxFolder = $client->getFolder('INBOX');
+           $message = $inboxFolder->query()->getMessageByUid((int) $id);
 
-            if (!$message) {
-                return response()->json(['error' => 'Email tidak ditemukan'], 404);
-            }
+           if (!$message) {
+               return response()->json(['error' => 'Email tidak ditemukan'], 404);
+           }
 
-            if (!$message->hasFlag('SEEN')) {
-                $message->setFlag('SEEN');
-            }
+           if (!$message->hasFlag('SEEN')) {
+               $message->setFlag('SEEN');
+           }
 
-            $body = $message->getHTMLBody() ?? $message->getTextBody() ?? '';
-            $attachmentsArr = [];
+           $body = $message->getHTMLBody() ?? $message->getTextBody() ?? '';
+           $attachmentsArr = [];
 
-            // 2. Proses lampiran menggunakan method standar Webklex
-            $attachments = $message->getAttachments();
+           // 2. Proses lampiran menggunakan method standar Webklex
+           $attachments = $message->getAttachments();
 
-            foreach ($attachments as $attachment) {
-                try {
-                    $name = $attachment->getName() ?? 'Lampiran_Tanpa_Nama';
-                    $mime = $attachment->getMimeType() ?? 'application/octet-stream';
-                    $contentId = $attachment->getContentId();
-                    $cleanCid = $contentId ? str_replace(['<', '>'], '', $contentId) : null;
+           foreach ($attachments as $attachment) {
+               try {
+                   $name = $attachment->getName() ?? 'Lampiran_Tanpa_Nama';
+                   $mime = $attachment->getMimeType() ?? 'application/octet-stream';
+                   $contentId = $attachment->getContentId();
+                   $cleanCid = $contentId ? str_replace(['<', '>'], '', $contentId) : null;
 
-                    // 1. Bersihkan Nama File dari Spasi dan Tanda Kurung
-                    $extension = pathinfo($name, PATHINFO_EXTENSION);
-                    $filenameWithoutExt = pathinfo($name, PATHINFO_FILENAME);
-                    $cleanName = \Illuminate\Support\Str::slug($filenameWithoutExt, '_') . '.' . strtolower($extension);
+                   // Ambil status disposition dari IMAP (attachment atau inline)
+                   $disposition = strtolower($attachment->getDisposition() ?? 'attachment');
 
-                    // 2. Buat folder dengan permission 0755
-                    $folderPath = 'public/email_attachments/' . $id;
-                    if (!\Illuminate\Support\Facades\Storage::exists($folderPath)) {
-                        \Illuminate\Support\Facades\Storage::makeDirectory($folderPath, 0755, true);
-                    }
+                   // 1. Bersihkan Nama File dari Spasi dan Tanda Kurung
+                   $extension = pathinfo($name, PATHINFO_EXTENSION);
+                   $filenameWithoutExt = pathinfo($name, PATHINFO_FILENAME);
+                   $cleanName = \Illuminate\Support\Str::slug($filenameWithoutExt, '_') . '.' . strtolower($extension);
 
-                    // Deklarasikan Path & Nama File
-                    $path = $folderPath . '/' . $cleanName;
-                    $thumbName = md5($cleanName) . '_thumb.jpg';
-                    $thumbRelPath = $folderPath . '/' . $thumbName;
+                   // 2. Buat folder dengan permission 0755
+                   $folderPath = 'public/email_attachments/' . $id;
+                   if (!\Illuminate\Support\Facades\Storage::exists($folderPath)) {
+                       \Illuminate\Support\Facades\Storage::makeDirectory($folderPath, 0755, true);
+                   }
 
-                    // 3. Simpan semua jenis file ke Storage (TIDAK ADA LAGI BASE64)
-                    if (!\Illuminate\Support\Facades\Storage::exists($path)) {
-                        $fileContent = $attachment->getContent();
-                        \Illuminate\Support\Facades\Storage::put($path, $fileContent);
+                   // Deklarasikan Path & Nama File
+                   $path = $folderPath . '/' . $cleanName;
+                   $thumbName = md5($cleanName) . '_thumb.jpg';
+                   $thumbRelPath = $folderPath . '/' . $thumbName;
 
-                        // --- LOGIKA PEMBUATAN THUMBNAIL PDF (NATIVE IMAGICK) ---
-                        if (strtolower($extension) === 'pdf') {
-                            try {
-                                $pdfAbsPath = storage_path('app/' . $path);
-                                $thumbAbsPath = storage_path('app/' . $thumbRelPath);
+                   // 3. Simpan semua jenis file ke Storage (TIDAK ADA LAGI BASE64)
+                   if (!\Illuminate\Support\Facades\Storage::exists($path)) {
+                       $fileContent = $attachment->getContent();
+                       \Illuminate\Support\Facades\Storage::put($path, $fileContent);
 
-                                $imagick = new \Imagick();
-                                $imagick->setResolution(300, 300);
-                                $imagick->readImage($pdfAbsPath . '[0]');
-                                $imagick->setImageBackgroundColor('white');
-                                $imagick->setImageAlphaChannel(\Imagick::ALPHACHANNEL_REMOVE);
-                                $imagick = $imagick->mergeImageLayers(\Imagick::LAYERMETHOD_FLATTEN);
-                                $imagick->thumbnailImage(600, 0);
-                                $imagick->setImageFormat('jpg');
-                                $imagick->setImageCompressionQuality(85);
-                                $imageBlob = $imagick->getImageBlob();
-                                \Illuminate\Support\Facades\Storage::put($thumbRelPath, $imageBlob);
-                                $imagick->clear();
-                                $imagick->destroy();
-                            } catch (\Throwable $e) {
-                                Log::warning("Gagal membuat thumbnail PDF Imagick untuk {$cleanName}: " . $e->getMessage());
-                            }
-                        }
-                    }
+                       // --- LOGIKA PEMBUATAN THUMBNAIL PDF (NATIVE IMAGICK) ---
+                       if (strtolower($extension) === 'pdf') {
+                           try {
+                               $pdfAbsPath = storage_path('app/' . $path);
+                               $thumbAbsPath = storage_path('app/' . $thumbRelPath);
 
-                    // 4. Set URL untuk dikembalikan ke Response JSON
-                    $fileUrl = asset('storage/email_attachments/' . $id . '/' . $cleanName);
-                    // Gunakan URL file gambar orisinal sebagai default thumbnail
-                    $thumbUrl = $fileUrl;
+                               $imagick = new \Imagick();
+                               $imagick->setResolution(300, 300);
+                               $imagick->readImage($pdfAbsPath . '[0]');
+                               $imagick->setImageBackgroundColor('white');
+                               $imagick->setImageAlphaChannel(\Imagick::ALPHACHANNEL_REMOVE);
+                               $imagick = $imagick->mergeImageLayers(\Imagick::LAYERMETHOD_FLATTEN);
+                               $imagick->thumbnailImage(600, 0);
+                               $imagick->setImageFormat('jpg');
+                               $imagick->setImageCompressionQuality(85);
+                               $imageBlob = $imagick->getImageBlob();
+                               \Illuminate\Support\Facades\Storage::put($thumbRelPath, $imageBlob);
+                               $imagick->clear();
+                               $imagick->destroy();
+                           } catch (\Throwable $e) {
+                               Log::warning("Gagal membuat thumbnail PDF Imagick untuk {$cleanName}: " . $e->getMessage());
+                           }
+                       }
+                   }
 
-                    // Khusus PDF, timpa thumbnail menggunakan file hasil render Imagick
-                    if (strtolower($extension) === 'pdf' && \Illuminate\Support\Facades\Storage::exists($thumbRelPath)) {
-                        $thumbUrl = asset('storage/email_attachments/' . $id . '/' . $thumbName);
-                    }
+                   // 4. Set URL untuk dikembalikan ke Response JSON
+                   $fileUrl = asset('storage/email_attachments/' . $id . '/' . $cleanName);
 
-                    // 5. Jika file ini adalah Inline Image, ganti referensi cid: dengan URL file lokal
-                    if ($cleanCid) {
-                        $body = str_replace('cid:' . $cleanCid, $fileUrl, $body);
-                    }
+                   // PENYELESAIAN BROKEN IMAGE: Gunakan URL file gambar orisinal sebagai default thumbnail jika bukan PDF
+                   $thumbUrl = str_starts_with($mime, 'image/') ? $fileUrl : null;
 
-                    // 6. PASTIKAN SEMUA FILE MASUK KE DAFTAR LAMPIRAN
-                    $attachmentsArr[] = [
-                        'name'      => $cleanName,
-                        'url'       => $fileUrl,
-                        'thumbnail' => $thumbUrl
-                    ];
+                   // Khusus PDF, timpa thumbnail menggunakan file hasil render Imagick
+                   if (strtolower($extension) === 'pdf' && \Illuminate\Support\Facades\Storage::exists($thumbRelPath)) {
+                       $thumbUrl = asset('storage/email_attachments/' . $id . '/' . $thumbName);
+                   }
 
-                } catch (\Exception $e) {
-                    Log::warning("Gagal memproses lampiran email ID {$id}: " . $e->getMessage());
-                }
-            }
+                   // 5. Penanganan Tampilan Gambar Inline di Body
+                   if ($cleanCid && str_contains($body, 'cid:' . $cleanCid)) {
+                       // Kasus HTML memiliki tag bawaan <img src="cid:...">
+                       $body = str_replace('cid:' . $cleanCid, $fileUrl, $body);
+                   } elseif (($disposition === 'inline' || $cleanCid) && str_starts_with($mime, 'image/')) {
+                       // PENYELESAIAN BODY KOSONG: Render otomatis gambar di body pesan
+                       $body .= "
+                       <div style='margin-top: 20px; padding: 10px; background-color: #f8fafc; border-radius: 8px; border: 1px solid #e2e8f0; display: inline-block;'>
+                           <img src='{$fileUrl}' style='max-width: 100%; height: auto; border-radius: 4px;' alt='{$cleanName}'>
+                       </div><br>";
+                   }
 
-            return response()->json([
-                'id' => $message->getUid(),
-                'from_name' => $message->getFrom()[0]->personal ?? $message->getFrom()[0]->mail,
-                'from_address' => $message->getFrom()[0]->mail,
-                'subject' => mb_decode_mimeheader($message->getSubject()[0] ?? '(Tanpa Subjek)'),
-                'body' => $body,
-                'attachments' => $attachmentsArr,
-                // Pencegahan error parsing format tanggal pada versi Webklex tertentu
-                'created_at' => !empty($message->getDate()) ? $message->getDate()[0]->format('Y-m-d H:i:s') : now()->format('Y-m-d H:i:s'),
-            ]);
+                   // 6. PASTIKAN SEMUA FILE MASUK KE DAFTAR LAMPIRAN
+                   $attachmentsArr[] = [
+                       'name'      => $cleanName,
+                       'url'       => $fileUrl,
+                       'thumbnail' => $thumbUrl
+                   ];
 
-        } catch (\Throwable $e) { // PERBAIKAN: Ubah \Exception menjadi \Throwable
-            Log::error('IMAP Show Detail Error', ['error' => $e->getMessage(), 'line' => $e->getLine()]);
-            return response()->json(['error' => 'Gagal memuat isi pesan: ' . $e->getMessage()], 500);
-        }
+               } catch (\Exception $e) {
+                   Log::warning("Gagal memproses lampiran email ID {$id}: " . $e->getMessage());
+               }
+           }
+
+           // PENYELESAIAN FINAL BODY KOSONG: Jika tidak ada teks sama sekali, beri indikator
+           if (empty(trim(strip_tags($body)))) {
+               $body = "<i style='color: #94a3b8; font-family: sans-serif;'>(Email ini tidak berisi teks pesan, hanya melampirkan file)</i>" . $body;
+           }
+
+           return response()->json([
+               'id' => $message->getUid(),
+               'from_name' => $message->getFrom()[0]->personal ?? $message->getFrom()[0]->mail,
+               'from_address' => $message->getFrom()[0]->mail,
+               'subject' => mb_decode_mimeheader($message->getSubject()[0] ?? '(Tanpa Subjek)'),
+               'body' => $body,
+               'attachments' => $attachmentsArr,
+               // Pencegahan error parsing format tanggal pada versi Webklex tertentu
+               'created_at' => !empty($message->getDate()) ? $message->getDate()[0]->format('Y-m-d H:i:s') : now()->format('Y-m-d H:i:s'),
+           ]);
+
+       } catch (\Throwable $e) { // PERBAIKAN: Ubah \Exception menjadi \Throwable
+           Log::error('IMAP Show Detail Error', ['error' => $e->getMessage(), 'line' => $e->getLine()]);
+           return response()->json(['error' => 'Gagal memuat isi pesan: ' . $e->getMessage()], 500);
+       }
     }
 
    /**
