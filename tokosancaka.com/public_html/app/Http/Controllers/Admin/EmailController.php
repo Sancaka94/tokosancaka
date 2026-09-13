@@ -491,6 +491,7 @@ class EmailController extends Controller
         try {
             // === JALUR 1: HAPUS DI SERVER IMAP (KHUSUS INBOX) ===
             if ($folder === 'inbox') {
+                ini_set('memory_limit', '512M');
                 $client = Client::account('default');
                 $client->connect();
                 $inboxFolder = $client->getFolder('INBOX');
