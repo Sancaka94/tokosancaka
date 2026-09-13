@@ -224,6 +224,7 @@ class EmailController extends Controller
 
        // Cek Server IMAP
         try {
+            ini_set('memory_limit', '512M');
             $client = Client::account('default');
             $client->connect();
             $inboxFolder = $client->getFolder('INBOX');
