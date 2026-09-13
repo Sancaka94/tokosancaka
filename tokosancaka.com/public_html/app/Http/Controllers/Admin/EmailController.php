@@ -42,7 +42,7 @@ class EmailController extends Controller
                 $client->connect();
                 $inboxFolder = $client->getFolder('INBOX');
 
-                $query = $inboxFolder->query();
+                $query = $inboxFolder->query()->setFetchBody(false);
 
                 if (!empty($search)) {
                     $query = $query->text($search);
