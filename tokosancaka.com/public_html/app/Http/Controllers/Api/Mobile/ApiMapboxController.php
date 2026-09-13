@@ -2668,4 +2668,35 @@ class ApiMapboxController extends Controller
         }
     }
 
+    /**
+     * Endpoint API POST: /api/mobile/driver/validate-orders
+     * Mencocokkan data Firebase dengan MySQL untuk membuang Data Hantu
+     */
+    public function validate_incoming_orders(Request $request)
+    {
+        try {
+            $orderIds = $request->input('order_ids', []);
+
+            if (empty($orderIds)) {
+                return response()->json(['success' => true, 'valid_orders' => []]);
+            }
+
+            // Hanya ambil Order ID yang benar-benar ada di MySQL dan berstatus 'pending'
+            $validOrders = \Illuminate\Support\Facades\DB::table('order_ojek_online')
+                ->whereIn('order_id', $orderIds)
+                ->where('status', 'pending')
+                ->pluck('order_id')
+                ->toArray();
+
+            return response()->json([
+                'success' => true,
+                'valid_orders' => $validOrders
+            ]);
+
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error("API Validate Orders Error: " . $e->getMessage());
+            return response()->json(['success' => false, 'message' => 'Gagal memvalidasi order.'], 500);
+        }
+    }
+
 }
