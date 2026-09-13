@@ -103,16 +103,16 @@ class ApiMapboxController extends Controller
 
    /**
      * Endpoint API POST: /api/mobile/driver/register
-     * MENANGANI PENDAFTARAN DRIVER + UPLOAD FILE
+     * MENANGANI PENDAFTARAN DRIVER + UPLOAD FILE + FEE KOORDINATOR WILAYAH
      */
     public function register_driver(Request $request)
     {
-        Log::info("=== [API DRIVER] REQUEST PENDAFTARAN MASUK ===");
+        \Illuminate\Support\Facades\Log::info("=== [API DRIVER] REQUEST PENDAFTARAN MASUK ===");
 
         $minTahun = date('Y') - 8;
 
-        // 1. Validasi Input (Dilengkapi Sesuai Database & Web Controller)
-        $validator = Validator::make($request->all(), [
+        // 1. Validasi Input
+        $validator = \Illuminate\Support\Facades\Validator::make($request->all(), [
             'nama_lengkap'    => 'required|string|max:255',
             'tempat_lahir'    => 'required|string|max:100',
             'tanggal_lahir'   => 'required|date|before:-18 years',
@@ -122,6 +122,7 @@ class ApiMapboxController extends Controller
             'nomor_wa'        => 'required|string|max:20',
             'instansi_perusahaan' => 'nullable|string|max:255',
             'alamat_lengkap'  => 'required|string',
+            'district'        => 'required|string', // 👈 WAJIB ADA: Untuk mendeteksi Kecamatan (Koordinator)
             'jenis_layanan'   => 'required|in:motor,mobil',
             'merk_kendaraan'  => 'required|string|max:100',
             'tahun_kendaraan' => 'required|integer|min:' . $minTahun . '|max:' . date('Y'),
@@ -129,7 +130,7 @@ class ApiMapboxController extends Controller
             'latitude'        => 'required|numeric',
             'longitude'       => 'required|numeric',
 
-            // File Pendukung (Wajib di awal pendaftaran)
+            // File Pendukung
             'file_ktp'           => 'required|file|mimes:jpeg,png,jpg,pdf|max:5120',
             'file_sim'           => 'required|file|mimes:jpeg,png,jpg,pdf|max:5120',
             'file_skck'          => 'required|file|mimes:jpeg,png,jpg,pdf|max:5120',
@@ -145,13 +146,16 @@ class ApiMapboxController extends Controller
         ]);
 
         if ($validator->fails()) {
-            Log::warning("[API DRIVER] Validasi gagal: ", $validator->errors()->toArray());
+            \Illuminate\Support\Facades\Log::warning("[API DRIVER] Validasi gagal: ", $validator->errors()->toArray());
             return response()->json([
                 'status'  => false,
                 'message' => 'Data tidak lengkap atau format file salah.',
                 'errors'  => $validator->errors()
             ], 422);
         }
+
+        // Mulai Transaksi Database agar jika error, saldo Korwil tidak jadi bertambah
+        \Illuminate\Support\Facades\DB::beginTransaction();
 
         try {
             // =====================================================================
@@ -167,15 +171,49 @@ class ApiMapboxController extends Controller
                 $idPengguna = $userLoggedIn->id_pengguna;
                 $namaLengkap = $userLoggedIn->nama_lengkap ?? $namaLengkap;
             } else {
-                $existingUser = DB::table('Pengguna')->where('no_wa', $nomorWa)->first();
+                $existingUser = \Illuminate\Support\Facades\DB::table('Pengguna')->where('no_wa', $nomorWa)->first();
                 if ($existingUser) {
                     $idPengguna = $existingUser->id_pengguna;
                     $namaLengkap = $existingUser->nama_lengkap ?? $namaLengkap;
                 }
             }
-            // =====================================================================
 
-            // 2. Proses Upload File (Dilengkapi)
+            // =====================================================================
+            // 🔥 FITUR BARU: CARI KOORDINATOR WILAYAH & BERIKAN FEE (SALDO) 🔥
+            // =====================================================================
+            $kecamatanDriver = $request->input('district'); // Misal: "Ngawi", "Jogorogo"
+            $koordinatorId = null;
+
+            if (!empty($kecamatanDriver)) {
+                // Cari Koordinator di tabel Pengguna berdasarkan Role dan District
+                $koordinator = \Illuminate\Support\Facades\DB::table('Pengguna')
+                    ->where('role', 'Koordinator') // Pastikan role ditulis persis 'Koordinator'
+                    ->where('district', $kecamatanDriver)
+                    ->where('status', 'Aktif')
+                    ->first();
+
+                if ($koordinator) {
+                    $koordinatorId = $koordinator->id_pengguna;
+
+                    // Ambil nominal fee (default Rp 15.000 jika belum diatur di Api Settings)
+                    $feeKoordinator = (float) \App\Models\Api::getValue('FEE_KORWIL_DAFTAR_DRIVER', 'global', 15000);
+
+                    if ($feeKoordinator > 0) {
+                        // Tambahkan nominal fee langsung ke kolom 'saldo' milik Koordinator
+                        \Illuminate\Support\Facades\DB::table('Pengguna')
+                            ->where('id_pengguna', $koordinatorId)
+                            ->increment('saldo', $feeKoordinator);
+
+                        \Illuminate\Support\Facades\Log::info("LOG LOG: [FEE KORWIL] Saldo Rp {$feeKoordinator} ditambahkan ke {$koordinator->nama_lengkap} (ID: {$koordinatorId}) untuk pendaftaran driver di Kec. {$kecamatanDriver}.");
+                    }
+                } else {
+                    \Illuminate\Support\Facades\Log::info("LOG LOG: [FEE KORWIL] Tidak ada Koordinator yang ditemukan untuk Kec. {$kecamatanDriver}");
+                }
+            }
+
+            // =====================================================================
+            // 2. Proses Upload File
+            // =====================================================================
             $uploadPath = 'drivers';
             $filePaths = [
                 'file_ktp' => null, 'file_sim' => null, 'file_skck' => null,
@@ -186,11 +224,10 @@ class ApiMapboxController extends Controller
             foreach (array_keys($filePaths) as $fileKey) {
                 if ($request->hasFile($fileKey)) {
                     $file = $request->file($fileKey);
-
-                    // PROSES KEAMANAN FILE (Gunakan engine keamanan)
                     $pathAman = $this->amankanDanSimpanFile($file, $uploadPath);
 
                     if (!$pathAman) {
+                        \Illuminate\Support\Facades\DB::rollBack(); // Batalkan semua termasuk saldo korwil jika file bahaya
                         return response()->json([
                             'status'  => false,
                             'message' => "Pendaftaran Gagal: Berkas terindikasi berbahaya pada kolom: {$fileKey}."
@@ -201,9 +238,12 @@ class ApiMapboxController extends Controller
                 }
             }
 
-            // 3. Simpan Ke Database Driver (Dilengkapi)
-            $insertId = DB::table('registrasi_driver_sancaka')->insertGetId([
+            // =====================================================================
+            // 3. Simpan Ke Database Driver
+            // =====================================================================
+            $insertId = \Illuminate\Support\Facades\DB::table('registrasi_driver_sancaka')->insertGetId([
                 'id_pengguna'     => $idPengguna,
+                'koordinator_id'  => $koordinatorId, // 👈 ID Korwil disematkan agar bisa dilacak
                 'nama_lengkap'    => $namaLengkap,
                 'tempat_lahir'    => $request->input('tempat_lahir'),
                 'tanggal_lahir'   => $request->input('tanggal_lahir'),
@@ -237,7 +277,9 @@ class ApiMapboxController extends Controller
                 'updated_at'      => now(),
             ]);
 
-            Log::info("[API DRIVER] Pendaftaran Sukses! ID: {$insertId} | Linked Pengguna ID: " . ($idPengguna ?? 'NULL'));
+            \Illuminate\Support\Facades\DB::commit(); // Permanenkan data pendaftaran dan saldo
+
+            \Illuminate\Support\Facades\Log::info("[API DRIVER] Pendaftaran Sukses! ID: {$insertId}");
 
             return response()->json([
                 'status'  => true,
@@ -249,7 +291,8 @@ class ApiMapboxController extends Controller
             ]);
 
         } catch (\Exception $e) {
-            Log::error("[API DRIVER] CRASH SERVER: " . $e->getMessage() . " | Trace: " . $e->getTraceAsString());
+            \Illuminate\Support\Facades\DB::rollBack(); // Batalkan semua jika error
+            \Illuminate\Support\Facades\Log::error("[API DRIVER] CRASH SERVER: " . $e->getMessage() . " | Trace: " . $e->getTraceAsString());
             return response()->json([
                 'status'  => false,
                 'message' => 'Terjadi kesalahan sistem saat menyimpan data.'
