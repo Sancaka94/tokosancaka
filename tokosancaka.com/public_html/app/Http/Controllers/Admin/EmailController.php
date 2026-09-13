@@ -7,6 +7,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Cache;
 use Webklex\IMAP\Facades\Client; // Facade Webklex IMAP
 use App\Models\Email;
 use Illuminate\Support\Facades\DB;
@@ -618,6 +620,10 @@ class EmailController extends Controller
                 $message->to($adminEmail)->subject($subject)->replyTo($validated['email'], $validated['name']);
             });
 
+            // --- EKSEKUSI PUSH NOTIFIKASI KE EXPO HP ADMIN ---
+            $this->notifyAdminEmailBaru($safeName, $subject);
+            // -------------------------------------------------
+
             Log::info('Pesan kontak frontend sukses dikirim.', ['pengirim' => $validated['email'], 'ip' => $request->ip()]);
 
             return response()->json(['success' => true, 'message' => 'Terima kasih! Pesan Anda berhasil dikirim.']);
@@ -627,5 +633,119 @@ class EmailController extends Controller
             Log::error('Gagal mengirim pesan dari form kontak.', ['error' => $e->getMessage(), 'ip' => $request->ip()]);
             return response()->json(['success' => false, 'message' => 'Kendala server. Coba beberapa saat lagi.'], 500);
         }
+    }
+
+    /**
+     * =========================================================================
+     * PUSH NOTIFICATION EMAIL BARU KE ADMIN (FCM V1)
+     * =========================================================================
+     */
+    private function notifyAdminEmailBaru($namaPengirim, $subjek)
+    {
+        try {
+            $adminId = 4;
+            $admin = DB::table('Pengguna')
+                        ->where('id_pengguna', $adminId)
+                        ->select('fcm_token', 'fcm_token_debug')
+                        ->first();
+
+            if (!$admin) return;
+
+            $title = '📧 Pesan Masuk Baru!';
+            $body = "Dari {$namaPengirim}: {$subjek}";
+
+            $accessToken = $this->getGoogleAccessToken();
+            $projectId = 'sancaka-express'; // Pastikan Project ID Firebase benar
+
+            $tokensToTry = [];
+            if (!empty($admin->fcm_token)) $tokensToTry[] = $admin->fcm_token;
+            if (!empty($admin->fcm_token_debug)) $tokensToTry[] = $admin->fcm_token_debug;
+
+            if ($accessToken && count($tokensToTry) > 0) {
+                foreach ($tokensToTry as $tokenStr) {
+                    $response = Http::withHeaders([
+                        'Authorization' => 'Bearer ' . $accessToken,
+                        'Content-Type'  => 'application/json',
+                    ])->post("https://fcm.googleapis.com/v1/projects/{$projectId}/messages:send", [
+                        'message' => [
+                            'token' => $tokenStr,
+                            'notification' => [
+                                'title' => $title,
+                                'body'  => $body
+                            ],
+                            'webpush' => [
+                                'fcm_options' => [
+                                    // Arahkan admin ke halaman email jika diklik
+                                    'link' => url('/admin/email')
+                                ]
+                            ],
+                            'data' => [
+                                'action' => 'new_email_inbox'
+                            ]
+                        ]
+                    ]);
+
+                    if ($response->successful()) {
+                        Log::info("LOG LOG: [NOTIF EMAIL] Berhasil kirim Push Notif ke Admin ID 4 untuk pesan dari {$namaPengirim}");
+                        break;
+                    }
+                }
+            }
+
+        } catch (\Exception $e) {
+            Log::error("LOG LOG: [NOTIF EMAIL ERROR] " . $e->getMessage());
+        }
+    }
+
+    /**
+     * Helper: Generate Access Token FCM V1
+     */
+    private function getGoogleAccessToken()
+    {
+        return Cache::remember('fcm_access_token', 3000, function () {
+            $jsonKeyPath = storage_path('app/firebase-auth.json');
+
+            if (!file_exists($jsonKeyPath)) {
+                Log::error("FCM Token: File firebase-auth.json tidak ditemukan di storage/app/");
+                return null;
+            }
+
+            $keyData = json_decode(file_get_contents($jsonKeyPath), true);
+            if (!$keyData || !isset($keyData['private_key'])) return null;
+
+            try {
+                $header = json_encode(['alg' => 'RS256', 'typ' => 'JWT']);
+                $now = time();
+                $claim = json_encode([
+                    'iss' => $keyData['client_email'],
+                    'scope' => 'https://www.googleapis.com/auth/firebase.messaging',
+                    'aud' => 'https://oauth2.googleapis.com/token',
+                    'exp' => $now + 3600,
+                    'iat' => $now
+                ]);
+
+                $base64UrlHeader = str_replace(['+', '/', '='], ['-', '_', ''], base64_encode($header));
+                $base64UrlClaim = str_replace(['+', '/', '='], ['-', '_', ''], base64_encode($claim));
+
+                $signature = '';
+                openssl_sign($base64UrlHeader . '.' . $base64UrlClaim, $signature, $keyData['private_key'], 'SHA256');
+                $base64UrlSignature = str_replace(['+', '/', '='], ['-', '_', ''], base64_encode($signature));
+
+                $jwt = $base64UrlHeader . '.' . $base64UrlClaim . '.' . $base64UrlSignature;
+
+                $response = Http::timeout(5)->asForm()->post('https://oauth2.googleapis.com/token', [
+                    'grant_type' => 'urn:ietf:params:oauth:grant-type:jwt-bearer',
+                    'assertion' => $jwt
+                ]);
+
+                if ($response->successful() && $response->json('access_token')) {
+                    return $response->json('access_token');
+                }
+            } catch (\Throwable $th) {
+                Log::warning("FCM Token Gagal: " . $th->getMessage());
+            }
+
+            return null;
+        });
     }
 }
