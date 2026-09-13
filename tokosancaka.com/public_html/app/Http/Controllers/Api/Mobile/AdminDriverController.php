@@ -31,8 +31,10 @@ class AdminDriverController extends Controller
                 ->select(
                     'registrasi_driver_sancaka.*',
                     'Pengguna.email as email_pengguna',
-                    'Pengguna.role as role_pengguna',
-                    'Pengguna.status as status_akun'
+                    'Pengguna.status as status_akun',
+                    // 👇 PERBAIKI 2 BARIS BAWAH INI (JANGAN PAKAI 'as role_pengguna') 👇
+                    'Pengguna.role', 
+                    'Pengguna.district'
                 )
                 ->orderBy('registrasi_driver_sancaka.created_at', 'desc')
                 ->get();
