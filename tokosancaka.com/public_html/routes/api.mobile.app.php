@@ -170,6 +170,9 @@ Route::get('/check-update', function(Request $request) {
 
 });
 
+// Rute untuk mengeksekusi Auto-Offline Driver (Trigger by Cron Job)
+Route::get('/cron/auto-offline', [\App\Http\Controllers\Api\Mobile\ApiMapboxController::class, 'cronAutoOffline']);
+
 Route::prefix('public')->group(function () {
     // Tracking & Ekspedisi
     Route::get('/tracking/{resi}', [\App\Http\Controllers\Api\Mobile\TrackingController::class, 'track']);

@@ -2699,4 +2699,84 @@ class ApiMapboxController extends Controller
         }
     }
 
+    /**
+     * =========================================================================
+     * CRON JOB: AUTO OFFLINE DRIVER (12 JAM TANPA AKTIVITAS GPS)
+     * =========================================================================
+     */
+    public function cronAutoOffline()
+    {
+        \Illuminate\Support\Facades\Log::info("=== CRON JOB: AUTO OFFLINE DRIVER (12 JAM) START ===");
+        
+        try {
+            // 1. Ambil semua driver yang saat ini berstatus ONLINE di MySQL (Kecuali Admin ID 4)
+            $activeDrivers = \Illuminate\Support\Facades\DB::table('registrasi_driver_sancaka')
+                ->where('is_active_map', 1)
+                ->get();
+
+            $now = time();
+            $offlineCount = 0;
+
+            foreach ($activeDrivers as $driver) {
+                $idPengguna = $driver->id_pengguna;
+
+                // Jangan offline-kan pusat radar (Admin ID 4)
+                if ($idPengguna == 4) continue;
+
+                // Cek kapan terakhir kali HP driver ini mengirimkan titik GPS ke Redis
+                $redisMeta = \Illuminate\Support\Facades\Redis::hgetall("driver_meta:{$idPengguna}");
+
+                $shouldOffline = false;
+
+                if (empty($redisMeta)) {
+                    // Jika data di Redis sudah hilang/expired, berarti sudah lewat 12 jam
+                    $shouldOffline = true;
+                } else {
+                    $lastUpdated = isset($redisMeta['last_updated']) ? (int) $redisMeta['last_updated'] : 0;
+                    $diffSeconds = $now - $lastUpdated;
+
+                    // Jika tidak ada pergerakan GPS lebih dari 12 jam (43.200 detik)
+                    if ($diffSeconds >= 43200) {
+                        $shouldOffline = true;
+                    }
+                }
+
+                if ($shouldOffline) {
+                    // A. Matikan saklar di MySQL
+                    \Illuminate\Support\Facades\DB::table('registrasi_driver_sancaka')
+                        ->where('id', $driver->id)
+                        ->update(['is_active_map' => 0]);
+
+                    // B. Bersihkan Radar dari Redis
+                    \Illuminate\Support\Facades\Redis::zrem('active_drivers', $idPengguna);
+                    \Illuminate\Support\Facades\Redis::del("driver_meta:{$idPengguna}");
+
+                    // C. Bersihkan Titik Maps dari Firebase RTDB
+                    try {
+                        $fbUrl1 = "https://sancaka-express-default-rtdb.asia-southeast1.firebasedatabase.app/drivers_live_gps/{$idPengguna}.json";
+                        $fbUrl2 = "https://sancaka-express-default-rtdb.asia-southeast1.firebasedatabase.app/incoming_orders/{$idPengguna}.json";
+                        \Illuminate\Support\Facades\Http::delete($fbUrl1);
+                        \Illuminate\Support\Facades\Http::delete($fbUrl2);
+                    } catch (\Exception $e) {
+                        // Abaikan jika Firebase ada kendala jaringan
+                    }
+
+                    $offlineCount++;
+                    \Illuminate\Support\Facades\Log::info("LOG LOG: Driver ID {$idPengguna} ({$driver->nama_lengkap}) di-Offline-kan paksa karena AFK 12 Jam.");
+                }
+            }
+
+            \Illuminate\Support\Facades\Log::info("=== CRON JOB SELESAI: {$offlineCount} Driver ditertibkan. ===");
+            
+            return response()->json([
+                'success' => true, 
+                'message' => "Operasi sapu bersih selesai. {$offlineCount} driver di-offline-kan."
+            ]);
+
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error("CRON AUTO OFFLINE ERROR: " . $e->getMessage());
+            return response()->json(['success' => false, 'message' => 'Sistem Error: ' . $e->getMessage()], 500);
+        }
+    }
+
 }
