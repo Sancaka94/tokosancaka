@@ -49,6 +49,10 @@ class AdminDriverController extends Controller
                 $driver->file_bpkb_url = $driver->file_bpkb ? $baseUrl . '/' . $driver->file_bpkb : null;
                 $driver->foto_motor_url = $driver->foto_motor ? $baseUrl . '/' . $driver->foto_motor : null;
                 $driver->foto_wajah_url = $driver->foto_wajah ? $baseUrl . '/' . $driver->foto_wajah : null;
+                $driver->file_sim_url = $driver->file_sim ? $baseUrl . '/' . $driver->file_sim : null;
+                $driver->file_skck_url = $driver->file_skck ? $baseUrl . '/' . $driver->file_skck : null;
+                $driver->file_buku_rekening_url = $driver->file_buku_rekening ? $baseUrl . '/' . $driver->file_buku_rekening : null;
+                
                 return $driver;
             });
 
