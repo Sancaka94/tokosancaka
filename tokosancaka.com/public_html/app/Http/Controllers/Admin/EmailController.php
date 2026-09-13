@@ -248,97 +248,76 @@ class EmailController extends Controller
                 try {
                     $name = $attachment->getName() ?? 'Lampiran_Tanpa_Nama';
                     $mime = $attachment->getMimeType() ?? 'application/octet-stream';
-
                     $contentId = $attachment->getContentId();
                     $cleanCid = $contentId ? str_replace(['<', '>'], '', $contentId) : null;
 
-                    // A. Jika Inline Image (E-Signature) -> Ubah ke Base64 (Karena ukurannya kecil)
-                    if ($cleanCid && (str_contains($mime, 'image') || str_contains($body, 'cid:' . $cleanCid))) {
-                        $base64 = base64_encode($attachment->getContent());
-                        $body = str_replace('cid:' . $cleanCid, "data:{$mime};base64,{$base64}", $body);
+                    // 1. Bersihkan Nama File dari Spasi dan Tanda Kurung
+                    $extension = pathinfo($name, PATHINFO_EXTENSION);
+                    $filenameWithoutExt = pathinfo($name, PATHINFO_FILENAME);
+                    $cleanName = \Illuminate\Support\Str::slug($filenameWithoutExt, '_') . '.' . strtolower($extension);
+
+                    // 2. Buat folder dengan permission 0755
+                    $folderPath = 'public/email_attachments/' . $id;
+                    if (!\Illuminate\Support\Facades\Storage::exists($folderPath)) {
+                        \Illuminate\Support\Facades\Storage::makeDirectory($folderPath, 0755, true);
                     }
-                    // B. Jika File Dokumen Fisik (PDF, Excel, dll) -> Simpan ke Storage & Buat Thumbnail PDF
-                    else {
-                        // 1. BERSihkan Nama File dari Spasi dan Tanda Kurung
-                        $extension = pathinfo($name, PATHINFO_EXTENSION);
-                        $filenameWithoutExt = pathinfo($name, PATHINFO_FILENAME);
-                        // Mengubah "File (1) (2).pdf" menjadi "file_1_2.pdf"
-                        $cleanName = \Illuminate\Support\Str::slug($filenameWithoutExt, '_') . '.' . strtolower($extension);
 
-                        // 2. Buat folder dengan permission 0755 secara eksplisit
-                        $folderPath = 'public/email_attachments/' . $id;
-                        if (!\Illuminate\Support\Facades\Storage::exists($folderPath)) {
-                            \Illuminate\Support\Facades\Storage::makeDirectory($folderPath, 0755, true);
-                        }
+                    // Deklarasikan Path & Nama File
+                    $path = $folderPath . '/' . $cleanName;
+                    $thumbName = md5($cleanName) . '_thumb.jpg';
+                    $thumbRelPath = $folderPath . '/' . $thumbName;
 
-                        // Deklarasikan Path & Nama File
-                        $path = $folderPath . '/' . $cleanName;
-                        $thumbName = md5($cleanName) . '_thumb.jpg';
-                        $thumbRelPath = $folderPath . '/' . $thumbName;
+                    // 3. Simpan semua jenis file ke Storage (TIDAK ADA LAGI BASE64)
+                    if (!\Illuminate\Support\Facades\Storage::exists($path)) {
+                        $fileContent = $attachment->getContent();
+                        \Illuminate\Support\Facades\Storage::put($path, $fileContent);
 
-                        // ========================================================
-                        // 🔥 LOGIKA PENCEGAH DOBEL: CEK APAKAH FILE SUDAH ADA 🔥
-                        // ========================================================
-                        if (!\Illuminate\Support\Facades\Storage::exists($path)) {
+                        // --- LOGIKA PEMBUATAN THUMBNAIL PDF (NATIVE IMAGICK) ---
+                        if (strtolower($extension) === 'pdf') {
+                            try {
+                                $pdfAbsPath = storage_path('app/' . $path);
+                                $thumbAbsPath = storage_path('app/' . $thumbRelPath);
 
-                            // Jika belum ada, BARU KITA DOWNLOAD isinya dari server IMAP
-                            $fileContent = $attachment->getContent();
-                            \Illuminate\Support\Facades\Storage::put($path, $fileContent);
-
-                            // --- LOGIKA PEMBUATAN THUMBNAIL PDF (NATIVE IMAGICK) ---
-                            if (strtolower($extension) === 'pdf') {
-                                try {
-                                    $pdfAbsPath = storage_path('app/' . $path);
-                                    $thumbAbsPath = storage_path('app/' . $thumbRelPath);
-
-                                    // Gunakan Native Imagick
-                                    $imagick = new \Imagick();
-
-                                    // Render dengan resolusi super tajam (300 DPI) SEBELUM membaca file
-                                    $imagick->setResolution(300, 300);
-                                    $imagick->readImage($pdfAbsPath . '[0]');
-
-                                    // Beri background putih padat & gabungkan layar (Flatten)
-                                    $imagick->setImageBackgroundColor('white');
-                                    $imagick->setImageAlphaChannel(\Imagick::ALPHACHANNEL_REMOVE);
-                                    $imagick = $imagick->mergeImageLayers(\Imagick::LAYERMETHOD_FLATTEN);
-
-                                    // Resize ke ukuran ideal web
-                                    $imagick->thumbnailImage(600, 0);
-
-                                    $imagick->setImageFormat('jpg');
-                                    $imagick->setImageCompressionQuality(85);
-
-                                    // Simpan menggunakan Laravel Storage
-                                    $imageBlob = $imagick->getImageBlob();
-                                    \Illuminate\Support\Facades\Storage::put($thumbRelPath, $imageBlob);
-
-                                    $imagick->clear();
-                                    $imagick->destroy();
-
-                                } catch (\Throwable $e) {
-                                    Log::warning("Gagal membuat thumbnail PDF Imagick untuk {$cleanName}: " . $e->getMessage());
-                                }
+                                $imagick = new \Imagick();
+                                $imagick->setResolution(300, 300);
+                                $imagick->readImage($pdfAbsPath . '[0]');
+                                $imagick->setImageBackgroundColor('white');
+                                $imagick->setImageAlphaChannel(\Imagick::ALPHACHANNEL_REMOVE);
+                                $imagick = $imagick->mergeImageLayers(\Imagick::LAYERMETHOD_FLATTEN);
+                                $imagick->thumbnailImage(600, 0);
+                                $imagick->setImageFormat('jpg');
+                                $imagick->setImageCompressionQuality(85);
+                                $imageBlob = $imagick->getImageBlob();
+                                \Illuminate\Support\Facades\Storage::put($thumbRelPath, $imageBlob);
+                                $imagick->clear();
+                                $imagick->destroy();
+                            } catch (\Throwable $e) {
+                                Log::warning("Gagal membuat thumbnail PDF Imagick untuk {$cleanName}: " . $e->getMessage());
                             }
                         }
-
-                        // Set URL untuk dikembalikan ke Response JSON
-                        $fileUrl = asset('storage/email_attachments/' . $id . '/' . $cleanName);
-                        $thumbUrl = null;
-
-                        // Jika ekstensinya PDF dan file thumbnailnya beneran ada, set URL thumbnailnya
-                        if (strtolower($extension) === 'pdf' && \Illuminate\Support\Facades\Storage::exists($thumbRelPath)) {
-                            $thumbUrl = asset('storage/email_attachments/' . $id . '/' . $thumbName);
-                        }
-
-                        $attachmentsArr[] = [
-                            'name'      => $cleanName, // Tampilkan nama yang sudah bersih
-                            'url'       => $fileUrl,
-                            'thumbnail' => $thumbUrl
-                        ];
                     }
+
+                    // 4. Set URL untuk dikembalikan ke Response JSON
+                    $fileUrl = asset('storage/email_attachments/' . $id . '/' . $cleanName);
+                    $thumbUrl = null;
+
+                    if (strtolower($extension) === 'pdf' && \Illuminate\Support\Facades\Storage::exists($thumbRelPath)) {
+                        $thumbUrl = asset('storage/email_attachments/' . $id . '/' . $thumbName);
+                    }
+
+                    // 5. Jika file ini adalah Inline Image, ganti referensi cid: dengan URL file lokal
+                    if ($cleanCid) {
+                        $body = str_replace('cid:' . $cleanCid, $fileUrl, $body);
+                    }
+
+                    // 6. PASTIKAN SEMUA FILE MASUK KE DAFTAR LAMPIRAN
+                    $attachmentsArr[] = [
+                        'name'      => $cleanName,
+                        'url'       => $fileUrl,
+                        'thumbnail' => $thumbUrl
+                    ];
+
                 } catch (\Exception $e) {
-                    // LOG LOG tetap dilestarikan: Jika 1 file error, email tetap terbuka!
                     Log::warning("Gagal memproses lampiran email ID {$id}: " . $e->getMessage());
                 }
             }
