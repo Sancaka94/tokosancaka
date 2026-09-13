@@ -348,6 +348,86 @@ class ProfileController extends Controller
     }
 
     /**
+     * =========================================================================
+     * MENGEDIT DATA LENGKAP KARYAWAN (NAMA, EMAIL, WA, PASSWORD, PIN, LOGO)
+     * =========================================================================
+     */
+    public function updateKaryawan(Request $request, $id)
+    {
+        $user = $request->user();
+        $userId = $user->id_pengguna ?? $user->id;
+
+        // 1. Pastikan Karyawan ini milik Owner/Seller yang sedang login (Atau jika yang login Admin ID 4)
+        $karyawan = User::where('id_pengguna', $id)->first();
+
+        if (!$karyawan) {
+            return response()->json(['success' => false, 'message' => 'Data karyawan tidak ditemukan.'], 404);
+        }
+
+        if ($karyawan->parent_id != $userId && $userId != 4 && strtolower($user->role) !== 'admin') {
+            return response()->json(['success' => false, 'message' => 'Akses ditolak. Karyawan ini bukan milik toko Anda.'], 403);
+        }
+
+        // 2. Validasi Input (Hanya divalidasi jika datanya dikirim / Nullable)
+        $validator = Validator::make($request->all(), [
+            'nama_lengkap'  => 'nullable|string|max:255',
+            'email'         => ['nullable', 'email', 'max:255', Rule::unique('Pengguna', 'email')->ignore($karyawan->id_pengguna, 'id_pengguna')->whereNull('deleted_at')],
+            'no_wa'         => ['nullable', 'string', 'max:20', Rule::unique('Pengguna', 'no_wa')->ignore($karyawan->id_pengguna, 'id_pengguna')->whereNull('deleted_at')],
+            'jenis_kelamin' => 'nullable|in:Laki-laki,Perempuan',
+            'status'        => 'nullable|in:Aktif,Nonaktif,Freezed',
+            'password'      => 'nullable|string|min:6',
+            'pin'           => 'nullable|string|max:6',
+            'store_logo'    => 'nullable|image|max:4096'
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false, 
+                'message' => 'Data tidak valid. Cek kembali form Anda.', 
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
+        try {
+            // 3. Update Data Standar (Hanya diubah jika ada isinya di form)
+            if ($request->filled('nama_lengkap')) $karyawan->nama_lengkap = $request->nama_lengkap;
+            if ($request->filled('email')) $karyawan->email = $request->email;
+            if ($request->filled('no_wa')) $karyawan->no_wa = $request->no_wa;
+            if ($request->filled('jenis_kelamin')) $karyawan->jenis_kelamin = $request->jenis_kelamin;
+            if ($request->filled('status')) $karyawan->status = $request->status;
+
+            // 4. Keamanan: Update Password & PIN (Otomatis di-Bcrypt ulang jika diisi)
+            if ($request->filled('password')) {
+                $karyawan->password_hash = bcrypt($request->password);
+            }
+            if ($request->filled('pin')) {
+                $karyawan->pin = bcrypt($request->pin);
+            }
+
+            // 5. Update Foto/Logo Khusus Karyawan Ini
+            if ($request->hasFile('store_logo')) {
+                // Hapus foto lama jika ada
+                if (!empty($karyawan->store_logo_path) && Storage::disk('public')->exists($karyawan->store_logo_path)) {
+                    Storage::disk('public')->delete($karyawan->store_logo_path);
+                }
+                $karyawan->store_logo_path = $request->file('store_logo')->store('uploads/store-logos', 'public');
+            }
+
+            $karyawan->save();
+
+            return response()->json([
+                'success' => true, 
+                'message' => 'Data karyawan berhasil diperbarui.',
+                'data' => $karyawan
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('API Edit Karyawan Error: ' . $e->getMessage());
+            return response()->json(['success' => false, 'message' => 'Sistem Error saat memperbarui data.'], 500);
+        }
+    }
+
+    /**
      * Helper: Generate Access Token FCM V1
      */
     private function getGoogleAccessToken()

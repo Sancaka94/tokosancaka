@@ -284,6 +284,7 @@ Route::prefix('seller')->group(function () {
 
     Route::post('/karyawan/update-akses', [\App\Http\Controllers\Api\Mobile\ProfileController::class, 'updateAksesKaryawan']);
 
+    Route::post('/karyawan/update/{id}', [\App\Http\Controllers\Api\Mobile\ProfileController::class, 'updateKaryawan']);
 
     Route::get('/customer/pesanan/riwayat', [\App\Http\Controllers\Api\Mobile\PesananController::class, 'riwayat']);
 
