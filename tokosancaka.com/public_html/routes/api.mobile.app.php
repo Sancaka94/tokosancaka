@@ -75,7 +75,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/history', [PosApiController::class, 'getHistory']);
 
         Route::get('/report', [PosApiController::class, 'getReport']);
-        
+
         // --- TAMBAHAN ROUTE CRUD STOK PRODUK POS ---
         Route::post('/products', [PosApiController::class, 'storeProduct']); // Tambah
         Route::put('/products/{id}', [PosApiController::class, 'updateProduct']); // Edit
@@ -293,10 +293,10 @@ Route::prefix('seller')->group(function () {
     // ==========================================
     // MODULE: PUSAT BISNIS & UPGRADE AKUN
     // ==========================================
-    
+
     // 1. Cek status akun saat ini (Tampil di halaman Upgrade Pengguna)
     Route::get('/user/upgrade-status', [\App\Http\Controllers\Api\Mobile\UserUpgradeController::class, 'getStatus']);
-    
+
     // 2. Daftar Agen Resmi Sancaka
     Route::post('/user/upgrade-agent', [\App\Http\Controllers\Api\Mobile\UserUpgradeController::class, 'registerAgent']);
 
@@ -308,7 +308,7 @@ Route::prefix('seller')->group(function () {
 
     // 5. Aktivasi Dompet Sancaka (DOKU SAC ID)
     Route::post('/user/activate-doku', [\App\Http\Controllers\Api\Mobile\UserUpgradeController::class, 'activateDoku']);
-    
+
 
     // --- B. DASHBOARD (Otomatis menyesuaikan Role) ---
     Route::get('/dashboard', [\App\Http\Controllers\Api\Mobile\DashboardController::class, 'index']);
@@ -567,7 +567,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::post('/admin/pengguna/{id}/unfreeze', [PenggunaController::class, 'unfreeze']);
 
     Route::delete('/admin/pengguna/{id}', [PenggunaController::class, 'destroy']); // Tombol Hapus
-    
+
 
     Route::get('/customer/pesanan/detail/{resi}', [\App\Http\Controllers\Api\Mobile\PesananController::class, 'getDetailPesanan']);
 
