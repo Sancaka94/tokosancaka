@@ -36,6 +36,7 @@ use App\Http\Controllers\Api\Mobile\PesananAutokirimMobileController; // <-- TAM
 use App\Http\Controllers\Api\Mobile\KomisiMobileController;
 use App\Http\Controllers\Api\Mobile\PenggunaController;
 use App\Http\Controllers\Api\Mobile\PosApiController;
+use App\Http\Controllers\Api\Mobile\UserUpgradeController;
 
 Route::prefix('mapbox')->group(function () {
     Route::post('/cek-tarif', [ApiMapboxController::class, 'cek_tarif']);
@@ -288,6 +289,26 @@ Route::prefix('seller')->group(function () {
     Route::post('/auth/logout', [\App\Http\Controllers\Api\Mobile\AuthController::class, 'logout']);
 
     Route::post('/user/verify-pin', [\App\Http\Controllers\Api\Mobile\ApiTopUpController::class, 'verifyPin']);
+
+    // ==========================================
+    // MODULE: PUSAT BISNIS & UPGRADE AKUN
+    // ==========================================
+    
+    // 1. Cek status akun saat ini (Tampil di halaman Upgrade Pengguna)
+    Route::get('/user/upgrade-status', [\App\Http\Controllers\Api\Mobile\UserUpgradeController::class, 'getStatus']);
+    
+    // 2. Daftar Agen Resmi Sancaka
+    Route::post('/user/upgrade-agent', [\App\Http\Controllers\Api\Mobile\UserUpgradeController::class, 'registerAgent']);
+
+    // 3. Buka Toko / Seller
+    Route::post('/user/register-store', [\App\Http\Controllers\Api\Mobile\UserUpgradeController::class, 'registerStore']);
+
+    // 4. Integrasi / Daftar Merchant DANA Bisnis
+    Route::post('/user/register-dana', [\App\Http\Controllers\Api\Mobile\UserUpgradeController::class, 'registerDana']);
+
+    // 5. Aktivasi Dompet Sancaka (DOKU SAC ID)
+    Route::post('/user/activate-doku', [\App\Http\Controllers\Api\Mobile\UserUpgradeController::class, 'activateDoku']);
+    
 
     // --- B. DASHBOARD (Otomatis menyesuaikan Role) ---
     Route::get('/dashboard', [\App\Http\Controllers\Api\Mobile\DashboardController::class, 'index']);
