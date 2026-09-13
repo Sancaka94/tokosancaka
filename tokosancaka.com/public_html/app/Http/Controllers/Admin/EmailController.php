@@ -261,19 +261,28 @@ class EmailController extends Controller
 
                    // 2. Buat folder dengan permission 0755
                    $folderPath = 'public/email_attachments/' . $id;
+                   $absoluteFolderPath = storage_path('app/' . $folderPath);
+
                    if (!\Illuminate\Support\Facades\Storage::exists($folderPath)) {
                        \Illuminate\Support\Facades\Storage::makeDirectory($folderPath, 0755, true);
+
+                       // PAKSA permission folder ke 755 (bypass batasan umask DirectAdmin)
+                       @chmod($absoluteFolderPath, 0755);
                    }
 
                    // Deklarasikan Path & Nama File
                    $path = $folderPath . '/' . $cleanName;
                    $thumbName = md5($cleanName) . '_thumb.jpg';
                    $thumbRelPath = $folderPath . '/' . $thumbName;
+                   $absoluteFilePath = storage_path('app/' . $path);
 
                    // 3. Simpan semua jenis file ke Storage (TIDAK ADA LAGI BASE64)
                    if (!\Illuminate\Support\Facades\Storage::exists($path)) {
                        $fileContent = $attachment->getContent();
                        \Illuminate\Support\Facades\Storage::put($path, $fileContent);
+
+                       // PAKSA permission file ke 644 agar bisa diakses publik
+                       @chmod($absoluteFilePath, 0644);
 
                        // --- LOGIKA PEMBUATAN THUMBNAIL PDF (NATIVE IMAGICK) ---
                        if (strtolower($extension) === 'pdf') {
@@ -292,6 +301,10 @@ class EmailController extends Controller
                                $imagick->setImageCompressionQuality(85);
                                $imageBlob = $imagick->getImageBlob();
                                \Illuminate\Support\Facades\Storage::put($thumbRelPath, $imageBlob);
+
+                               // PAKSA permission file thumbnail PDF
+                               @chmod($thumbAbsPath, 0644);
+
                                $imagick->clear();
                                $imagick->destroy();
                            } catch (\Throwable $e) {
