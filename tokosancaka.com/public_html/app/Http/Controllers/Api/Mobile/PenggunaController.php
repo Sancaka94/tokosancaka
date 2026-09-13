@@ -142,29 +142,31 @@ class PenggunaController extends Controller
                 'district' => 'required|string|max:255', // Kecamatan (Wajib)
             ]);
 
-            // Cari pengguna (misal driver) yang akan diangkat jadi koordinator
-            $targetUser = User::where('id_pengguna', $id)->first();
+            // Cek apakah pengguna ada di tabel Pengguna
+            $targetUser = \Illuminate\Support\Facades\DB::table('Pengguna')->where('id_pengguna', $id)->first();
 
             if (!$targetUser) {
-                return response()->json(['success' => false, 'message' => 'Data pengguna tidak ditemukan.'], 404);
+                return response()->json(['success' => false, 'message' => 'Data pengguna tidak ditemukan di database.'], 404);
             }
 
-            // Eksekusi perubahan ke database
-            $targetUser->role = 'Koordinator';
-            $targetUser->district = $request->district;
-            $targetUser->status = 'Aktif'; 
-
-            $targetUser->save();
+            // 🔥 PERBAIKAN: Gunakan DB Builder Update agar tidak error Primary Key
+            \Illuminate\Support\Facades\DB::table('Pengguna')
+                ->where('id_pengguna', $id)
+                ->update([
+                    'role'     => 'Koordinator',
+                    'district' => $request->district,
+                    'status'   => 'Aktif'
+                ]);
 
             return response()->json([
                 'success' => true,
-                'message' => "Selamat! {$targetUser->nama_lengkap} resmi ditetapkan sebagai Koordinator Wilayah Kec. {$request->district}.",
-                'data' => $targetUser
+                'message' => "Selamat! {$targetUser->nama_lengkap} resmi ditetapkan sebagai Koordinator Wilayah Kec. {$request->district}."
             ]);
 
         } catch (\Exception $e) {
-            Log::error("Error Set Koordinator: " . $e->getMessage());
-            return response()->json(['success' => false, 'message' => 'Terjadi kesalahan sistem.'], 500);
+            \Illuminate\Support\Facades\Log::error("Error Set Koordinator: " . $e->getMessage());
+            // Kirim pesan error aslinya agar kita tahu jika masih ada yang salah
+            return response()->json(['success' => false, 'message' => 'Sistem Error: ' . $e->getMessage()], 500);
         }
     }
 
