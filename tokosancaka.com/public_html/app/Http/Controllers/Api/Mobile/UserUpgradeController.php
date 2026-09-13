@@ -18,22 +18,31 @@ class UserUpgradeController extends Controller
         try {
             $user = $request->user();
 
-            // Berdasarkan referensi ProfileController, nama toko disimpan di tabel user
-            // Maka hasStore bisa dicek dari ada atau tidaknya store_name
+            // 1. Cek Toko (Apakah kolom store_name ada isinya?)
             $hasStore = !empty($user->store_name);
+
+            // 2. Cek Role (Ambil dari kolom 'role')
+            $role = strtolower($user->role ?? 'pelanggan');
+
+            // 3. Cek DANA (Jika dana_access_token tidak kosong, berarti terhubung)
+            $danaStatus = !empty($user->dana_access_token) ? 'SUCCESS' : null;
+
+            // 4. Cek DOKU (Fallback aman jika kolom doku_sac_id belum Anda buat di DB)
+            $dokuSacId = $user->doku_sac_id ?? null;
 
             return response()->json([
                 'success' => true,
                 'message' => 'Berhasil mengambil status user',
                 'data' => [
-                    'role'       => strtolower($user->role ?? 'member'), // 'agent', 'seller', atau 'member'
+                    'role'       => $role,
                     'hasStore'   => $hasStore,
-                    'danaStatus' => $user->dana_status ?? null, // Misal: 'SUCCESS' atau 'PENDING'
-                    'dokuSacId'  => $user->doku_sac_id ?? null,
+                    'isDriver'   => $role === 'driver', // 👈 Parameter baru untuk cek driver
+                    'danaStatus' => $danaStatus,
+                    'dokuSacId'  => $dokuSacId,
                 ]
             ]);
         } catch (\Exception $e) {
-            Log::error('API Upgrade Status Error: '.$e->getMessage());
+            \Illuminate\Support\Facades\Log::error('API Upgrade Status Error: '.$e->getMessage());
             return response()->json([
                 'success' => false,
                 'message' => 'Terjadi kesalahan sistem saat mengambil status.'
