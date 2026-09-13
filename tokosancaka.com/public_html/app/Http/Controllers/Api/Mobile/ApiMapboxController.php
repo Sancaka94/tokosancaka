@@ -2627,4 +2627,45 @@ class ApiMapboxController extends Controller
         }
     }
 
+    /**
+     * Endpoint API GET: /api/mobile/admin/drivers/map-data
+     * Menarik semua data driver untuk ditampilkan di Peta Admin
+     */
+    public function getMapDataDrivers(Request $request)
+    {
+        try {
+            $user = $request->user();
+
+            // Opsional: Kunci hanya untuk Admin (ID 4)
+            if ($user->id_pengguna != 4 && $user->role !== 'Admin') {
+                return response()->json(['success' => false, 'message' => 'Akses ditolak.'], 403);
+            }
+
+            $drivers = \Illuminate\Support\Facades\DB::table('registrasi_driver_sancaka')
+                ->select(
+                    'id',
+                    'id_pengguna',
+                    'nama_lengkap',
+                    'alamat_lengkap',
+                    'latitude',
+                    'longitude',
+                    'status',
+                    'is_active_map',
+                    'nomor_wa'
+                )
+                ->whereNotNull('latitude')
+                ->whereNotNull('longitude')
+                ->orderBy('is_active_map', 'desc') // Yang online di atas
+                ->get();
+
+            return response()->json([
+                'success' => true,
+                'data' => $drivers
+            ]);
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error("Map Data Driver Error: " . $e->getMessage());
+            return response()->json(['success' => false, 'message' => 'Gagal memuat data.'], 500);
+        }
+    }
+
 }

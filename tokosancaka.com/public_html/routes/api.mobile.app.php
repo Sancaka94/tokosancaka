@@ -439,6 +439,7 @@ Route::prefix('seller')->group(function () {
         Route::get('/ojek/history', [AdminDriverController::class, 'historyOjek']);
         Route::delete('/ojek/history/{id}', [AdminDriverController::class, 'destroyOjek']);
         Route::post('/ojek/history/bulk-delete', [AdminDriverController::class, 'bulkDestroyOjek']);
+        Route::get('/drivers/map-data', [\App\Http\Controllers\Api\Mobile\ApiMapboxController::class, 'getMapDataDrivers']);
 
        // ---> RUTE MANAJEMEN DRIVER (KHUSUS ADMIN) <---
         Route::get('/drivers', [AdminDriverController::class, 'index']);
