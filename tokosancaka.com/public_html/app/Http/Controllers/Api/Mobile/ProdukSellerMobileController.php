@@ -28,23 +28,69 @@ class ProdukSellerMobileController extends Controller
         return response()->json(['success' => true, 'data' => $categories]);
     }
 
+    /**
+     * 🔥 FITUR AUTO-HEALER 🔥
+     * Jika user (Agent/Seller) terdaftar, tapi kehilangan baris di tabel `stores`,
+     * Fungsi ini akan membuatkan tokonya secara otomatis tanpa memblokir aplikasi.
+     */
+    private function getOrCreateStore($user)
+    {
+        $userId = $user->id_pengguna ?? $user->id;
+        $store = Store::where('user_id', $userId)->first();
+
+        if (!$store) {
+            $role = strtolower($user->role ?? '');
+            
+            // Jika dia Agent / Seller / Admin, ATAU punya nama toko di tabel Pengguna, paksa buatkan Toko!
+            if (in_array($role, ['seller', 'agent', 'admin']) || $userId == 4 || !empty($user->store_name)) {
+                $storeName = !empty($user->store_name) ? $user->store_name : 'Toko ' . $user->nama_lengkap;
+                
+                $storeId = DB::table('stores')->insertGetId([
+                    'user_id' => $userId,
+                    'name' => $storeName,
+                    'slug' => Str::slug($storeName . '-' . $userId),
+                    'description' => 'Toko resmi ' . $storeName,
+                    'province' => $user->province ?? 'Jawa Timur',
+                    'regency' => $user->regency ?? 'Ngawi',
+                    'district' => $user->district ?? '-',
+                    'village' => $user->village ?? '-',
+                    'address_detail' => $user->address_detail ?? '-',
+                    'seller_logo' => $user->store_logo_path ?? null,
+                    'created_at' => now(),
+                    'updated_at' => now()
+                ]);
+
+                // Update Pengguna jika store_name kebetulan kosong
+                if (empty($user->store_name)) {
+                    DB::table('Pengguna')->where('id_pengguna', $userId)->update(['store_name' => $storeName]);
+                }
+
+                $store = Store::find($storeId);
+            }
+        }
+
+        return $store;
+    }
+
     public function index(Request $request)
     {
         $user = Auth::user();
-
-        // 🔥 PERBAIKAN: Gunakan Query Manual yang lebih aman
-        $userId = $user->id_pengguna ?? $user->id;
-        $store = \App\Models\Store::where('user_id', $userId)->first();
+        
+        // Panggil fungsi pemulih otomatis
+        $store = $this->getOrCreateStore($user);
 
         if (!$store) {
-            return response()->json(['success' => false, 'message' => 'Anda perlu membuat toko terlebih dahulu.'], 403);
+            return response()->json([
+                'success' => false, 
+                'message' => 'Akses ditolak. Anda bukan Agen atau Seller.'
+            ], 403);
         }
 
         $search = $request->input('search');
 
         $productsQuery = Product::where('store_id', $store->id)
-                            ->with('category')
-                            ->latest();
+                                ->with('category')
+                                ->latest();
 
         if ($search) {
             $productsQuery->where(function($query) use ($search) {
@@ -60,9 +106,9 @@ class ProdukSellerMobileController extends Controller
     public function store(Request $request)
     {
         $user = Auth::user();
-        $store = $user->store;
+        $store = $this->getOrCreateStore($user);
 
-        if (!$store) return response()->json(['success' => false, 'message' => 'Toko tidak ditemukan.'], 403);
+        if (!$store) return response()->json(['success' => false, 'message' => 'Akses ditolak.'], 403);
 
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255', Rule::unique('products', 'name')->where('store_id', $store->id)],
@@ -88,7 +134,6 @@ class ProdukSellerMobileController extends Controller
         $dataToCreate = $validated;
         $imagePath = null;
 
-        // Cek varian (Jika dikirim sebagai string JSON dari React Native, kita decode)
         $variantTypes = $request->input('variant_types') ? json_decode($request->input('variant_types'), true) : [];
         $hasVariantsRequest = !empty($variantTypes);
 
@@ -128,16 +173,13 @@ class ProdukSellerMobileController extends Controller
 
             $product = Product::create($dataToCreate);
 
-            // 👇 TAMBAHKAN BLOK KODE INI JUGA 👇
             $product->length = $request->input('length', 0);
             $product->width = $request->input('width', 0);
             $product->height = $request->input('height', 0);
             $product->is_promo = filter_var($request->input('is_promo'), FILTER_VALIDATE_BOOLEAN);
             $product->is_shipping_discount = filter_var($request->input('is_shipping_discount'), FILTER_VALIDATE_BOOLEAN);
             $product->save();
-            // 👆 ============================= 👆
 
-            // Decode Attributes dari React Native
             $attributes = $request->input('attributes') ? json_decode($request->input('attributes'), true) : [];
             if (!empty($attributes)) $this->syncAttributes($product, $attributes);
 
@@ -157,10 +199,11 @@ class ProdukSellerMobileController extends Controller
     public function show($slug)
     {
         $user = Auth::user();
-        if (!$user || !$user->store) return response()->json(['success' => false], 403);
+        $store = $this->getOrCreateStore($user);
+        if (!$store) return response()->json(['success' => false, 'message' => 'Akses ditolak.'], 403);
 
         $produk = Product::where('slug', $slug)
-                    ->where('store_id', $user->store->id)
+                    ->where('store_id', $store->id)
                     ->with(['category', 'productAttributes', 'productVariantTypes.options', 'productVariants.options'])
                     ->firstOrFail();
 
@@ -170,13 +213,13 @@ class ProdukSellerMobileController extends Controller
     public function update(Request $request, $slug)
     {
         $user = Auth::user();
-        if (!$user || !$user->store) return response()->json(['success' => false], 403);
-        $storeId = $user->store->id;
+        $store = $this->getOrCreateStore($user);
+        if (!$store) return response()->json(['success' => false, 'message' => 'Akses ditolak.'], 403);
 
-        $product = Product::where('slug', $slug)->where('store_id', $storeId)->firstOrFail();
+        $product = Product::where('slug', $slug)->where('store_id', $store->id)->firstOrFail();
 
         $validated = $request->validate([
-            'name' => ['required', 'string', 'max:255', Rule::unique('products', 'name')->where('store_id', $storeId)->ignore($product->id)],
+            'name' => ['required', 'string', 'max:255', Rule::unique('products', 'name')->where('store_id', $store->id)->ignore($product->id)],
             'category_id' => 'required|exists:categories,id',
             'description' => 'nullable|string',
             'price' => 'required|numeric|min:0',
@@ -229,14 +272,11 @@ class ProdukSellerMobileController extends Controller
             }
 
             $product->stock = $totalStock;
-            // 👇 TAMBAHKAN BLOK KODE INI (PAKSA SIMPAN) 👇
             $product->length = $request->input('length', 0);
             $product->width = $request->input('width', 0);
             $product->height = $request->input('height', 0);
             $product->is_promo = filter_var($request->input('is_promo'), FILTER_VALIDATE_BOOLEAN);
             $product->is_shipping_discount = filter_var($request->input('is_shipping_discount'), FILTER_VALIDATE_BOOLEAN);
-            // 👆 ====================================== 👆
-
             $product->save();
 
             DB::commit();
@@ -251,8 +291,11 @@ class ProdukSellerMobileController extends Controller
 
     public function destroy($slug)
     {
-        $userStore = Auth::user()->store;
-        $product = Product::where('slug', $slug)->where('store_id', $userStore->id)->firstOrFail();
+        $user = Auth::user();
+        $store = $this->getOrCreateStore($user);
+        if (!$store) return response()->json(['success' => false, 'message' => 'Akses ditolak.'], 403);
+
+        $product = Product::where('slug', $slug)->where('store_id', $store->id)->firstOrFail();
 
         DB::beginTransaction();
         try {
@@ -273,7 +316,7 @@ class ProdukSellerMobileController extends Controller
     }
 
     // ==========================================
-    // HELPER FUNCTIONS (Sama Persis Seperti Web)
+    // HELPER FUNCTIONS (Sama seperti sebelumnya)
     // ==========================================
     protected function generateUniqueSlug(string $name, int $ignoreId = null): string {
         $slug = Str::slug($name);
@@ -281,13 +324,11 @@ class ProdukSellerMobileController extends Controller
         $count = 1;
         $query = Product::where('slug', $slug);
         if ($ignoreId) $query->where('id', '!=', $ignoreId);
-        if (Auth::check() && Auth::user()->store) $query->where('store_id', Auth::user()->store->id);
 
         while ($query->exists()) {
             $slug = $originalSlug . '-' . $count++;
             $query = Product::where('slug', $slug);
             if ($ignoreId) $query->where('id', '!=', $ignoreId);
-            if (Auth::check() && Auth::user()->store) $query->where('store_id', Auth::user()->store->id);
         }
         return $slug;
     }
@@ -300,13 +341,10 @@ class ProdukSellerMobileController extends Controller
         $sku = "{$categoryInitial}-{$productInitial}-{$randomNum}";
 
         $query = Product::where('sku', $sku);
-        if (Auth::check() && Auth::user()->store) $query->where('store_id', Auth::user()->store->id);
-
         while ($query->exists()) {
             $randomNum = mt_rand(100, 999);
             $sku = "{$categoryInitial}-{$productInitial}-{$randomNum}";
             $query = Product::where('sku', $sku);
-            if (Auth::check() && Auth::user()->store) $query->where('store_id', Auth::user()->store->id);
         }
         return $sku;
     }
@@ -403,8 +441,7 @@ class ProdukSellerMobileController extends Controller
 
     public function getAttributes($categoryId)
     {
-        // Ambil atribut berdasarkan kategori
-        $attributes = \App\Models\Attribute::where('category_id', $categoryId)->get();
+        $attributes = Attribute::where('category_id', $categoryId)->get();
         return response()->json(['success' => true, 'data' => $attributes]);
     }
 }
