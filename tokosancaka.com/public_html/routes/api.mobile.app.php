@@ -49,7 +49,7 @@ Route::post('/save-fcm-token', [ApiMapboxController::class, 'saveFcmToken']);
 
 Route::middleware('auth:sanctum')->group(function () {
 
-    // Rute Pengaturan Koordinat Dinamis & Status Driver Aktif (Berdasarkan ID Pengguna Token)
+    Route::get('/driver/cek-koordinator', [\App\Http\Controllers\Api\Mobile\ApiMapboxController::class, 'cek_koordinator']);
     Route::post('/driver/validate-orders', [\App\Http\Controllers\Api\Mobile\ApiMapboxController::class, 'validate_incoming_orders']);
     Route::get('/driver/my-status', [ApiMapboxController::class, 'myStatus']);
     Route::post('/driver/update', [ApiMapboxController::class, 'updateDriver']);

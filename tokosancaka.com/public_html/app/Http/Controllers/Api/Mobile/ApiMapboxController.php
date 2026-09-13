@@ -2779,4 +2779,34 @@ class ApiMapboxController extends Controller
         }
     }
 
+    /**
+     * Endpoint API GET: /api/mobile/driver/cek-koordinator
+     */
+    public function cek_koordinator(Request $request)
+    {
+        $kecamatan = $request->query('district');
+
+        if (empty($kecamatan)) {
+            return response()->json(['success' => false, 'message' => 'Kecamatan kosong']);
+        }
+
+        $korwil = \Illuminate\Support\Facades\DB::table('Pengguna')
+            ->where('role', 'Koordinator')
+            ->where('district', $kecamatan)
+            ->where('status', 'Aktif')
+            ->first();
+
+        if ($korwil) {
+            return response()->json([
+                'success' => true, 
+                'message' => '✅ Wilayah ini didukung oleh Koordinator Sancaka.'
+            ]);
+        }
+
+        return response()->json([
+            'success' => false, 
+            'message' => '⚠️ Belum ada Koordinator di wilayah ini. (Pendaftaran tetap bisa dilanjutkan)'
+        ]);
+    }
+
 }
