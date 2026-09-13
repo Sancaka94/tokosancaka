@@ -10,59 +10,60 @@ use Illuminate\Support\Facades\Validator; // Tambahkan namespace Validator untuk
 
 class AdminDriverController extends Controller
 {
-    /**
-     * Mengambil semua data pendaftaran driver beserta data penggunanya
-     */
     public function index(Request $request)
     {
         try {
-            // Pengaman 1: Pastikan yang mengakses adalah Admin (Misal ID = 4)
+            // Pengaman akses Admin
             $user = $request->user();
-            if ($user->id != 4 && $user->id_pengguna != 4) {
+            if ($user->id != 4 && $user->id_pengguna != 4 && strtolower($user->role) !== 'admin') {
                 return response()->json([
                     'success' => false,
                     'message' => 'Akses ditolak! Anda bukan Admin Sancaka.'
                 ], 403);
             }
 
-            // Ambil data driver + Join dengan tabel Pengguna
-            $drivers = DB::table('registrasi_driver_sancaka')
+            // 1. Ambil data driver + Join dengan tabel Pengguna (UNTUK ROLE KORWIL)
+            $drivers = \Illuminate\Support\Facades\DB::table('registrasi_driver_sancaka')
                 ->leftJoin('Pengguna', 'registrasi_driver_sancaka.id_pengguna', '=', 'Pengguna.id_pengguna')
                 ->select(
                     'registrasi_driver_sancaka.*',
                     'Pengguna.email as email_pengguna',
                     'Pengguna.status as status_akun',
-                    // 👇 PERBAIKI 2 BARIS BAWAH INI (JANGAN PAKAI 'as role_pengguna') 👇
                     'Pengguna.role', 
                     'Pengguna.district'
                 )
                 ->orderBy('registrasi_driver_sancaka.created_at', 'desc')
                 ->get();
 
-            // Format URL Gambar/File agar bisa diakses langsung via React Native
+            // 2. Format URL Gambar/File agar bisa diakses langsung via React Native
             $baseUrl = url('storage');
+            
             $drivers->transform(function ($driver) use ($baseUrl) {
-                $driver->file_ktp_url = $driver->file_ktp ? $baseUrl . '/' . $driver->file_ktp : null;
-                $driver->file_kk_url = $driver->file_kk ? $baseUrl . '/' . $driver->file_kk : null;
-                $driver->file_buku_nikah_url = $driver->file_buku_nikah ? $baseUrl . '/' . $driver->file_buku_nikah : null;
-                $driver->file_stnk_url = $driver->file_stnk ? $baseUrl . '/' . $driver->file_stnk : null;
-                $driver->file_bpkb_url = $driver->file_bpkb ? $baseUrl . '/' . $driver->file_bpkb : null;
-                $driver->foto_motor_url = $driver->foto_motor ? $baseUrl . '/' . $driver->foto_motor : null;
-                $driver->foto_wajah_url = $driver->foto_wajah ? $baseUrl . '/' . $driver->foto_wajah : null;
-                $driver->file_sim_url = $driver->file_sim ? $baseUrl . '/' . $driver->file_sim : null;
-                $driver->file_skck_url = $driver->file_skck ? $baseUrl . '/' . $driver->file_skck : null;
+                // Dokumen Utama (WAJIB)
+                $driver->foto_wajah_url         = $driver->foto_wajah ? $baseUrl . '/' . $driver->foto_wajah : null;
+                $driver->file_ktp_url           = $driver->file_ktp ? $baseUrl . '/' . $driver->file_ktp : null;
+                $driver->file_sim_url           = $driver->file_sim ? $baseUrl . '/' . $driver->file_sim : null;
+                $driver->file_skck_url          = $driver->file_skck ? $baseUrl . '/' . $driver->file_skck : null;
+                $driver->file_stnk_url          = $driver->file_stnk ? $baseUrl . '/' . $driver->file_stnk : null;
+                $driver->foto_motor_url         = $driver->foto_motor ? $baseUrl . '/' . $driver->foto_motor : null;
                 $driver->file_buku_rekening_url = $driver->file_buku_rekening ? $baseUrl . '/' . $driver->file_buku_rekening : null;
+                
+                // Dokumen Tambahan (Opsional)
+                $driver->file_kk_url            = $driver->file_kk ? $baseUrl . '/' . $driver->file_kk : null;
+                $driver->file_buku_nikah_url    = $driver->file_buku_nikah ? $baseUrl . '/' . $driver->file_buku_nikah : null;
+                $driver->file_bpkb_url          = $driver->file_bpkb ? $baseUrl . '/' . $driver->file_bpkb : null;
                 
                 return $driver;
             });
 
+            // 3. Kirim ke Frontend
             return response()->json([
                 'success' => true,
-                'data' => $drivers
+                'data'    => $drivers
             ]);
 
         } catch (\Exception $e) {
-            Log::error("[ADMIN DRIVER] Error: " . $e->getMessage());
+            \Illuminate\Support\Facades\Log::error("[ADMIN DRIVER] Error: " . $e->getMessage());
             return response()->json([
                 'success' => false,
                 'message' => 'Terjadi kesalahan server.'
