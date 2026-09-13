@@ -381,7 +381,7 @@ class RegisterDriverOnlineController extends Controller
         return view('admin.drivers.index', compact('drivers', 'totalDrivers', 'pendingDrivers', 'approvedDrivers', 'rejectedDrivers', 'frozenDrivers'));
     }
 
-    public function updateStatus(Request $request, $id)
+   public function updateStatus(Request $request, $id)
     {
         $request->validate(['status' => 'required|in:approved,rejected,freeze']);
         $status = $request->status;
@@ -399,10 +399,22 @@ class RegisterDriverOnlineController extends Controller
 
             $driver->update($updateData);
 
-            if ($status === 'approved' && $driver->id_pengguna) {
-                Pengguna::where('id_pengguna', $driver->id_pengguna)->update(['role' => 'Driver']);
-            } elseif ($status === 'freeze' && $driver->id_pengguna) {
-                Pengguna::where('id_pengguna', $driver->id_pengguna)->update(['role' => 'Pelanggan']);
+            // 👇 PERBAIKAN: Cek role saat ini agar jabatan Koordinator tidak di-downgrade
+            if ($driver->id_pengguna) {
+                $pengguna = Pengguna::where('id_pengguna', $driver->id_pengguna)->first();
+                
+                if ($pengguna) {
+                    if ($status === 'approved') {
+                        // Hanya naikkan ke Driver JIKA dia masih Pelanggan. 
+                        // Jika sudah Koordinator, biarkan saja.
+                        if ($pengguna->role === 'Pelanggan') {
+                            $pengguna->update(['role' => 'Driver']);
+                        }
+                    } elseif ($status === 'freeze') {
+                        // Jika dibekukan, turunkan ke Pelanggan agar tidak bisa login app driver
+                        $pengguna->update(['role' => 'Pelanggan']);
+                    }
+                }
             }
 
             DB::commit();
@@ -451,9 +463,6 @@ class RegisterDriverOnlineController extends Controller
         return response()->json($layanan);
     }
 
-    // =========================================================================
-    // FUNGSI SINKRONISASI MASSAL UNTUK DATA DRIVER LAMA
-    // =========================================================================
     public function syncExistingDrivers()
     {
         // Ambil semua data pendaftaran yang id_pengguna-nya masih kosong
@@ -461,7 +470,6 @@ class RegisterDriverOnlineController extends Controller
         $count = 0;
 
         foreach ($drivers as $driver) {
-            // Cek apakah nomor WA driver ini sudah ada di tabel Pengguna
             $pengguna = Pengguna::where('no_wa', $driver->nomor_wa)->first();
 
             if (!$pengguna) {
@@ -472,16 +480,18 @@ class RegisterDriverOnlineController extends Controller
                 $pengguna->jenis_kelamin = $driver->jenis_kelamin ?? 'Laki-laki';
                 $pengguna->password_hash = \Illuminate\Support\Facades\Hash::make($driver->nomor_wa);
 
-                // Jika driver lama ini statusnya sudah approved, langsung set role Driver
+                // Role default saat bikin baru
                 $pengguna->role          = ($driver->status === 'approved') ? 'Driver' : 'Pelanggan';
                 $pengguna->status        = 'Aktif';
                 $pengguna->saldo         = 0;
                 $pengguna->save();
             } else {
-                // Jika akun sudah ada dan status driver sudah approved, pastikan rolenya diupdate
+                // 👇 PERBAIKAN: Jika akun sudah ada, pastikan TIDAK menimpa Koordinator atau Admin
                 if ($driver->status === 'approved') {
-                    $pengguna->role = 'Driver';
-                    $pengguna->save();
+                    if (!in_array($pengguna->role, ['Koordinator', 'Admin'])) {
+                        $pengguna->role = 'Driver';
+                        $pengguna->save();
+                    }
                 }
             }
 
