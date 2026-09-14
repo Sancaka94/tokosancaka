@@ -18,12 +18,8 @@ use App\Models\Api;
 
 class ApiMapboxController extends Controller
 {
-    /**
-     * Endpoint API POST: /api/mobile/mapbox/cek-tarif
-     */
     public function cek_tarif(Request $request)
     {
-        // [DEBUG] Catat semua request yang masuk ke Laravel
         Log::info("=== [API MAPBOX] REQUEST CEK TARIF MASUK ===");
         Log::info("Payload:", $request->all());
 
@@ -41,12 +37,7 @@ class ApiMapboxController extends Controller
 
         $mapboxToken = Api::getValue('MAPBOX_SECRET_TOKEN', 'global', env('MAPBOX_TOKEN'));
 
-        if (empty($mapboxToken)) {
-            Log::error("[API MAPBOX] Mapbox Token kosong di database!");
-        }
-
         $url = "https://api.mapbox.com/directions/v5/mapbox/driving/{$lngAsal},{$latAsal};{$lngTujuan},{$latTujuan}";
-        Log::info("[API MAPBOX] Menembak URL: " . $url);
 
         try {
             $response = Http::get($url, [
@@ -56,7 +47,6 @@ class ApiMapboxController extends Controller
             ]);
 
             if (!$response->successful() || empty($response['routes'][0])) {
-                Log::error("[API MAPBOX] Mapbox API Gagal Merespons: ", $response->json() ?? []);
                 return response()->json(['status' => false, 'message' => 'Gagal mendapatkan rute dari Mapbox']);
             }
 
@@ -64,24 +54,73 @@ class ApiMapboxController extends Controller
             $distanceKm = $route['distance'] / 1000;
             $durationMin = ceil($route['duration'] / 60);
 
-            Log::info("[API MAPBOX] Jarak: {$distanceKm} KM | Waktu: {$durationMin} Menit");
+            // ===============================================================
+            // LOGIKA ZONASI PROVINSI (OJEK & EXPRESS)
+            // ===============================================================
+            $zona1Wilayah = strtolower(Api::getValue('ZONA_1_WILAYAH', 'global', 'sumatera, bali, jawa timur, jawa tengah, jawa barat, yogyakarta, banten'));
+            $zona2Wilayah = strtolower(Api::getValue('ZONA_2_WILAYAH', 'global', 'jakarta, bogor, depok, tangerang, bekasi, jabodetabek'));
+            $zona3Wilayah = strtolower(Api::getValue('ZONA_3_WILAYAH', 'global', 'kalimantan, sulawesi, nusa tenggara, maluku, papua'));
 
+            $detectedRegions = $this->getRegionFromCoordinates($lngAsal, $latAsal, $mapboxToken);
+            $selectedZone = null;
+
+            foreach ($detectedRegions as $region) {
+                if (str_contains($zona2Wilayah, $region)) {
+                    $selectedZone = 2; break;
+                } elseif (str_contains($zona1Wilayah, $region)) {
+                    $selectedZone = 1; break;
+                } elseif (str_contains($zona3Wilayah, $region)) {
+                    $selectedZone = 3; break;
+                }
+            }
+
+            // ===============================================================
+            // PERHITUNGAN BIAYA BERDASARKAN LAYANAN DAN ZONA
+            // ===============================================================
             if ($layanan == 'ojek_online') {
-                $baseFare = (float) Api::getValue('SANCAKA_OJEK_BASE_FARE', 'global', 5000);
-                $pricePerKm = (float) Api::getValue('SANCAKA_OJEK_PER_KM', 'global', 2500);
-                $totalCost = $baseFare + ($distanceKm * $pricePerKm);
-            } else {
-                $baseFare = (float) Api::getValue('SANCAKA_EXPRESS_BASE_FARE', 'global', 3000);
-                $pricePerKm = (float) Api::getValue('SANCAKA_EXPRESS_PER_KM', 'global', 1000);
-                $pricePerKg = (float) Api::getValue('SANCAKA_EXPRESS_PER_KG', 'global', 1000);
+                if ($selectedZone === 2) {
+                    $baseFare   = (float) Api::getValue('ZONA_2_TARIF_MINIMAL', 'global', 10200);
+                    $pricePerKm = (float) Api::getValue('ZONA_2_TARIF_PER_KM', 'global', 2550);
+                } elseif ($selectedZone === 3) {
+                    $baseFare   = (float) Api::getValue('ZONA_3_TARIF_MINIMAL', 'global', 9200);
+                    $pricePerKm = (float) Api::getValue('ZONA_3_TARIF_PER_KM', 'global', 2300);
+                } elseif ($selectedZone === 1) {
+                    $baseFare   = (float) Api::getValue('ZONA_1_TARIF_MINIMAL', 'global', 8000);
+                    $pricePerKm = (float) Api::getValue('ZONA_1_TARIF_PER_KM', 'global', 2000);
+                } else {
+                    $baseFare   = (float) Api::getValue('SANCAKA_OJEK_BASE_FARE', 'global', 5000);
+                    $pricePerKm = (float) Api::getValue('SANCAKA_OJEK_PER_KM', 'global', 2500);
+                }
 
+                $calculatedFare = $distanceKm * $pricePerKm;
+                $totalCost = ($calculatedFare < $baseFare) ? $baseFare : $calculatedFare;
+
+            } else {
+                // Sancaka Express Zonasi
+                if ($selectedZone === 2) {
+                    $baseFare   = (float) Api::getValue('EXPRESS_ZONA_2_BASE', 'global', 4000);
+                    $pricePerKm = (float) Api::getValue('EXPRESS_ZONA_2_KM', 'global', 1500);
+                } elseif ($selectedZone === 3) {
+                    $baseFare   = (float) Api::getValue('EXPRESS_ZONA_3_BASE', 'global', 3500);
+                    $pricePerKm = (float) Api::getValue('EXPRESS_ZONA_3_KM', 'global', 1200);
+                } elseif ($selectedZone === 1) {
+                    $baseFare   = (float) Api::getValue('EXPRESS_ZONA_1_BASE', 'global', 3000);
+                    $pricePerKm = (float) Api::getValue('EXPRESS_ZONA_1_KM', 'global', 1000);
+                } else {
+                    $baseFare   = (float) Api::getValue('SANCAKA_EXPRESS_BASE_FARE', 'global', 3000);
+                    $pricePerKm = (float) Api::getValue('SANCAKA_EXPRESS_PER_KM', 'global', 1000);
+                }
+
+                $pricePerKg = (float) Api::getValue('SANCAKA_EXPRESS_PER_KG', 'global', 1000);
                 $weightKg = max(1, ceil($beratGram / 1000));
+
                 $totalCost = $baseFare + ($distanceKm * $pricePerKm) + ($weightKg * $pricePerKg);
             }
 
+            // Pembulatan ke 500 terdekat
             $finalCost = (int) (ceil($totalCost / 500) * 500);
 
-            Log::info("[API MAPBOX] Tarif Final Dihitung: Rp " . $finalCost);
+            Log::info("[API MAPBOX] Zona Terdeteksi: {$selectedZone} | Tarif Final: Rp {$finalCost}");
 
             return response()->json([
                 'status' => true,
@@ -93,11 +132,8 @@ class ApiMapboxController extends Controller
             ]);
 
         } catch (\Exception $e) {
-            Log::error("[API MAPBOX] EXCEPTION CRASH: " . $e->getMessage() . " | Trace: " . $e->getTraceAsString());
-            return response()->json([
-                'status' => false,
-                'message' => 'Internal Server Error: ' . $e->getMessage()
-            ], 500);
+            Log::error("[API MAPBOX] EXCEPTION CRASH: " . $e->getMessage());
+            return response()->json(['status' => false, 'message' => 'Internal Server Error'], 500);
         }
     }
 
@@ -2707,7 +2743,7 @@ class ApiMapboxController extends Controller
     public function cronAutoOffline()
     {
         \Illuminate\Support\Facades\Log::info("=== CRON JOB: AUTO OFFLINE DRIVER (12 JAM) START ===");
-        
+
         try {
             // 1. Ambil semua driver yang saat ini berstatus ONLINE di MySQL (Kecuali Admin ID 4)
             $activeDrivers = \Illuminate\Support\Facades\DB::table('registrasi_driver_sancaka')
@@ -2767,9 +2803,9 @@ class ApiMapboxController extends Controller
             }
 
             \Illuminate\Support\Facades\Log::info("=== CRON JOB SELESAI: {$offlineCount} Driver ditertibkan. ===");
-            
+
             return response()->json([
-                'success' => true, 
+                'success' => true,
                 'message' => "Operasi sapu bersih selesai. {$offlineCount} driver di-offline-kan."
             ]);
 
@@ -2798,15 +2834,41 @@ class ApiMapboxController extends Controller
 
         if ($korwil) {
             return response()->json([
-                'success' => true, 
+                'success' => true,
                 'message' => '✅ Wilayah ini didukung oleh Koordinator Sancaka.'
             ]);
         }
 
         return response()->json([
-            'success' => false, 
+            'success' => false,
             'message' => '⚠️ Belum ada Koordinator di wilayah ini. (Pendaftaran tetap bisa dilanjutkan)'
         ]);
+    }
+
+    /**
+     * Helper Private: Mendapatkan nama wilayah dari Mapbox Reverse Geocoding
+     */
+    private function getRegionFromCoordinates($lng, $lat, $token)
+    {
+        try {
+            $url = "https://api.mapbox.com/geocoding/v5/mapbox.places/{$lng},{$lat}.json";
+            $response = Http::get($url, [
+                'access_token' => $token,
+                'types' => 'region,place',
+                'limit' => 2
+            ]);
+
+            if ($response->successful() && !empty($response['features'])) {
+                $regions = [];
+                foreach ($response['features'] as $feature) {
+                    $regions[] = strtolower($feature['text']);
+                }
+                return $regions; // Mengembalikan array seperti ['jakarta', 'daerah khusus ibukota jakarta']
+            }
+        } catch (\Exception $e) {
+            Log::error("[API MAPBOX] Gagal Reverse Geocoding: " . $e->getMessage());
+        }
+        return [];
     }
 
 }
