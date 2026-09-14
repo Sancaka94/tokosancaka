@@ -851,12 +851,14 @@
                                                 Asuransi <span x-text="((ongkir.insurance || ongkir.asuransi_rate) * 100) + '%'"></span>
                                             </span>
 
-                                            <!-- Preview Nominal Asuransi (Muncul otomatis jika checkbox asuransi form dicentang & ada nilai barang) -->
-                                            <template x-if="asuransi && (parseInt(nilaiBarang) || 0) > 0">
-                                                <span class="border-l border-emerald-300 pl-1.5 ml-0.5 text-emerald-900">
-                                                    Rp <span x-text="Math.round((parseInt(nilaiBarang) || 0) * (ongkir.insurance || ongkir.asuransi_rate)).toLocaleString('id-ID')"></span>
-                                                </span>
-                                            </template>
+                                            <span class="border-l border-emerald-300 pl-1.5 ml-0.5 text-emerald-900">
+                                                <template x-if="(parseInt(nilaiBarang) || 0) > 0">
+                                                    <span>Rp <span x-text="Math.round((parseInt(nilaiBarang) || 0) * (ongkir.insurance || ongkir.asuransi_rate)).toLocaleString('id-ID')"></span></span>
+                                                </template>
+                                                <template x-if="(parseInt(nilaiBarang) || 0) === 0">
+                                                    <span class="italic font-medium text-emerald-600/70 lowercase">(Isi nilai barang)</span>
+                                                </template>
+                                            </span>
                                         </div>
                                     </template>
 
@@ -868,29 +870,33 @@
                                                 Fee COD <span x-text="(ongkir.fee_cod * 100) + '%'"></span>
                                             </span>
 
-                                            <!-- Preview Nominal COD (Muncul otomatis hanya jika tipe pesanan = COD) -->
-                                            <template x-if="tipePesanan === 'cod'">
-                                                <span class="border-l border-blue-300 pl-1.5 ml-0.5 text-blue-900">
-                                                    Rp <span x-text="
-                                                        (function() {
-                                                            let rate = parseFloat(ongkir.fee_cod) || 0;
-                                                            let base = parseInt(ongkir.harga) || 0;
+                                            <span class="border-l border-blue-300 pl-1.5 ml-0.5 text-blue-900">
+                                                <template x-if="(parseInt(nilaiBarang) || 0) > 0">
+                                                    <span>
+                                                        Rp <span x-text="
+                                                            (function() {
+                                                                let rate = parseFloat(ongkir.fee_cod) || 0;
+                                                                let base = parseInt(ongkir.harga) || 0;
 
-                                                            // Jika COD Barang, fee dihitung dari (Harga Barang + Ongkir)
-                                                            if (jenisCod === 'cod_barang') {
-                                                                base += (parseInt(nilaiBarang) || 0);
-                                                            }
+                                                                // Jika settingan form saat ini adalah COD Barang, fee dihitung dari (Harga Barang + Ongkir)
+                                                                if (jenisCod === 'cod_barang') {
+                                                                    base += (parseInt(nilaiBarang) || 0);
+                                                                }
 
-                                                            let fee = base * rate;
+                                                                let fee = base * rate;
 
-                                                            // Logika Minimum Fee COD (Sicepat min 2000, ekspedisi lain min 1500)
-                                                            let min = (ongkir.kurir || ongkir.courier_name || '').toUpperCase().includes('SICEPAT') ? 2000 : 1500;
+                                                                // Logika Minimum Fee COD (Sicepat min 2000, ekspedisi lain min 1500)
+                                                                let min = (ongkir.kurir || ongkir.courier_name || '').toUpperCase().includes('SICEPAT') ? 2000 : 1500;
 
-                                                            return Math.round(fee > 0 && fee < min ? min : fee).toLocaleString('id-ID');
-                                                        })()
-                                                    "></span>
-                                                </span>
-                                            </template>
+                                                                return Math.round(fee > 0 && fee < min ? min : fee).toLocaleString('id-ID');
+                                                            })()
+                                                        "></span>
+                                                    </span>
+                                                </template>
+                                                <template x-if="(parseInt(nilaiBarang) || 0) === 0">
+                                                    <span class="italic font-medium text-blue-600/70 lowercase">(Isi nilai barang)</span>
+                                                </template>
+                                            </span>
                                         </div>
                                     </template>
 
