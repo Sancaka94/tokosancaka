@@ -74,18 +74,18 @@ class RegisterDriverOnlineController extends Controller
             'longitude'       => 'nullable|numeric',
 
             // Dokumen Inti
-            'foto_wajah'         => 'required|file|mimes:jpeg,png,jpg|max:5120',
-            'file_ktp'           => 'required|file|mimes:jpeg,png,jpg,pdf|max:5120',
-            'file_sim'           => 'required|file|mimes:jpeg,png,jpg,pdf|max:5120',
-            'file_skck'          => 'required|file|mimes:jpeg,png,jpg,pdf|max:5120',
-            'file_stnk'          => 'required|file|mimes:jpeg,png,jpg,pdf|max:5120',
-            'foto_motor'         => 'required|file|mimes:jpeg,png,jpg,pdf|max:5120',
-            'file_buku_rekening' => 'required|file|mimes:jpeg,png,jpg,pdf|max:5120',
+            'foto_wajah'         => 'required|file|mimes:jpeg,png,jpg|max:2048',
+            'file_ktp'           => 'required|file|mimes:jpeg,png,jpg,pdf|max:2048',
+            'file_sim'           => 'required|file|mimes:jpeg,png,jpg,pdf|max:2048',
+            'file_skck'          => 'required|file|mimes:jpeg,png,jpg,pdf|max:2048',
+            'file_stnk'          => 'required|file|mimes:jpeg,png,jpg,pdf|max:2048',
+            'foto_motor'         => 'required|file|mimes:jpeg,png,jpg,pdf|max:2048',
+            'file_buku_rekening' => 'required|file|mimes:jpeg,png,jpg,pdf|max:2048',
 
             // Opsional
-            'file_kk'         => 'nullable|file|mimes:jpeg,png,jpg,pdf|max:5120',
-            'file_bpkb'       => 'nullable|file|mimes:jpeg,png,jpg,pdf|max:5120',
-            'file_buku_nikah' => 'nullable|file|mimes:jpeg,png,jpg,pdf|max:5120',
+            'file_kk'         => 'nullable|file|mimes:jpeg,png,jpg,pdf|max:2048',
+            'file_bpkb'       => 'nullable|file|mimes:jpeg,png,jpg,pdf|max:2048',
+            'file_buku_nikah' => 'nullable|file|mimes:jpeg,png,jpg,pdf|max:2048',
         ], $messages);
 
         try {
@@ -209,13 +209,13 @@ class RegisterDriverOnlineController extends Controller
             'tahun_kendaraan' => 'required|integer|min:' . $minTahun . '|max:' . date('Y'),
             'plat_nomor'      => 'required|string|max:15',
 
-            'foto_wajah' => 'nullable|file|mimes:jpeg,png,jpg|max:5120',
-            'file_ktp'   => 'nullable|file|mimes:jpeg,png,jpg,pdf|max:5120',
-            'file_sim'   => 'nullable|file|mimes:jpeg,png,jpg,pdf|max:5120',
-            'file_skck'  => 'nullable|file|mimes:jpeg,png,jpg,pdf|max:5120',
-            'file_stnk'  => 'nullable|file|mimes:jpeg,png,jpg,pdf|max:5120',
-            'foto_motor' => 'nullable|file|mimes:jpeg,png,jpg,pdf|max:5120',
-            'file_buku_rekening' => 'nullable|file|mimes:jpeg,png,jpg,pdf|max:5120',
+            'foto_wajah' => 'nullable|file|mimes:jpeg,png,jpg|max:2048',
+            'file_ktp'   => 'nullable|file|mimes:jpeg,png,jpg,pdf|max:2048',
+            'file_sim'   => 'nullable|file|mimes:jpeg,png,jpg,pdf|max:2048',
+            'file_skck'  => 'nullable|file|mimes:jpeg,png,jpg,pdf|max:2048',
+            'file_stnk'  => 'nullable|file|mimes:jpeg,png,jpg,pdf|max:2048',
+            'foto_motor' => 'nullable|file|mimes:jpeg,png,jpg,pdf|max:2048',
+            'file_buku_rekening' => 'nullable|file|mimes:jpeg,png,jpg,pdf|max:2048',
         ]);
 
         try {

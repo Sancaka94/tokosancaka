@@ -838,4 +838,65 @@
     }
 
 </script>
+
+<!-- Library Kompresi Gambar Browser -->
+<script type="text/javascript" src="https://cdn.jsdelivr.net/npm/browser-image-compression@2.0.1/dist/browser-image-compression.js"></script>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Ambil semua input file di form pendaftaran
+        const fileInputs = document.querySelectorAll('input[type="file"]');
+
+        fileInputs.forEach(input => {
+            input.addEventListener('change', async function(event) {
+                const file = event.target.files[0];
+
+                // Hanya jalankan kompresi jika yang diupload adalah gambar (bukan PDF)
+                if (file && file.type.startsWith('image/')) {
+
+                    // Konfigurasi kompresi (Maksimal 1.5MB dan resolusi 1200px)
+                    const options = {
+                        maxSizeMB: 1.5,
+                        maxWidthOrHeight: 1200,
+                        useWebWorker: true
+                    };
+
+                    try {
+                        // Simpan label asli dan tampilkan status loading
+                        const labelElement = input.previousElementSibling;
+                        const originalLabelText = labelElement.innerHTML;
+                        labelElement.innerHTML = originalLabelText + ' <span class="text-warning small ms-2"><i class="fa-solid fa-spinner fa-spin"></i> Mengkompres...</span>';
+
+                        // Kunci tombol submit selama proses kompresi
+                        const submitBtn = document.getElementById('submitBtn');
+                        if(submitBtn) submitBtn.disabled = true;
+
+                        // Proses kompresi gambar
+                        const compressedFile = await browserImageCompression(file, options);
+
+                        // Buat file baru dari hasil kompresi untuk dimasukkan kembali ke form
+                        const newFile = new File([compressedFile], file.name, {
+                            type: compressedFile.type,
+                            lastModified: Date.now()
+                        });
+
+                        // Timpa file lama yang besar dengan file baru yang sudah menjadi KB
+                        const dataTransfer = new DataTransfer();
+                        dataTransfer.items.add(newFile);
+                        input.files = dataTransfer.files;
+
+                        // Kembalikan tombol dan ubah status menjadi sukses dengan ukuran baru
+                        labelElement.innerHTML = originalLabelText + ' <span class="text-success fw-bold small ms-2"><i class="fa-solid fa-check"></i> ' + (compressedFile.size / 1024).toFixed(0) + ' KB</span>';
+                        if(submitBtn) submitBtn.disabled = false;
+
+                    } catch (error) {
+                        console.error('Gagal mengkompres gambar:', error);
+                        input.previousElementSibling.innerHTML += ' <span class="text-danger small ms-2">Gagal kompresi</span>';
+                    }
+                }
+            });
+        });
+    });
+</script>
+
 @endsection
