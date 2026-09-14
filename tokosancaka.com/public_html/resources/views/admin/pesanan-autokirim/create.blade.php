@@ -41,7 +41,7 @@
         <!-- ROW 1: GRID KIRI (DATA) DAN KANAN (DETAIL) -->
         <!-- ========================================== -->
         <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
-            
+
             <!-- SISI KIRI: DATA PENGIRIM & PENERIMA -->
             <div class="lg:col-span-7 space-y-6">
 
@@ -439,9 +439,14 @@
                             <div>
                                 <label class="block text-xs font-medium text-gray-700 mb-1.5">METODE SERAH TERIMA</label>
                                 <select name="is_sender_pp" x-model="isSenderPp" class="uppercase w-full h-[42px] border border-gray-300 rounded-md text-xs focus:outline-none focus:ring-1 focus:ring-black focus:border-black px-3 bg-white text-gray-800">
-                                    <option value="1">KURIR JEMPUT (PICKUP)</option>
+                                    <!-- Opsi Pickup hanya muncul jika ekspedisi mendukung -->
+                                    <option value="1" x-show="supportPickup" :disabled="!supportPickup">KURIR JEMPUT (PICKUP)</option>
                                     <option value="0">ANTAR KE CABANG (DROPOFF)</option>
                                 </select>
+                                <!-- Notifikasi Merah jika Kurir tidak dukung penjemputan -->
+                                <p x-show="!supportPickup && selectedOngkir > 0" x-transition class="text-[10px] text-red-600 font-bold mt-1.5">
+                                    *Kurir terpilih hanya mendukung Dropoff ke cabang.
+                                </p>
                             </div>
                         </div>
 
@@ -507,11 +512,13 @@
 
                     <!-- Input Hidden yang Wajib Dikirim ke Backend -->
                     <input type="hidden" name="kurir_terpilih" x-model="selectedKurir">
+                    <input type="hidden" name="kode_kurir_terpilih" x-model="selectedCourierCode">
+                    <input type="hidden" name="estimasi_terpilih" x-model="selectedEstimasi">
                     <input type="hidden" name="layanan_terpilih" x-model="selectedLayanan">
                     <input type="hidden" name="ongkir_terpilih" x-model="selectedOngkir">
                     <input type="hidden" name="service_code_terpilih" x-model="selectedServiceCode">
                     <input type="hidden" name="metode_pembayaran" x-bind:value="tipePesanan === 'cod' ? jenisCod : selectedPayment">
-                    
+
                     <!-- HIDDEN INPUTS UNTUK BACKEND -->
                     <input type="hidden" name="hitung_asuransi" :value="biayaAsuransi">
                     <input type="hidden" name="hitung_cod_fee" :value="biayaCod">
@@ -600,19 +607,19 @@
         <!-- ========================================================================= -->
         <div class="bg-white p-6 rounded-lg border border-gray-200 shadow-sm mt-6">
             <div class="flex flex-col lg:flex-row lg:items-stretch justify-between gap-8">
-                
+
                 <!-- BAGIAN KIRI: PILIHAN PEMBAYARAN -->
                 <div class="w-full lg:w-2/3">
                     <h3 class="text-sm font-bold text-black uppercase tracking-widest mb-4 flex items-center">
                         <i class="fa-solid fa-wallet mr-2"></i> Pilih Metode Pembayaran
                     </h3>
-                    
+
                     <div x-show="tipePesanan !== 'cod'" x-transition x-cloak>
                         <!-- TOMBOL PEMICU MODAL PEMBAYARAN -->
-                        <button type="button" @click="if(formIsValid) showPaymentModal = true" :disabled="!formIsValid" 
-                            class="flex items-center justify-between w-full border p-4 rounded-lg transition-all" 
+                        <button type="button" @click="if(formIsValid) showPaymentModal = true" :disabled="!formIsValid"
+                            class="flex items-center justify-between w-full border p-4 rounded-lg transition-all"
                             :class="!formIsValid ? 'bg-gray-100 border-gray-200 opacity-60 cursor-not-allowed' : (selectedPayment ? 'border-black ring-1 ring-black shadow-sm cursor-pointer hover:bg-gray-50' : 'border-gray-300 cursor-pointer hover:bg-gray-50')">
-                            
+
                             <div class="flex items-center gap-4">
                                 <div class="w-10 h-10 rounded bg-white flex items-center justify-center shrink-0 p-1 border border-gray-100 shadow-sm" :class="!formIsValid ? 'opacity-50' : ''">
                                     <template x-if="!selectedPaymentIcon">
@@ -698,16 +705,16 @@
 
                 <!-- BAGIAN KANAN: TOMBOL SUBMIT -->
                 <div class="w-full lg:w-1/3 flex flex-col justify-center border-t lg:border-t-0 lg:border-l border-gray-200 pt-6 lg:pt-0 lg:pl-8 mt-4 lg:mt-0">
-                    
+
                     <button type="submit"
                         :disabled="!isFormSubmitReady"
                         class="w-full py-4 rounded-md font-bold transition-all text-sm tracking-widest flex justify-center items-center gap-3 uppercase"
                         :class="!isFormSubmitReady ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 'bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer shadow-lg'">
-                        
+
                         <span x-text="isSubmitting ? 'MEMPROSES...' : 'KIRIM PAKET'"></span>
                         <i class="fa-solid" :class="isSubmitting ? 'fa-spinner fa-spin' : 'fa-arrow-right'"></i>
                     </button>
-                    
+
                     <!-- Peringatan Dinamis -->
                     <p x-show="!formIsValid" class="text-[10px] text-gray-400 font-bold text-center mt-3 uppercase tracking-widest">* Lengkapi form & pilih ongkir</p>
                     <p x-show="formIsValid && tipePesanan !== 'cod' && !selectedPayment" class="text-[10px] text-red-500 font-bold text-center mt-3 uppercase tracking-widest">* Wajib pilih metode pembayaran</p>
@@ -753,27 +760,27 @@
 
                     <!-- TAMBAHAN: Tombol Filter -->
                     <div class="bg-white px-6 py-3 border-b border-gray-200 flex items-center gap-2 overflow-x-auto custom-scrollbar">
-                        <button type="button" @click="filterEkspedisi = 'Semua'" 
+                        <button type="button" @click="filterEkspedisi = 'Semua'"
                             :class="filterEkspedisi === 'Semua' ? 'bg-red-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'"
                             class="px-4 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-colors border border-transparent">
                             Semua
                         </button>
-                        <button type="button" @click="filterEkspedisi = 'Reguler'" 
+                        <button type="button" @click="filterEkspedisi = 'Reguler'"
                             :class="filterEkspedisi === 'Reguler' ? 'bg-red-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'"
                             class="px-4 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-colors border border-transparent">
                             Reguler
                         </button>
-                        <button type="button" @click="filterEkspedisi = 'Cargo'" 
+                        <button type="button" @click="filterEkspedisi = 'Cargo'"
                             :class="filterEkspedisi === 'Cargo' ? 'bg-red-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'"
                             class="px-4 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-colors border border-transparent">
                             Cargo
                         </button>
-                        <button type="button" @click="filterEkspedisi = 'Oneday'" 
+                        <button type="button" @click="filterEkspedisi = 'Oneday'"
                             :class="filterEkspedisi === 'Oneday' ? 'bg-red-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'"
                             class="px-4 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-colors border border-transparent">
                             One Day / Next Day
                         </button>
-                        <button type="button" @click="filterEkspedisi = 'Sameday'" 
+                        <button type="button" @click="filterEkspedisi = 'Sameday'"
                             :class="filterEkspedisi === 'Sameday' ? 'bg-red-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'"
                             class="px-4 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-colors border border-transparent">
                             Same Day
@@ -784,7 +791,7 @@
                     <div class="p-6 max-h-[60vh] overflow-y-auto space-y-3 custom-scrollbar bg-gray-50">
                         <template x-for="(ongkir, index) in ongkirList" :key="index">
                            <div x-show="
-                                    filterEkspedisi === 'Semua' || 
+                                    filterEkspedisi === 'Semua' ||
                                     (filterEkspedisi === 'Cargo' && /CARGO|JTR|GOKIL|TRUCK/i.test(ongkir.layanan)) ||
                                     (filterEkspedisi === 'Sameday' && /SAMEDAY|SAME DAY|SDS/i.test(ongkir.layanan)) ||
                                     (filterEkspedisi === 'Oneday' && /ONEDAY|ONE DAY|NEXTDAY|NEXT DAY|YES|BEST|ONS/i.test(ongkir.layanan)) ||
@@ -832,6 +839,31 @@
                                     <span>Durasi: <strong class="text-black font-medium" x-text="ongkir.estimasi"></strong></span>
                                     <span>Tiba: <strong class="text-black font-medium" x-text="ongkir.etd"></strong></span>
                                 </div>
+
+                                <!-- TAMBAHAN: Badge Info Asuransi, COD, dan Dropoff -->
+                                <div class="flex flex-wrap items-center gap-2 mt-2 pl-8">
+                                    <!-- Badge Asuransi -->
+                                    <template x-if="(ongkir.asuransi_rate || ongkir.insurance) > 0">
+                                        <span class="inline-flex items-center gap-1 text-[10px] font-bold text-green-700 bg-green-50 border border-green-200 px-2 py-1 rounded uppercase tracking-wider">
+                                            <i class="fa-solid fa-shield-check"></i> Asuransi <span x-text="((ongkir.asuransi_rate || ongkir.insurance) * 100) + '%'"></span>
+                                        </span>
+                                    </template>
+
+                                    <!-- Badge Biaya COD -->
+                                    <template x-if="ongkir.fee_cod > 0">
+                                        <span class="inline-flex items-center gap-1 text-[10px] font-bold text-blue-700 bg-blue-50 border border-blue-200 px-2 py-1 rounded uppercase tracking-wider">
+                                            <i class="fa-solid fa-hand-holding-dollar"></i> Fee COD <span x-text="(ongkir.fee_cod * 100) + '%'"></span>
+                                        </span>
+                                    </template>
+
+                                    <!-- Peringatan Jika Hanya Dropoff -->
+                                    <template x-if="ongkir.is_pickup === false">
+                                        <span class="inline-flex items-center gap-1 text-[10px] font-bold text-red-700 bg-red-50 border border-red-200 px-2 py-1 rounded uppercase tracking-wider">
+                                            <i class="fa-solid fa-shop"></i> Hanya Dropoff
+                                        </span>
+                                    </template>
+                                </div>
+
                             </div>
                         </template>
                     </div>
@@ -982,6 +1014,11 @@ document.addEventListener('alpine:init', () => {
         selectedKurir: '',
         selectedLayanan: '',
         selectedOngkir: 0,
+
+        selectedCourierCode: '', // Menyimpan kode kurir (contoh: anteraja, lionparcel)
+        selectedEstimasi: '',    // Menyimpan durasi (contoh: 2-4 Hari)
+        supportPickup: true,     // Default true, akan otomatis false jika kurir tidak dukung
+
         selectedServiceCode: '',
         selectedLogoUrl: '',
         selectedEtd: '',
@@ -1009,7 +1046,7 @@ document.addEventListener('alpine:init', () => {
         isGeneratingPickup: false,
         formIsValid: false,
 
-        checkFormValidity() { 
+        checkFormValidity() {
             if (this.$refs.orderForm) {
                 // Form harus valid DAN ongkir harus sudah terpilih
                 this.formIsValid = this.$refs.orderForm.checkValidity() && this.selectedOngkir > 0;
@@ -1303,6 +1340,18 @@ document.addEventListener('alpine:init', () => {
             this.selectedEtd         = this.tempSelected.etd;
             this.selectedInsuranceRate = this.tempSelected.asuransi_rate || 0;
             this.selectedCodRate       = this.tempSelected.fee_cod || 0;
+
+            // Mapping dari atribut JSON API ke UI
+            this.selectedCourierCode = this.tempSelected.kode_kurir || this.tempSelected.courier_code;
+            this.selectedEstimasi    = this.tempSelected.estimasi || this.tempSelected.duration;
+            this.supportPickup       = this.tempSelected.is_pickup !== false; // Menangkap boolean API
+
+            // AUTOMATION: Paksa ubah dropdown ke DROPOFF jika kurir menolak PICKUP
+            if (!this.supportPickup) {
+                this.isSenderPp = "0";
+            } else {
+                this.isSenderPp = "1"; // Default ke Pickup jika mendukung
+            }
 
             this.showModal           = false; // Tutup Modal
             setTimeout(() => this.checkFormValidity(), 100);
