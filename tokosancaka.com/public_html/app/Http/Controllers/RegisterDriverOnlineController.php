@@ -56,6 +56,7 @@ class RegisterDriverOnlineController extends Controller
         $request->validate([
 
             'nama_lengkap'    => 'required|string|max:255',
+            'email'           => 'nullable|email|max:255',
             'tempat_lahir'    => 'required|string|max:100',
             'tanggal_lahir'   => 'required|date|before:-18 years',
             'jenis_kelamin'       => 'required|in:Laki-laki,Perempuan',
@@ -109,24 +110,62 @@ class RegisterDriverOnlineController extends Controller
                 }
             }
 
-            // === AWAL KODE TAMBAHAN UNTUK SINKRONISASI ===
-            // Cek apakah pendaftar sudah punya akun Pengguna di Sancaka berdasarkan Nomor WA
-            $pengguna = Pengguna::where('no_wa', $request->nomor_wa)->first();
+           // === AWAL KODE PERBAIKAN SINKRONISASI ===
+            $pengguna = null;
+
+            if (auth()->check()) {
+                // Jika pendaftar sedang login di Web
+                $pengguna = auth()->user();
+            } else {
+                // 1. Normalisasi Format WA (Menyamakan 08, 62, dan +62)
+                $waInput = $request->nomor_wa;
+                $waClean = preg_replace('/[^0-9]/', '', $waInput);
+
+                $wa0 = str_starts_with($waClean, '62') ? '0' . substr($waClean, 2) : $waClean;
+                $wa62 = str_starts_with($waClean, '0') ? '62' . substr($waClean, 1) : $waClean;
+                $waPlus62 = '+' . $wa62;
+
+                // 2. Cari di database berdasarkan variasi WA
+                $query = Pengguna::whereIn('no_wa', [$waInput, $wa0, $wa62, $waPlus62]);
+
+                // 3. Jika form mengirimkan email, cari juga berdasarkan email
+                if ($request->filled('email')) {
+                    $query->orWhere('email', $request->email);
+                }
+
+                $pengguna = $query->first();
+            }
 
             if (!$pengguna) {
-                // Jika belum punya akun sama sekali, buatkan akun baru otomatis
+                // Jika benar-benar belum punya akun, buatkan baru
                 $pengguna = new Pengguna();
                 $pengguna->nama_lengkap  = $request->nama_lengkap;
                 $pengguna->no_wa         = $request->nomor_wa;
+                $pengguna->email         = $request->email ?? null; // Simpan email jika ada
                 $pengguna->jenis_kelamin = $request->jenis_kelamin;
-                // Default password menggunakan Nomor WA pendaftar
                 $pengguna->password_hash = \Illuminate\Support\Facades\Hash::make($request->nomor_wa);
-                $pengguna->role          = 'Pelanggan'; // Diset pelanggan dulu, akan jadi driver saat di-approve Admin
+                $pengguna->role          = 'Pelanggan';
                 $pengguna->status        = 'Aktif';
                 $pengguna->saldo         = 0;
                 $pengguna->save();
+            } else {
+                // Jika akun DITEMUKAN (Misal hasil dari Google Login sebelumnya)
+                // Update WA atau Email jika sebelumnya masih kosong
+                $needUpdate = false;
+                if (empty($pengguna->no_wa)) {
+                    $pengguna->no_wa = $request->nomor_wa;
+                    $needUpdate = true;
+                }
+                if (empty($pengguna->email) && $request->filled('email')) {
+                    $pengguna->email = $request->email;
+                    $needUpdate = true;
+                }
+
+                if ($needUpdate) {
+                    $pengguna->save();
+                }
             }
-            // === AKHIR KODE TAMBAHAN ===
+            // === AKHIR KODE PERBAIKAN ===
 
             // Proses simpan tabel registrasi driver sancaka
             RegistrasiDriverSancaka::create(array_merge(

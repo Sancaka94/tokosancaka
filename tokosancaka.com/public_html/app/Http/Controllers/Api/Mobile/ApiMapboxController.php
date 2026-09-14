@@ -186,10 +186,11 @@ class ApiMapboxController extends Controller
         \Illuminate\Support\Facades\DB::beginTransaction();
 
         try {
-            // =====================================================================
-            // FITUR CERDAS: DETEKSI AKUN PENGGUNA YANG SUDAH ADA
+           // =====================================================================
+            // FITUR CERDAS: DETEKSI AKUN PENGGUNA YANG SUDAH ADA (UPDATE)
             // =====================================================================
             $nomorWa = $request->input('nomor_wa');
+            $email = $request->input('email'); // Tangkap email dari app jika ada
             $idPengguna = null;
             $namaLengkap = $request->input('nama_lengkap');
 
@@ -199,10 +200,26 @@ class ApiMapboxController extends Controller
                 $idPengguna = $userLoggedIn->id_pengguna;
                 $namaLengkap = $userLoggedIn->nama_lengkap ?? $namaLengkap;
             } else {
-                $existingUser = \Illuminate\Support\Facades\DB::table('Pengguna')->where('no_wa', $nomorWa)->first();
+                // Normalisasi WA
+                $waClean = preg_replace('/[^0-9]/', '', $nomorWa);
+                $wa0 = str_starts_with($waClean, '62') ? '0' . substr($waClean, 2) : $waClean;
+                $wa62 = str_starts_with($waClean, '0') ? '62' . substr($waClean, 1) : $waClean;
+                $waPlus62 = '+' . $wa62;
+
+                $query = \Illuminate\Support\Facades\DB::table('Pengguna')
+                            ->whereIn('no_wa', [$nomorWa, $wa0, $wa62, $waPlus62]);
+
+                if (!empty($email)) {
+                    $query->orWhere('email', $email);
+                }
+
+                $existingUser = $query->first();
+
                 if ($existingUser) {
                     $idPengguna = $existingUser->id_pengguna;
                     $namaLengkap = $existingUser->nama_lengkap ?? $namaLengkap;
+
+                    // Opsional: Anda bisa menambahkan query update WA disini jika WA di database masih kosong
                 }
             }
 
