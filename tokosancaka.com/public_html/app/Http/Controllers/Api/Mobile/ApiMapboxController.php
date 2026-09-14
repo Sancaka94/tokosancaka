@@ -89,7 +89,7 @@ class ApiMapboxController extends Controller
                     $pricePerKm = (float) Api::getValue('ZONA_1_TARIF_PER_KM', 'global', 2000);
                 } else {
                     $baseFare   = (float) Api::getValue('SANCAKA_OJEK_BASE_FARE', 'global', 5000);
-                    $pricePerKm = (float) Api::getValue('SANCAKA_OJEK_PER_KM', 'global', 2500);
+                    $pricePerKm = (float) Api::getValue('SANCAKA_OJEK_PER_KM', 'global', 3000);
                 }
 
                 $calculatedFare = $distanceKm * $pricePerKm;
