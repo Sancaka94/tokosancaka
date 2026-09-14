@@ -499,7 +499,6 @@ class ApiMapboxController extends Controller
                     'plat_nomor'      => $request->input('plat_nomor'),
                     'latitude'        => $request->input('latitude'),
                     'longitude'       => $request->input('longitude'),
-
                     'file_ktp'           => $filePaths['file_ktp'],
                     'file_sim'           => $filePaths['file_sim'],
                     'file_skck'          => $filePaths['file_skck'],
