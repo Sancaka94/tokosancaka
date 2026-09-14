@@ -558,15 +558,26 @@
                                                         </div>
                                                     </div>
 
+                                                    {{-- TARIK DATA EMAIL DARI TABEL PENGGUNA --}}
+                                                    @php
+                                                        $akunDriver = \App\Models\Pengguna::where('id_pengguna', $driver->id_pengguna)->first();
+                                                        $emailDriver = $akunDriver ? $akunDriver->email : '';
+                                                    @endphp
+
                                                     <div class="flex flex-col sm:flex-row gap-4">
                                                         <div class="w-full sm:w-1/2">
-                                                            <label class="block text-xs font-medium text-gray-500 mb-1.5">Alamat Domisili</label>
-                                                            <textarea name="alamat_lengkap" class="w-full border border-gray-200 p-2.5 rounded-xl text-sm bg-white focus:ring-2 focus:ring-slate-800 focus:border-slate-800 outline-none transition" rows="2" required>{{ $driver->alamat_lengkap }}</textarea>
+                                                            <label class="block text-xs font-medium text-gray-500 mb-1.5">Alamat Email <span class="text-gray-400">(Opsional)</span></label>
+                                                            <input type="email" name="email" class="w-full border border-gray-200 p-2.5 rounded-xl text-sm bg-white focus:ring-2 focus:ring-slate-800 focus:border-slate-800 outline-none transition" placeholder="contoh@gmail.com" value="{{ $emailDriver }}">
                                                         </div>
                                                         <div class="w-full sm:w-1/2">
                                                             <label class="block text-xs font-medium text-gray-500 mb-1.5">Instansi / Perusahaan</label>
-                                                            <input type="text" name="instansi_perusahaan" class="w-full border border-gray-200 p-2.5 rounded-xl text-sm bg-white focus:ring-2 focus:ring-slate-800 focus:border-slate-800 outline-none transition mt-1" placeholder="Opsional" value="{{ $driver->instansi_perusahaan }}">
+                                                            <input type="text" name="instansi_perusahaan" class="w-full border border-gray-200 p-2.5 rounded-xl text-sm bg-white focus:ring-2 focus:ring-slate-800 focus:border-slate-800 outline-none transition" placeholder="Opsional" value="{{ $driver->instansi_perusahaan }}">
                                                         </div>
+                                                    </div>
+
+                                                    <div>
+                                                        <label class="block text-xs font-medium text-gray-500 mb-1.5">Alamat Domisili</label>
+                                                        <textarea name="alamat_lengkap" class="w-full border border-gray-200 p-2.5 rounded-xl text-sm bg-white focus:ring-2 focus:ring-slate-800 focus:border-slate-800 outline-none transition" rows="2" required>{{ $driver->alamat_lengkap }}</textarea>
                                                     </div>
 
                                                     <hr class="border-gray-200 my-4">
