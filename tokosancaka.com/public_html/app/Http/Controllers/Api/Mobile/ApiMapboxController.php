@@ -142,6 +142,7 @@ class ApiMapboxController extends Controller
         // 1. Validasi Input
         $validator = \Illuminate\Support\Facades\Validator::make($request->all(), [
             'nama_lengkap'    => 'required|string|max:255',
+            'email'           => 'nullable|email|max:255',
             'tempat_lahir'    => 'required|string|max:100',
             'tanggal_lahir'   => 'required|date|before:-18 years',
             'jenis_kelamin'   => 'required|in:Laki-laki,Perempuan',
@@ -150,15 +151,13 @@ class ApiMapboxController extends Controller
             'nomor_wa'        => 'required|string|max:20',
             'instansi_perusahaan' => 'nullable|string|max:255',
             'alamat_lengkap'  => 'required|string',
-            'district'        => 'required|string', // 👈 WAJIB ADA: Untuk mendeteksi Kecamatan (Koordinator)
+            'district'        => 'nullable|string',
             'jenis_layanan'   => 'required|in:motor,mobil',
             'merk_kendaraan'  => 'required|string|max:100',
             'tahun_kendaraan' => 'required|integer|min:' . $minTahun . '|max:' . date('Y'),
             'plat_nomor'      => 'required|string|max:15',
             'latitude'        => 'required|numeric',
             'longitude'       => 'required|numeric',
-
-            // File Pendukung
             'file_ktp'           => 'required|file|mimes:jpeg,png,jpg,pdf|max:5120',
             'file_sim'           => 'required|file|mimes:jpeg,png,jpg,pdf|max:5120',
             'file_skck'          => 'required|file|mimes:jpeg,png,jpg,pdf|max:5120',
@@ -166,15 +165,12 @@ class ApiMapboxController extends Controller
             'foto_motor'         => 'required|file|mimes:jpeg,png,jpg,pdf|max:5120',
             'file_buku_rekening' => 'required|file|mimes:jpeg,png,jpg,pdf|max:5120',
             'foto_wajah'         => 'required|file|mimes:jpeg,png,jpg,pdf|max:5120',
-
-            // Opsional
             'file_kk'         => 'nullable|file|mimes:jpeg,png,jpg,pdf|max:5120',
             'file_buku_nikah' => 'nullable|file|mimes:jpeg,png,jpg,pdf|max:5120',
             'file_bpkb'       => 'nullable|file|mimes:jpeg,png,jpg,pdf|max:5120',
         ]);
 
         if ($validator->fails()) {
-            \Illuminate\Support\Facades\Log::warning("[API DRIVER] Validasi gagal: ", $validator->errors()->toArray());
             return response()->json([
                 'status'  => false,
                 'message' => 'Data tidak lengkap atau format file salah.',
@@ -182,17 +178,16 @@ class ApiMapboxController extends Controller
             ], 422);
         }
 
-        // Mulai Transaksi Database agar jika error, saldo Korwil tidak jadi bertambah
         \Illuminate\Support\Facades\DB::beginTransaction();
 
         try {
-           // =====================================================================
-            // FITUR CERDAS: DETEKSI AKUN PENGGUNA YANG SUDAH ADA (UPDATE)
+            // =====================================================================
+            // FITUR CERDAS: DETEKSI AKUN PENGGUNA YANG SUDAH ADA (UPDATE MAKSIMAL)
             // =====================================================================
             $nomorWa = $request->input('nomor_wa');
-            $email = $request->input('email'); // Tangkap email dari app jika ada
-            $idPengguna = null;
+            $email = $request->input('email');
             $namaLengkap = $request->input('nama_lengkap');
+            $idPengguna = null;
 
             $userLoggedIn = $request->user();
 
@@ -200,7 +195,7 @@ class ApiMapboxController extends Controller
                 $idPengguna = $userLoggedIn->id_pengguna;
                 $namaLengkap = $userLoggedIn->nama_lengkap ?? $namaLengkap;
             } else {
-                // Normalisasi WA
+                // Normalisasi WA agar kebal format
                 $waClean = preg_replace('/[^0-9]/', '', $nomorWa);
                 $wa0 = str_starts_with($waClean, '62') ? '0' . substr($waClean, 2) : $waClean;
                 $wa62 = str_starts_with($waClean, '0') ? '62' . substr($waClean, 1) : $waClean;
@@ -219,7 +214,30 @@ class ApiMapboxController extends Controller
                     $idPengguna = $existingUser->id_pengguna;
                     $namaLengkap = $existingUser->nama_lengkap ?? $namaLengkap;
 
-                    // Opsional: Anda bisa menambahkan query update WA disini jika WA di database masih kosong
+                    // LENGKAPI DATA KOSONG DI TABEL PENGGUNA JIKA DITEMUKAN
+                    $updateDataPengguna = [];
+                    if (empty($existingUser->no_wa)) $updateDataPengguna['no_wa'] = $nomorWa;
+                    if (empty($existingUser->email) && !empty($email)) $updateDataPengguna['email'] = $email;
+
+                    if (!empty($updateDataPengguna)) {
+                        \Illuminate\Support\Facades\DB::table('Pengguna')
+                            ->where('id_pengguna', $idPengguna)
+                            ->update($updateDataPengguna);
+                    }
+                } else {
+                    // JIKA BENAR-BENAR BARU, OTOMATIS BUATKAN AKUN PENGGUNA
+                    $idPengguna = \Illuminate\Support\Facades\DB::table('Pengguna')->insertGetId([
+                        'nama_lengkap'  => $namaLengkap,
+                        'no_wa'         => $nomorWa,
+                        'email'         => $email ?? null,
+                        'jenis_kelamin' => $request->input('jenis_kelamin'),
+                        'password_hash' => \Illuminate\Support\Facades\Hash::make($nomorWa),
+                        'role'          => 'Pelanggan',
+                        'status'        => 'Aktif',
+                        'saldo'         => 0,
+                        'created_at'    => now(),
+                        'updated_at'    => now()
+                    ]);
                 }
             }
 
@@ -394,6 +412,7 @@ class ApiMapboxController extends Controller
         // Validasi form (Dilengkapi)
         $validator = Validator::make($request->all(), [
             'nama_lengkap'    => 'required|string|max:255',
+            'email'           => 'nullable|email|max:255',
             'tempat_lahir'    => 'required|string|max:100',
             'tanggal_lahir'   => 'required|date|before:-18 years',
             'jenis_kelamin'   => 'required|in:Laki-laki,Perempuan',
@@ -494,6 +513,12 @@ class ApiMapboxController extends Controller
 
                     'updated_at'      => now(),
                 ]);
+
+                if ($request->has('email')) {
+                    DB::table('Pengguna')
+                        ->where('id_pengguna', $idPengguna)
+                        ->update(['email' => $request->input('email')]);
+                }
 
             return response()->json(['success' => true, 'message' => 'Data driver Anda berhasil diperbarui.']);
 
