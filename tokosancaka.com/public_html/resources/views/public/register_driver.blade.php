@@ -660,10 +660,11 @@
 </div>
 
 
+<!-- API Cloudflare Turnstile -->
 <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
-<!-- Library Kompresi Gambar Browser (Versi 2.0.2 Stabil) -->
-<!-- GUNAKAN SERVER UNPKG (Lebih stabil di Indonesia) -->
-<script type="text/javascript" src="https://unpkg.com/browser-image-compression@2.0.2/dist/browser-image-compression.js"></script>
+
+<!-- INI DIA: Memanggil Library Kompresi yang sudah sampeyan download & taruh di server Sancaka -->
+<script type="text/javascript" src="{{ asset('js/browser-image-compression.js') }}"></script>
 
 <script>
     // ==========================================================
@@ -718,15 +719,12 @@
         const btnGetLocation = document.getElementById('btnGetLocation');
         const statusText = document.getElementById('gpsStatus');
 
-        // Panggil cek awal saat halaman pertama dimuat
         checkSubmitStatus();
 
-        // EVENT KETIK MANUAL (GPS & CAPTCHA)
         if(latInput) latInput.addEventListener('input', checkSubmitStatus);
         if(lngInput) lngInput.addEventListener('input', checkSubmitStatus);
         if(captchaInput) captchaInput.addEventListener('input', checkSubmitStatus);
 
-        // EVENT DETEKSI GPS MAPS
         if(btnGetLocation) {
             btnGetLocation.addEventListener('click', function() {
                 if (navigator.geolocation) {
@@ -755,7 +753,6 @@
             });
         }
 
-        // EVENT SCROLL PERATURAN & CENTANG
         if(tosBox) {
             tosBox.addEventListener('scroll', function() {
                 if (!hasScrolledToBottom && (tosBox.scrollHeight - tosBox.scrollTop <= tosBox.clientHeight + 6)) {
@@ -773,7 +770,6 @@
 
         if(agreeCheckbox) agreeCheckbox.addEventListener('change', checkSubmitStatus);
 
-        // EVENT CEGAH DOUBLE SUBMIT SAAT PROSES KIRIM
         if(form) {
             form.addEventListener('submit', function() {
                 submitBtn.disabled = true;
@@ -783,7 +779,7 @@
         }
 
         // ==========================================================
-        // 3. LOGIKA AUTO-COMPRESS GAMBAR (FRONTEND)
+        // 3. LOGIKA AUTO-COMPRESS GAMBAR (MENGGUNAKAN FILE LOKAL)
         // ==========================================================
         const fileInputs = document.querySelectorAll('input[type="file"]');
 
@@ -795,9 +791,9 @@
                     const labelElement = input.previousElementSibling;
                     const originalLabelText = labelElement.innerHTML.split(' <span')[0];
 
-                    // Pengecekan Kesiapan Library Kompresi
+                    // Mengecek apakah file js/browser-image-compression.js sukses dimuat
                     if (typeof window.browserImageCompression === 'undefined') {
-                        console.error('Library kompresi belum siap.');
+                        console.error('Library kompresi lokal gagal dimuat.');
                         labelElement.innerHTML = originalLabelText + ' <span class="text-danger small ms-2">Gagal memuat sistem kompresi.</span>';
                         return;
                     }
@@ -812,6 +808,7 @@
                         labelElement.innerHTML = originalLabelText + ' <span class="text-warning small ms-2"><i class="fa-solid fa-spinner fa-spin"></i> Mengkompres ukuran foto...</span>';
                         if(submitBtn) submitBtn.disabled = true;
 
+                        // Eksekusi fungsi kompresi dari file library yang sampeyan simpan
                         const compressedFile = await window.browserImageCompression(file, options);
 
                         const newFile = new File([compressedFile], file.name, {
@@ -824,8 +821,6 @@
                         input.files = dataTransfer.files;
 
                         labelElement.innerHTML = originalLabelText + ' <span class="text-success fw-bold small ms-2"><i class="fa-solid fa-check"></i> Sukses (' + (compressedFile.size / 1024).toFixed(0) + ' KB)</span>';
-
-                        // Perbarui status form setelah gambar selesai
                         checkSubmitStatus();
 
                     } catch (error) {
@@ -836,7 +831,6 @@
                 }
             });
         });
-
     });
 
     // ==========================================================
