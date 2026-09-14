@@ -23,11 +23,40 @@
         .bulk-action-bar.active { opacity: 1; visibility: visible; transform: translateY(0); display: flex; }
         .flatpickr-calendar { z-index: 9999 !important; border: none !important; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1) !important; }
 
-        /* Custom Scrollbar for better elegance */
+        /* Custom Scrollbar */
         ::-webkit-scrollbar { width: 6px; height: 6px; }
         ::-webkit-scrollbar-track { background: #f1f5f9; }
         ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
         ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+        /* WATERMARK STYLE */
+        .watermark-overlay {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) rotate(-35deg);
+            font-size: clamp(3rem, 8vw, 6rem);
+            font-weight: 900;
+            color: rgba(34, 197, 94, 0.65); /* Emerald 500 opacity */
+            border: 8px solid rgba(34, 197, 94, 0.65);
+            padding: 10px 40px;
+            border-radius: 15px;
+            pointer-events: none; /* Agar klik tetap tembus ke gambar/PDF */
+            z-index: 50;
+            display: none;
+            white-space: nowrap;
+            letter-spacing: 0.1em;
+            text-shadow: 2px 2px 4px rgba(255,255,255,0.5);
+            box-shadow: 0 0 20px rgba(34, 197, 94, 0.2);
+        }
+        .watermark-active .watermark-overlay {
+            display: block;
+            animation: stamp 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        }
+        @keyframes stamp {
+            0% { opacity: 0; transform: translate(-50%, -50%) rotate(-35deg) scale(2); }
+            100% { opacity: 1; transform: translate(-50%, -50%) rotate(-35deg) scale(1); }
+        }
     </style>
 @endpush
 
@@ -99,7 +128,6 @@
             </div>
         </div>
 
-        {{-- TAMBAHAN CARD KE-5: FROZEN --}}
         <div class="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm flex items-center justify-between transition hover:shadow-md">
             <div>
                 <p class="text-xs font-semibold text-cyan-500 uppercase tracking-wider mb-1">Tidak Aktif</p>
@@ -241,7 +269,7 @@
                             </div>
                         </td>
 
-                        {{-- JABATAN (KOLOM BARU) --}}
+                        {{-- JABATAN --}}
                         <td class="hidden md:table-cell px-6 py-5 align-top toggle-target-{{$index}}">
                             <span class="md:hidden font-semibold text-gray-400 text-xs mb-2 block mt-4">JABATAN</span>
                             @php
@@ -333,9 +361,9 @@
                     {{-- ======================================================== --}}
                     <div id="modalDetail_{{ $driver->id }}" class="hidden fixed inset-0 z-[99999]">
                         <div class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm transition-opacity" onclick="closeModal('modalDetail_{{ $driver->id }}')"></div>
-                        <div class="fixed inset-0 overflow-y-auto py-10">
+                        <div class="fixed inset-0 overflow-y-auto py-10 pointer-events-none">
                             <div class="flex min-h-full items-center justify-center p-4">
-                                <div class="bg-white rounded-2xl shadow-xl w-full max-w-4xl overflow-hidden transform transition-all border border-gray-100">
+                                <div class="bg-white rounded-2xl shadow-xl w-full max-w-4xl overflow-hidden transform transition-all border border-gray-100 pointer-events-auto">
 
                                     {{-- Header Modal --}}
                                     <div class="border-b border-gray-100 px-6 py-5 flex justify-between items-center bg-white">
@@ -346,7 +374,7 @@
                                                 <p class="text-xs text-gray-500 font-medium">{{ $driver->id_pengguna ? 'ID: '.$driver->id_pengguna : 'Data Pendaftar Baru' }}</p>
                                             </div>
                                         </div>
-                                        <button type="button" onclick="closeModal('modalDetail_{{ $driver->id }}')" class="text-gray-400 hover:text-gray-600 transition bg-gray-50 hover:bg-gray-100 rounded-full h-8 w-8 flex items-center justify-center"><i class="fas fa-times"></i></button>
+                                        <button type="button" onclick="closeModal('modalDetail_{{ $driver->id }}')" class="text-gray-400 hover:text-rose-600 transition bg-gray-50 hover:bg-rose-50 rounded-full h-8 w-8 flex items-center justify-center"><i class="fas fa-times"></i></button>
                                     </div>
 
                                     <div class="px-6 py-6 bg-slate-50/50">
@@ -357,6 +385,7 @@
                                                 <h6 class="font-semibold text-gray-800 mb-4 text-sm flex items-center gap-2"><i class="fa-regular fa-user text-gray-400"></i> Informasi Pribadi</h6>
                                                 <div class="space-y-3 text-sm">
                                                     <div class="flex justify-between border-b border-gray-50 pb-2"><span class="text-gray-500">Nama Lengkap</span> <span class="font-medium text-gray-900 text-right">{{ $driver->nama_lengkap ?? '-' }}</span></div>
+                                                    <div class="flex justify-between border-b border-gray-50 pb-2"><span class="text-gray-500">Jenis Kelamin</span> <span class="font-medium text-gray-900 text-right">{{ $driver->jenis_kelamin ?? '-' }}</span></div>
                                                     <div class="flex justify-between border-b border-gray-50 pb-2"><span class="text-gray-500">NIK KTP</span> <span class="font-medium text-gray-900">{{ $driver->nomor_nik ?? '-' }}</span></div>
                                                     <div class="flex justify-between border-b border-gray-50 pb-2"><span class="text-gray-500">No. Kartu Keluarga</span> <span class="font-medium text-gray-900">{{ $driver->nomor_kk ?? '-' }}</span></div>
                                                     <div class="flex justify-between border-b border-gray-50 pb-2">
@@ -366,6 +395,7 @@
                                                         </span>
                                                     </div>
                                                     <div class="flex justify-between border-b border-gray-50 pb-2"><span class="text-gray-500">No. WhatsApp</span> <span class="font-medium text-gray-900">{{ $driver->nomor_wa ?? '-' }}</span></div>
+                                                    <div class="flex justify-between border-b border-gray-50 pb-2"><span class="text-gray-500">Instansi / Perusahaan</span> <span class="font-medium text-gray-900">{{ $driver->instansi_perusahaan ?? '-' }}</span></div>
                                                     <div class="flex flex-col gap-1 pb-1">
                                                         <span class="text-gray-500">Alamat Domisili</span>
                                                         <span class="font-medium text-gray-900 leading-relaxed">{{ $driver->alamat_lengkap ?? '-' }}</span>
@@ -385,7 +415,7 @@
                                             </div>
                                         </div>
 
-                                        {{-- Box Bawah: Dokumen (CLEAN DESIGN) --}}
+                                        {{-- Box Bawah: Dokumen --}}
                                         <div class="bg-white p-5 rounded-xl border border-gray-100 shadow-sm mb-6">
                                             <h6 class="font-semibold text-gray-800 mb-4 text-sm flex items-center gap-2"><i class="fa-regular fa-folder-open text-gray-400"></i> Kelengkapan Berkas</h6>
                                             <div class="flex flex-wrap gap-3">
@@ -407,10 +437,16 @@
 
                                                 @foreach($docs as $doc)
                                                     @if($doc['file'])
-                                                        @php $hasDoc = true; @endphp
-                                                        <a href="{{ asset('storage/'.$doc['file']) }}" target="_blank" class="flex items-center gap-2 px-3 py-2 bg-white border border-gray-200 hover:border-slate-400 hover:bg-slate-50 text-slate-700 font-medium rounded-lg text-xs transition-all shadow-sm">
-                                                            <i class="fa-solid {{ $doc['icon'] }} text-slate-400"></i> {{ $doc['label'] }}
-                                                        </a>
+                                                        @php
+                                                            $hasDoc = true;
+                                                            $fileUrl = asset('storage/'.$doc['file']);
+                                                            $ext = pathinfo($doc['file'], PATHINFO_EXTENSION);
+                                                            $isPdf = strtolower($ext) === 'pdf' ? 'true' : 'false';
+                                                        @endphp
+                                                        {{-- TOMBOL PREVIEW BERKAS --}}
+                                                        <button type="button" onclick="openDocumentModal('{{ $fileUrl }}', {{ $isPdf }}, '{{ $doc['label'] }}')" class="flex items-center gap-2 px-3 py-2 bg-white border border-gray-200 hover:border-blue-400 hover:bg-blue-50 text-slate-700 font-medium rounded-lg text-xs transition-all shadow-sm">
+                                                            <i class="fa-solid {{ $doc['icon'] }} text-blue-500"></i> {{ $doc['label'] }}
+                                                        </button>
                                                     @endif
                                                 @endforeach
 
@@ -456,9 +492,9 @@
                     {{-- ======================================================== --}}
                     <div id="modalEdit_{{ $driver->id }}" class="hidden fixed inset-0 z-[99999]">
                         <div class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm transition-opacity" onclick="closeModal('modalEdit_{{ $driver->id }}')"></div>
-                        <div class="fixed inset-0 overflow-y-auto py-6">
+                        <div class="fixed inset-0 overflow-y-auto py-6 pointer-events-none">
                             <div class="flex min-h-full items-center justify-center p-4">
-                                <div class="bg-white rounded-2xl shadow-xl w-full max-w-5xl overflow-hidden border border-gray-100">
+                                <div class="bg-white rounded-2xl shadow-xl w-full max-w-5xl overflow-hidden border border-gray-100 pointer-events-auto">
 
                                     <div class="border-b border-gray-100 px-6 py-5 flex justify-between items-center bg-white">
                                         <div class="flex items-center gap-3">
@@ -468,7 +504,7 @@
                                                 <p class="text-xs text-gray-500 font-medium">{{ $driver->nama_lengkap ?? '-' }}</p>
                                             </div>
                                         </div>
-                                        <button type="button" onclick="closeModal('modalEdit_{{ $driver->id }}')" class="text-gray-400 hover:text-gray-600 transition bg-gray-50 hover:bg-gray-100 rounded-full h-8 w-8 flex items-center justify-center"><i class="fas fa-times"></i></button>
+                                        <button type="button" onclick="closeModal('modalEdit_{{ $driver->id }}')" class="text-gray-400 hover:text-rose-600 transition bg-gray-50 hover:bg-rose-50 rounded-full h-8 w-8 flex items-center justify-center"><i class="fas fa-times"></i></button>
                                     </div>
 
                                     <form action="{{ route('admin.drivers.update', $driver->id) }}" method="POST" enctype="multipart/form-data" class="m-0">
@@ -478,7 +514,7 @@
 
                                                 {{-- KIRI: DATA TEKS --}}
                                                 <div class="lg:col-span-7 space-y-5">
-                                                    <h6 class="font-semibold text-gray-800 text-sm flex items-center gap-2 mb-4"><i class="fa-regular fa-id-card text-gray-400"></i> Identitas & Kendaraan</h6>
+                                                    <h6 class="font-semibold text-gray-800 text-sm flex items-center gap-2 mb-4"><i class="fa-regular fa-id-card text-gray-400"></i> Identitas Pribadi</h6>
 
                                                     <div>
                                                         <label class="block text-xs font-medium text-gray-500 mb-1.5">Nama Lengkap</label>
@@ -488,11 +524,11 @@
                                                     <div class="flex flex-col sm:flex-row gap-4">
                                                         <div class="w-full sm:w-1/2">
                                                             <label class="block text-xs font-medium text-gray-500 mb-1.5">Tempat Lahir</label>
-                                                            <input type="text" name="tempat_lahir" class="w-full border border-gray-200 p-2.5 rounded-xl text-sm bg-white focus:ring-2 focus:ring-slate-800 focus:border-slate-800 outline-none transition" value="{{ $driver->tempat_lahir }}">
+                                                            <input type="text" name="tempat_lahir" class="w-full border border-gray-200 p-2.5 rounded-xl text-sm bg-white focus:ring-2 focus:ring-slate-800 focus:border-slate-800 outline-none transition" value="{{ $driver->tempat_lahir }}" required>
                                                         </div>
                                                         <div class="w-full sm:w-1/2">
                                                             <label class="block text-xs font-medium text-gray-500 mb-1.5">Tanggal Lahir</label>
-                                                            <input type="date" name="tanggal_lahir" class="w-full border border-gray-200 p-2.5 rounded-xl text-sm bg-white focus:ring-2 focus:ring-slate-800 focus:border-slate-800 outline-none transition" value="{{ $driver->tanggal_lahir ? \Carbon\Carbon::parse($driver->tanggal_lahir)->format('Y-m-d') : '' }}">
+                                                            <input type="date" name="tanggal_lahir" class="w-full border border-gray-200 p-2.5 rounded-xl text-sm bg-white focus:ring-2 focus:ring-slate-800 focus:border-slate-800 outline-none transition" value="{{ $driver->tanggal_lahir ? \Carbon\Carbon::parse($driver->tanggal_lahir)->format('Y-m-d') : '' }}" required>
                                                         </div>
                                                     </div>
 
@@ -502,15 +538,39 @@
                                                             <input type="number" name="nomor_nik" class="w-full border border-gray-200 p-2.5 rounded-xl text-sm bg-white focus:ring-2 focus:ring-slate-800 focus:border-slate-800 outline-none transition" value="{{ $driver->nomor_nik }}" required>
                                                         </div>
                                                         <div class="w-full sm:w-1/2">
+                                                            <label class="block text-xs font-medium text-gray-500 mb-1.5">Nomor KK (Opsional)</label>
+                                                            <input type="number" name="nomor_kk" class="w-full border border-gray-200 p-2.5 rounded-xl text-sm bg-white focus:ring-2 focus:ring-slate-800 focus:border-slate-800 outline-none transition" value="{{ $driver->nomor_kk }}">
+                                                        </div>
+                                                    </div>
+
+                                                    <div class="flex flex-col sm:flex-row gap-4">
+                                                        <div class="w-full sm:w-1/2">
+                                                            <label class="block text-xs font-medium text-gray-500 mb-1.5">Jenis Kelamin</label>
+                                                            <select name="jenis_kelamin" class="w-full border border-gray-200 p-2.5 rounded-xl text-sm bg-white focus:ring-2 focus:ring-slate-800 focus:border-slate-800 outline-none transition" required>
+                                                                <option value="" disabled {{ !$driver->jenis_kelamin ? 'selected' : '' }}>Pilih Jenis Kelamin</option>
+                                                                <option value="Laki-laki" {{ $driver->jenis_kelamin == 'Laki-laki' ? 'selected' : '' }}>Laki-laki</option>
+                                                                <option value="Perempuan" {{ $driver->jenis_kelamin == 'Perempuan' ? 'selected' : '' }}>Perempuan</option>
+                                                            </select>
+                                                        </div>
+                                                        <div class="w-full sm:w-1/2">
                                                             <label class="block text-xs font-medium text-gray-500 mb-1.5">Nomor WhatsApp</label>
                                                             <input type="text" name="nomor_wa" class="w-full border border-gray-200 p-2.5 rounded-xl text-sm bg-white focus:ring-2 focus:ring-slate-800 focus:border-slate-800 outline-none transition" value="{{ $driver->nomor_wa }}" required>
                                                         </div>
                                                     </div>
 
-                                                    <div>
-                                                        <label class="block text-xs font-medium text-gray-500 mb-1.5">Alamat Domisili</label>
-                                                        <textarea name="alamat_lengkap" class="w-full border border-gray-200 p-2.5 rounded-xl text-sm bg-white focus:ring-2 focus:ring-slate-800 focus:border-slate-800 outline-none transition" rows="3" required>{{ $driver->alamat_lengkap }}</textarea>
+                                                    <div class="flex flex-col sm:flex-row gap-4">
+                                                        <div class="w-full sm:w-1/2">
+                                                            <label class="block text-xs font-medium text-gray-500 mb-1.5">Alamat Domisili</label>
+                                                            <textarea name="alamat_lengkap" class="w-full border border-gray-200 p-2.5 rounded-xl text-sm bg-white focus:ring-2 focus:ring-slate-800 focus:border-slate-800 outline-none transition" rows="2" required>{{ $driver->alamat_lengkap }}</textarea>
+                                                        </div>
+                                                        <div class="w-full sm:w-1/2">
+                                                            <label class="block text-xs font-medium text-gray-500 mb-1.5">Instansi / Perusahaan</label>
+                                                            <input type="text" name="instansi_perusahaan" class="w-full border border-gray-200 p-2.5 rounded-xl text-sm bg-white focus:ring-2 focus:ring-slate-800 focus:border-slate-800 outline-none transition mt-1" placeholder="Opsional" value="{{ $driver->instansi_perusahaan }}">
+                                                        </div>
                                                     </div>
+
+                                                    <hr class="border-gray-200 my-4">
+                                                    <h6 class="font-semibold text-gray-800 text-sm flex items-center gap-2 mb-4"><i class="fa-solid fa-motorcycle text-gray-400"></i> Detail Kendaraan</h6>
 
                                                     <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
                                                         <div>
@@ -523,17 +583,17 @@
                                                         </div>
                                                         <div>
                                                             <label class="block text-xs font-medium text-gray-500 mb-1.5">Merek Kendaraan</label>
-                                                            <input type="text" name="merk_kendaraan" class="w-full border border-gray-200 p-2.5 rounded-xl text-sm bg-white focus:ring-2 focus:ring-slate-800 focus:border-slate-800 outline-none transition" value="{{ $driver->merk_kendaraan }}">
+                                                            <input type="text" name="merk_kendaraan" class="w-full border border-gray-200 p-2.5 rounded-xl text-sm bg-white focus:ring-2 focus:ring-slate-800 focus:border-slate-800 outline-none transition" value="{{ $driver->merk_kendaraan }}" required>
                                                         </div>
                                                         <div>
                                                             <label class="block text-xs font-medium text-gray-500 mb-1.5">Thn Pembuatan</label>
-                                                            <input type="number" name="tahun_kendaraan" class="w-full border border-gray-200 p-2.5 rounded-xl text-sm bg-white focus:ring-2 focus:ring-slate-800 focus:border-slate-800 outline-none transition" value="{{ $driver->tahun_kendaraan }}">
+                                                            <input type="number" name="tahun_kendaraan" class="w-full border border-gray-200 p-2.5 rounded-xl text-sm bg-white focus:ring-2 focus:ring-slate-800 focus:border-slate-800 outline-none transition" value="{{ $driver->tahun_kendaraan }}" required>
                                                         </div>
                                                     </div>
 
                                                     <div>
                                                         <label class="block text-xs font-medium text-gray-500 mb-1.5">Plat Nomor</label>
-                                                        <input type="text" name="plat_nomor" class="w-full md:w-1/3 border border-gray-200 p-2.5 rounded-xl text-sm bg-white focus:ring-2 focus:ring-slate-800 focus:border-slate-800 outline-none transition uppercase font-medium" value="{{ $driver->plat_nomor }}">
+                                                        <input type="text" name="plat_nomor" class="w-full md:w-1/3 border border-gray-200 p-2.5 rounded-xl text-sm bg-white focus:ring-2 focus:ring-slate-800 focus:border-slate-800 outline-none transition uppercase font-medium" value="{{ $driver->plat_nomor }}" required>
                                                     </div>
                                                 </div>
 
@@ -549,7 +609,7 @@
                                                     $dokumenList = [
                                                         'foto_wajah'=>'Foto Wajah', 'file_ktp'=>'KTP', 'file_sim'=>'SIM',
                                                         'file_skck'=>'SKCK', 'file_buku_rekening'=>'Buku Rekening', 'file_stnk'=>'STNK',
-                                                        'foto_motor'=>'Foto Kendaraan', 'file_kk'=>'Kartu Keluarga'
+                                                        'foto_motor'=>'Foto Kendaraan', 'file_kk'=>'Kartu Keluarga (Opsional)', 'file_bpkb'=>'BPKB (Opsional)', 'file_buku_nikah'=>'Buku Nikah (Opsional)'
                                                     ];
                                                     @endphp
 
@@ -581,13 +641,13 @@
                     <div id="modalPromosi_{{ $driver->id }}" class="hidden fixed inset-0 z-[99999]">
                         <div class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm transition-opacity" onclick="closeModal('modalPromosi_{{ $driver->id }}')"></div>
                         <div class="fixed inset-0 flex items-center justify-center p-4">
-                            <div class="bg-white rounded-2xl p-6 max-w-md w-full shadow-xl transform transition-all border border-gray-100 relative">
+                            <div class="bg-white rounded-2xl p-6 max-w-md w-full shadow-xl transform transition-all border border-gray-100 relative pointer-events-auto">
                                 <div class="flex justify-between items-center mb-4 border-b border-gray-100 pb-3">
                                     <h3 class="font-bold text-lg text-gray-900 flex items-center gap-2">
                                         <div class="h-8 w-8 rounded-full bg-purple-50 flex items-center justify-center text-purple-600 text-sm"><i class="fas fa-user-tie"></i></div>
                                         Ubah Jabatan Operasional
                                     </h3>
-                                    <button type="button" onclick="closeModal('modalPromosi_{{ $driver->id }}')" class="text-gray-400 hover:text-gray-600 bg-gray-50 hover:bg-gray-100 rounded-full h-7 w-7 flex items-center justify-center"><i class="fas fa-times"></i></button>
+                                    <button type="button" onclick="closeModal('modalPromosi_{{ $driver->id }}')" class="text-gray-400 hover:text-rose-600 bg-gray-50 hover:bg-rose-50 rounded-full h-7 w-7 flex items-center justify-center"><i class="fas fa-times"></i></button>
                                 </div>
 
                                 <form action="{{ route('admin.drivers.update_role', $driver->id) }}" method="POST">
@@ -622,13 +682,8 @@
                         </div>
                     </div>
 
-                    {{-- ======================================================== --}}
-                    {{-- MODAL HAPUS DRIVER --}}
-                    {{-- ======================================================== --}}
-
                    @empty
                     <tr>
-                        {{-- UBAH COLSPAN MENJADI 7 --}}
                         <td colspan="7" class="text-center py-16 text-gray-400 bg-white">
                             <div class="flex flex-col items-center justify-center">
                                 <div class="h-16 w-16 bg-gray-50 rounded-full flex items-center justify-center mb-4"><i class="fa-regular fa-folder-open text-2xl text-gray-300"></i></div>
@@ -654,7 +709,7 @@
     <div id="bulkDeleteModal" class="hidden fixed inset-0 z-[99999]">
         <div class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm transition-opacity" onclick="closeModal('bulkDeleteModal')"></div>
         <div class="fixed inset-0 flex items-center justify-center p-4">
-            <div class="bg-white rounded-2xl p-6 max-w-sm w-full shadow-xl transform transition-all border border-gray-100">
+            <div class="bg-white rounded-2xl p-6 max-w-sm w-full shadow-xl transform transition-all border border-gray-100 pointer-events-auto">
                 <div class="text-center">
                     <div class="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-rose-50 border border-rose-100 mb-4">
                         <i class="fa-solid fa-trash-can text-rose-500 text-xl"></i>
@@ -669,6 +724,54 @@
             </div>
         </div>
     </div>
+
+    {{-- ======================================================== --}}
+    {{-- MODAL DOCUMENT VIEWER (PREVIEW BERKAS) --}}
+    {{-- ======================================================== --}}
+    <div id="documentViewerModal" class="hidden fixed inset-0 z-[100000]">
+        <div class="fixed inset-0 bg-slate-900/90 backdrop-blur-sm transition-opacity" onclick="closeDocumentModal()"></div>
+        <div class="fixed inset-0 flex items-center justify-center p-4 pointer-events-none">
+            <div class="bg-white rounded-2xl w-full max-w-5xl shadow-2xl flex flex-col pointer-events-auto overflow-hidden border border-gray-700" style="max-height: 95vh;">
+
+                {{-- Header --}}
+                <div class="border-b border-gray-100 px-5 py-3 flex justify-between items-center bg-white z-20 relative shadow-sm">
+                    <div class="flex items-center gap-3">
+                        <div class="h-9 w-9 rounded-full bg-blue-50 flex items-center justify-center text-blue-600"><i class="fa-solid fa-file-image"></i></div>
+                        <h5 id="docViewerTitle" class="text-base font-bold text-gray-900">Preview Berkas</h5>
+                    </div>
+                    <div class="flex items-center gap-4">
+                        <button type="button" onclick="markAsValid()" class="bg-emerald-50 text-emerald-600 border border-emerald-200 hover:bg-emerald-500 hover:text-white hover:border-emerald-500 px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition-all shadow-sm">
+                            <i class="fa-solid fa-check-double"></i> Tandai VALID
+                        </button>
+                        <button type="button" onclick="closeDocumentModal()" class="text-gray-400 hover:text-rose-600 transition bg-gray-50 hover:bg-rose-50 rounded-full h-9 w-9 flex items-center justify-center border border-gray-200">
+                            <i class="fas fa-times text-lg"></i>
+                        </button>
+                    </div>
+                </div>
+
+                {{-- Body (Image / PDF Container) --}}
+                <div class="relative flex-1 overflow-auto bg-slate-100/80 flex items-center justify-center p-6 min-h-[60vh]" id="docViewerBody">
+                    <div id="watermarkContainer" class="relative max-w-full max-h-full inline-block">
+
+                        {{-- Loading Spinner --}}
+                        <div id="docLoader" class="absolute inset-0 flex items-center justify-center bg-slate-100/50 z-10 hidden">
+                            <i class="fa-solid fa-circle-notch fa-spin text-4xl text-blue-500"></i>
+                        </div>
+
+                        {{-- Viewer Gambar --}}
+                        <img id="docViewerImage" src="" class="max-w-full max-h-[75vh] object-contain shadow-md rounded-lg hidden border-4 border-white" alt="Berkas Preview">
+
+                        {{-- Viewer PDF --}}
+                        <iframe id="docViewerPdf" src="" class="w-full w-[800px] h-[75vh] shadow-md rounded-lg hidden bg-white" frameborder="0"></iframe>
+
+                        {{-- Watermark Stamp --}}
+                        <div id="docWatermark" class="watermark-overlay">VALID</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
 </div>
 @endsection
 
@@ -729,5 +832,44 @@
     }
 
     flatpickr("#date_range_picker", { mode: "range", dateFormat: "Y-m-d" });
+
+    // ==========================================
+    // LOGIKA MODAL DOCUMENT VIEWER & WATERMARK
+    // ==========================================
+    function openDocumentModal(url, isPdf, title) {
+        document.getElementById('docViewerTitle').innerText = 'Preview Berkas: ' + title;
+        const imgEl = document.getElementById('docViewerImage');
+        const pdfEl = document.getElementById('docViewerPdf');
+        const watermarkContainer = document.getElementById('watermarkContainer');
+        const loader = document.getElementById('docLoader');
+
+        // Reset state
+        watermarkContainer.classList.remove('watermark-active');
+        imgEl.classList.add('hidden');
+        pdfEl.classList.add('hidden');
+        loader.classList.remove('hidden'); // Tampilkan loading
+
+        if (isPdf) {
+            pdfEl.src = url;
+            pdfEl.onload = () => { loader.classList.add('hidden'); pdfEl.classList.remove('hidden'); };
+        } else {
+            imgEl.src = url;
+            imgEl.onload = () => { loader.classList.add('hidden'); imgEl.classList.remove('hidden'); };
+        }
+
+        document.getElementById('documentViewerModal').classList.remove('hidden');
+    }
+
+    function closeDocumentModal() {
+        document.getElementById('documentViewerModal').classList.add('hidden');
+        document.getElementById('docViewerImage').src = '';
+        document.getElementById('docViewerPdf').src = '';
+        document.getElementById('watermarkContainer').classList.remove('watermark-active');
+    }
+
+    function markAsValid() {
+        // Memicu animasi watermark
+        document.getElementById('watermarkContainer').classList.add('watermark-active');
+    }
 </script>
 @endpush
