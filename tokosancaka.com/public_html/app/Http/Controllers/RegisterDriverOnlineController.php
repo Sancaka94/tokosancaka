@@ -43,6 +43,8 @@ class RegisterDriverOnlineController extends Controller
         ]);
 
         if (!$verifyTurnstile->json('success')) {
+            Log::error('LOG TURNSTILE GAGAL: ' . json_encode($verifyTurnstile->json()));
+
             return redirect()->back()->withInput()->with('error', 'Validasi Cloudflare gagal. Terindikasi sebagai Bot/Spam.');
         }
 
@@ -172,7 +174,7 @@ class RegisterDriverOnlineController extends Controller
                                 ]
                             ]);
 
-                            if ($response->successful()) break; 
+                            if ($response->successful()) break;
                         }
                     }
                 }
@@ -402,10 +404,10 @@ class RegisterDriverOnlineController extends Controller
             // 👇 PERBAIKAN: Cek role saat ini agar jabatan Koordinator tidak di-downgrade
             if ($driver->id_pengguna) {
                 $pengguna = Pengguna::where('id_pengguna', $driver->id_pengguna)->first();
-                
+
                 if ($pengguna) {
                     if ($status === 'approved') {
-                        // Hanya naikkan ke Driver JIKA dia masih Pelanggan. 
+                        // Hanya naikkan ke Driver JIKA dia masih Pelanggan.
                         // Jika sudah Koordinator, biarkan saja.
                         if ($pengguna->role === 'Pelanggan') {
                             $pengguna->update(['role' => 'Driver']);
