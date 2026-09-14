@@ -662,7 +662,8 @@
 
 <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
 <!-- Library Kompresi Gambar Browser (Versi 2.0.2 Stabil) -->
-<script type="text/javascript" src="https://cdn.jsdelivr.net/npm/browser-image-compression@2.0.2/dist/browser-image-compression.js"></script>
+<!-- GUNAKAN SERVER UNPKG (Lebih stabil di Indonesia) -->
+<script type="text/javascript" src="https://unpkg.com/browser-image-compression@2.0.2/dist/browser-image-compression.js"></script>
 
 <script>
     // ==========================================================
