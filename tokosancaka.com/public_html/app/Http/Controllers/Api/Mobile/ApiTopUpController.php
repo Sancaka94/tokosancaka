@@ -40,7 +40,7 @@ class ApiTopUpController extends Controller
     public function getMethods()
     {
         // 1. AMBIL METODE TRIPAY DARI API (SECARA REAL-TIME, BYPASS CACHE)
-        
+
         // Ambil mode langsung dari database untuk menghindari nyangkut di Production
         $modeRecord = \Illuminate\Support\Facades\DB::table('API')
             ->where('key', 'TRIPAY_MODE')
@@ -557,6 +557,20 @@ class ApiTopUpController extends Controller
 
             $otpCode = strtoupper(Str::random(6));
             Cache::put('otp_reset_pin_' . $user->id_pengguna, $otpCode, now()->addMinutes(5));
+
+            // ---------------------------------------------------------
+            // BACKUP OTP KE DATABASE (JAGA-JAGA EMAIL/WA PENGGUNA BERMASALAH)
+            // ---------------------------------------------------------
+            \Illuminate\Support\Facades\DB::table('dataotppengguna')->insert([
+                'id_pengguna'  => $user->id_pengguna ?? $user->id,
+                'nama_lengkap' => $user->nama_lengkap,
+                'kontak'       => $via === 'email' ? $user->email : $user->no_wa,
+                'otp_code'     => $otpCode,
+                'tipe_otp'     => 'Reset PIN Keamanan',
+                'created_at'   => now(),
+                'updated_at'   => now(),
+            ]);
+            // ---------------------------------------------------------
 
             // --- JIKA VIA EMAIL ---
             if ($via === 'email') {

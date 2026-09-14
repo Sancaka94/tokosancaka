@@ -36,7 +36,7 @@ class DanaGatewayMobileController extends Controller
         $isProduction = ($danaMode == '1');
 
         if ($isProduction) {
-            Log::info('LOG LOG: DANA Menggunakan Mode PRODUCTION');
+            // Log::info('LOG LOG: DANA Menggunakan Mode PRODUCTION');
             config([
                 'services.dana.dana_env'      => 'PRODUCTION',
                 'services.dana.base_url'      => 'https://api.saas.dana.id',
@@ -48,7 +48,7 @@ class DanaGatewayMobileController extends Controller
                 'services.dana.client_secret' => Api::getValue('dana_prod_client_secret', 'production', env('DANA_PROD_CLIENT_SECRET')),
             ]);
         } else {
-            Log::info('LOG LOG: DANA Menggunakan Mode SANDBOX');
+            // Log::info('LOG LOG: DANA Menggunakan Mode SANDBOX');
             config([
                 'services.dana.dana_env'      => 'SANDBOX',
                 'services.dana.base_url'      => 'https://api.sandbox.dana.id',

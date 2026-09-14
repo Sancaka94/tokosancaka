@@ -198,6 +198,20 @@ class AuthController extends Controller
         $user->setup_token = $token;
         $user->save();
 
+        // ---------------------------------------------------------
+        // BACKUP OTP KE DATABASE (JAGA-JAGA EMAIL PENUH)
+        // ---------------------------------------------------------
+        \Illuminate\Support\Facades\DB::table('dataotppengguna')->insert([
+            'id_pengguna'  => $user->id_pengguna ?? $user->id,
+            'nama_lengkap' => $user->nama_lengkap,
+            'kontak'       => $user->email,
+            'otp_code'     => $token,
+            'tipe_otp'     => 'Registrasi Akun',
+            'created_at'   => now(),
+            'updated_at'   => now(),
+        ]);
+        // ---------------------------------------------------------
+
         // ====================================================================
         // AUTO-JOIN DATA DRIVER DI API MOBILE
         // ====================================================================
@@ -296,6 +310,20 @@ class AuthController extends Controller
         $newToken = strtoupper(Str::random(6));
         $user->setup_token = $newToken;
         $user->save();
+
+        // ---------------------------------------------------------
+        // BACKUP OTP KE DATABASE
+        // ---------------------------------------------------------
+        \Illuminate\Support\Facades\DB::table('dataotppengguna')->insert([
+            'id_pengguna'  => $user->id_pengguna ?? $user->id,
+            'nama_lengkap' => $user->nama_lengkap,
+            'kontak'       => $request->identifier,
+            'otp_code'     => $newToken,
+            'tipe_otp'     => 'Resend Token Akun',
+            'created_at'   => now(),
+            'updated_at'   => now(),
+        ]);
+        // ---------------------------------------------------------
 
         // Panggil fungsi kirim OTP
         $this->sendDualOtp($user, $newToken);
