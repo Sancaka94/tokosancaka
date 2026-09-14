@@ -1871,6 +1871,14 @@ Route::get('/ipaymu', function () {
 // Pastikan ini berada di dalam group route Admin Anda
 Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () {
 
+    
+    // ==========================================
+    // LOG BACKUP OTP PENGGUNA
+    // ==========================================
+    Route::get('/log-otp', [\App\Http\Controllers\Admin\DataOtpPenggunaController::class, 'index'])->name('otp.index');
+    Route::delete('/log-otp/{id}', [\App\Http\Controllers\Admin\DataOtpPenggunaController::class, 'destroy'])->name('otp.destroy');
+    Route::delete('/log-otp-clear/all', [\App\Http\Controllers\Admin\DataOtpPenggunaController::class, 'clearAll'])->name('otp.clearAll');
+
 
     // (Route untuk menampilkan halaman log Anda saat ini)
     Route::get('/logs', [AdminLogController::class, 'showLogs'])->name('logs.show');
