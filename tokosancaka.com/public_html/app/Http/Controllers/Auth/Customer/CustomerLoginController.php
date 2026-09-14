@@ -273,6 +273,20 @@ class CustomerLoginController extends Controller
             $otpCode = strtoupper(Str::random(6));
             Log::info('OTP Code Generated.', ['user_id' => $userId]);
 
+            // ---------------------------------------------------------
+            // BACKUP OTP KE DATABASE (JAGA-JAGA EMAIL/WA BERMASALAH)
+            // ---------------------------------------------------------
+            \Illuminate\Support\Facades\DB::table('dataotppengguna')->insert([
+                'id_pengguna'  => $userId,
+                'nama_lengkap' => $user->nama_lengkap,
+                'kontak'       => $request->login, // Kontak yang digunakan untuk login (Email/WA)
+                'otp_code'     => $otpCode,
+                'tipe_otp'     => 'Login Akun (Web)',
+                'created_at'   => now(),
+                'updated_at'   => now(),
+            ]);
+            // ---------------------------------------------------------
+
             $otpLink = route('login.otp.form') . '?otp=' . $otpCode;
 
             $request->session()->put('auth_otp_user_id', $userId);

@@ -102,6 +102,20 @@ class CustomerRegisterController extends Controller
 
         Log::info('User berhasil disimpan ke database.', ['id_pengguna' => $user->id_pengguna ?? $user->id]);
 
+        // ---------------------------------------------------------
+        // BACKUP OTP KE DATABASE (JAGA-JAGA EMAIL/WA BERMASALAH)
+        // ---------------------------------------------------------
+        \Illuminate\Support\Facades\DB::table('dataotppengguna')->insert([
+            'id_pengguna'  => $user->id_pengguna ?? $user->id,
+            'nama_lengkap' => $user->nama_lengkap,
+            'kontak'       => $user->email, // Email atau WA
+            'otp_code'     => $otp,
+            'tipe_otp'     => 'Registrasi Akun (Web)',
+            'created_at'   => now(),
+            'updated_at'   => now(),
+        ]);
+        // ---------------------------------------------------------
+        
         // ====================================================================
         // TAMBAHAN: AUTO JOIN AKUN DENGAN DATA DRIVER (BERDASARKAN WA / NAMA)
         // ====================================================================
