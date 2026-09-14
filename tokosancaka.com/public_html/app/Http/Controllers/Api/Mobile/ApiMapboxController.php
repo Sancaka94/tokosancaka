@@ -18,109 +18,101 @@ use App\Models\Api;
 
 class ApiMapboxController extends Controller
 {
-    public function cek_tarif(Request $request)
+   public function cek_tarif(Request $request)
     {
-        Log::info("=== [API MAPBOX] REQUEST CEK TARIF MASUK ===");
-        Log::info("Payload:", $request->all());
+        \Illuminate\Support\Facades\Log::info("=== [API MAPBOX] REQUEST CEK TARIF MASUK ===");
 
         $latAsal = $request->input('sender_lat');
         $lngAsal = $request->input('sender_lng');
         $latTujuan = $request->input('receiver_lat');
         $lngTujuan = $request->input('receiver_lng');
-        $layanan = $request->input('layanan', $request->input('vendor'));
+        $layanan = $request->input('layanan', $request->input('vendor', 'ojek_online'));
         $beratGram = (float) $request->input('weight', 1000);
 
         if (!$latAsal || !$lngAsal || !$latTujuan || !$lngTujuan) {
-            Log::warning("[API MAPBOX] Koordinat tidak lengkap.");
             return response()->json(['status' => false, 'message' => 'Koordinat tidak lengkap.']);
         }
 
-        $mapboxToken = Api::getValue('MAPBOX_SECRET_TOKEN', 'global', env('MAPBOX_TOKEN'));
-
-        $url = "https://api.mapbox.com/directions/v5/mapbox/driving/{$lngAsal},{$latAsal};{$lngTujuan},{$latTujuan}";
+        // SECRET TOKEN khusus untuk Menghitung Jarak / Rute
+        $mapboxSecret = \App\Models\Api::getValue('MAPBOX_SECRET_TOKEN', 'global', env('MAPBOX_TOKEN'));
+        $urlRoute = "https://api.mapbox.com/directions/v5/mapbox/driving/{$lngAsal},{$latAsal};{$lngTujuan},{$latTujuan}";
 
         try {
-            $response = Http::get($url, [
-                'access_token' => $mapboxToken,
+            // 1. HITUNG JARAK
+            $responseRoute = \Illuminate\Support\Facades\Http::get($urlRoute, [
+                'access_token' => $mapboxSecret,
                 'geometries'   => 'geojson',
                 'overview'     => 'simplified'
             ]);
 
-            if (!$response->successful() || empty($response['routes'][0])) {
+            if (!$responseRoute->successful() || empty($responseRoute['routes'][0])) {
                 return response()->json(['status' => false, 'message' => 'Gagal mendapatkan rute dari Mapbox']);
             }
 
-            $route = $response['routes'][0];
+            $route = $responseRoute['routes'][0];
             $distanceKm = $route['distance'] / 1000;
             $durationMin = ceil($route['duration'] / 60);
 
-            // ===============================================================
-            // LOGIKA ZONASI PROVINSI (OJEK & EXPRESS)
-            // ===============================================================
-            $zona1Wilayah = strtolower(Api::getValue('ZONA_1_WILAYAH', 'global', 'sumatera, bali, jawa timur, jawa tengah, jawa barat, yogyakarta, banten'));
-            $zona2Wilayah = strtolower(Api::getValue('ZONA_2_WILAYAH', 'global', 'jakarta, bogor, depok, tangerang, bekasi, jabodetabek'));
-            $zona3Wilayah = strtolower(Api::getValue('ZONA_3_WILAYAH', 'global', 'kalimantan, sulawesi, nusa tenggara, maluku, papua'));
+            // 2. DETEKSI PROVINSI DARI KOORDINAT
+            $detectedRegions = $this->getRegionFromCoordinates($lngAsal, $latAsal);
+            $detectedString = implode(" ", $detectedRegions);
+            \Illuminate\Support\Facades\Log::info("LOG ZONASI: Kata Kunci Lokasi -> '{$detectedString}'");
 
-            $detectedRegions = $this->getRegionFromCoordinates($lngAsal, $latAsal, $mapboxToken);
+            // 3. AMBIL DATABASE ZONA (Sesuai ID 119, 122, 125)
+            $zona1Wilayah = strtolower(\App\Models\Api::getValue('ZONA_1_WILAYAH', 'global', 'sumatera, bali, jawa timur, jawa tengah, jawa barat, yogyakarta, banten'));
+            $zona2Wilayah = strtolower(\App\Models\Api::getValue('ZONA_2_WILAYAH', 'global', 'jakarta, bogor, depok, tangerang, bekasi'));
+            $zona3Wilayah = strtolower(\App\Models\Api::getValue('ZONA_3_WILAYAH', 'global', 'kalimantan, sulawesi, nusa tenggara, maluku, papua'));
+
+            // Pencocokan Wilayah (Cek tiap kata di database vs Hasil Mapbox)
             $selectedZone = null;
+            $arrWilayah = array_merge(
+                array_fill_keys(array_map('trim', explode(',', $zona2Wilayah)), 2),
+                array_fill_keys(array_map('trim', explode(',', $zona1Wilayah)), 1),
+                array_fill_keys(array_map('trim', explode(',', $zona3Wilayah)), 3)
+            );
 
-            foreach ($detectedRegions as $region) {
-                if (str_contains($zona2Wilayah, $region)) {
-                    $selectedZone = 2; break;
-                } elseif (str_contains($zona1Wilayah, $region)) {
-                    $selectedZone = 1; break;
-                } elseif (str_contains($zona3Wilayah, $region)) {
-                    $selectedZone = 3; break;
+            foreach ($arrWilayah as $wilayah => $zona) {
+                if ($wilayah !== '' && str_contains($detectedString, $wilayah)) {
+                    $selectedZone = $zona;
+                    break; // Langsung berhenti kalau ketemu
                 }
             }
 
-            // ===============================================================
-            // PERHITUNGAN BIAYA BERDASARKAN LAYANAN DAN ZONA
-            // ===============================================================
+            \Illuminate\Support\Facades\Log::info("LOG ZONASI: Masuk Zona -> " . ($selectedZone ?? 'TIDAK TERDETEKSI (PAKAI DEFAULT 5000)'));
+
+            // 4. HITUNG TARIF BERDASARKAN ZONA
             if ($layanan == 'ojek_online') {
                 if ($selectedZone === 2) {
-                    $baseFare   = (float) Api::getValue('ZONA_2_TARIF_MINIMAL', 'global', 10200);
-                    $pricePerKm = (float) Api::getValue('ZONA_2_TARIF_PER_KM', 'global', 2550);
+                    $baseFare   = (float) \App\Models\Api::getValue('ZONA_2_TARIF_MINIMAL', 'global', 10200);
+                    $pricePerKm = (float) \App\Models\Api::getValue('ZONA_2_TARIF_PER_KM', 'global', 2550);
                 } elseif ($selectedZone === 3) {
-                    $baseFare   = (float) Api::getValue('ZONA_3_TARIF_MINIMAL', 'global', 9200);
-                    $pricePerKm = (float) Api::getValue('ZONA_3_TARIF_PER_KM', 'global', 2300);
+                    $baseFare   = (float) \App\Models\Api::getValue('ZONA_3_TARIF_MINIMAL', 'global', 9200);
+                    $pricePerKm = (float) \App\Models\Api::getValue('ZONA_3_TARIF_PER_KM', 'global', 5000); // <-- Sesuai database ID 127
                 } elseif ($selectedZone === 1) {
-                    $baseFare   = (float) Api::getValue('ZONA_1_TARIF_MINIMAL', 'global', 8000);
-                    $pricePerKm = (float) Api::getValue('ZONA_1_TARIF_PER_KM', 'global', 2000);
+                    $baseFare   = (float) \App\Models\Api::getValue('ZONA_1_TARIF_MINIMAL', 'global', 8000);
+                    $pricePerKm = (float) \App\Models\Api::getValue('ZONA_1_TARIF_PER_KM', 'global', 2000);
                 } else {
-                    $baseFare   = (float) Api::getValue('SANCAKA_OJEK_BASE_FARE', 'global', 5000);
-                    $pricePerKm = (float) Api::getValue('SANCAKA_OJEK_PER_KM', 'global', 3000);
+                    $baseFare   = (float) \App\Models\Api::getValue('SANCAKA_OJEK_BASE_FARE', 'global', 5000);
+                    $pricePerKm = (float) \App\Models\Api::getValue('SANCAKA_OJEK_PER_KM', 'global', 1000);
                 }
 
                 $calculatedFare = $distanceKm * $pricePerKm;
                 $totalCost = ($calculatedFare < $baseFare) ? $baseFare : $calculatedFare;
 
             } else {
-                // Sancaka Express Zonasi
-                if ($selectedZone === 2) {
-                    $baseFare   = (float) Api::getValue('EXPRESS_ZONA_2_BASE', 'global', 4000);
-                    $pricePerKm = (float) Api::getValue('EXPRESS_ZONA_2_KM', 'global', 1500);
-                } elseif ($selectedZone === 3) {
-                    $baseFare   = (float) Api::getValue('EXPRESS_ZONA_3_BASE', 'global', 3500);
-                    $pricePerKm = (float) Api::getValue('EXPRESS_ZONA_3_KM', 'global', 1200);
-                } elseif ($selectedZone === 1) {
-                    $baseFare   = (float) Api::getValue('EXPRESS_ZONA_1_BASE', 'global', 3000);
-                    $pricePerKm = (float) Api::getValue('EXPRESS_ZONA_1_KM', 'global', 1000);
-                } else {
-                    $baseFare   = (float) Api::getValue('SANCAKA_EXPRESS_BASE_FARE', 'global', 3000);
-                    $pricePerKm = (float) Api::getValue('SANCAKA_EXPRESS_PER_KM', 'global', 1000);
-                }
+                // Sancaka Express Zonasi Default
+                $baseFare   = (float) \App\Models\Api::getValue('SANCAKA_EXPRESS_BASE_FARE', 'global', 3000);
+                $pricePerKm = (float) \App\Models\Api::getValue('SANCAKA_EXPRESS_PER_KM', 'global', 1000);
+                $pricePerKg = (float) \App\Models\Api::getValue('SANCAKA_EXPRESS_PER_KG', 'global', 1000);
 
-                $pricePerKg = (float) Api::getValue('SANCAKA_EXPRESS_PER_KG', 'global', 1000);
                 $weightKg = max(1, ceil($beratGram / 1000));
-
                 $totalCost = $baseFare + ($distanceKm * $pricePerKm) + ($weightKg * $pricePerKg);
             }
 
             // Pembulatan ke 500 terdekat
             $finalCost = (int) (ceil($totalCost / 500) * 500);
 
-            Log::info("[API MAPBOX] Zona Terdeteksi: {$selectedZone} | Tarif Final: Rp {$finalCost}");
+            \Illuminate\Support\Facades\Log::info("LOG TARIF: Layanan {$layanan} | Jarak {$distanceKm} KM | Tarif Final: Rp {$finalCost}");
 
             return response()->json([
                 'status' => true,
@@ -132,7 +124,7 @@ class ApiMapboxController extends Controller
             ]);
 
         } catch (\Exception $e) {
-            Log::error("[API MAPBOX] EXCEPTION CRASH: " . $e->getMessage());
+            \Illuminate\Support\Facades\Log::error("[API MAPBOX] EXCEPTION CRASH: " . $e->getMessage());
             return response()->json(['status' => false, 'message' => 'Internal Server Error'], 500);
         }
     }
@@ -2845,28 +2837,48 @@ class ApiMapboxController extends Controller
         ]);
     }
 
-    /**
+   /**
      * Helper Private: Mendapatkan nama wilayah dari Mapbox Reverse Geocoding
      */
-    private function getRegionFromCoordinates($lng, $lat, $token)
+    private function getRegionFromCoordinates($lng, $lat)
     {
+        // WAJIB PAKAI PUBLIC TOKEN UNTUK GEOCODING MAPBOX
+        $token = \App\Models\Api::getValue('MAPBOX_PUBLIC_TOKEN', 'global', env('MAPBOX_PUBLIC_TOKEN'));
+
         try {
             $url = "https://api.mapbox.com/geocoding/v5/mapbox.places/{$lng},{$lat}.json";
-            $response = Http::get($url, [
+            $response = \Illuminate\Support\Facades\Http::get($url, [
                 'access_token' => $token,
-                'types' => 'region,place',
-                'limit' => 2
+                'types' => 'region', // Fokus cari nama provinsi
+                'language' => 'id'   // Paksa Bahasa Indonesia
             ]);
 
-            if ($response->successful() && !empty($response['features'])) {
+            if ($response->successful()) {
+                $data = $response->json();
                 $regions = [];
-                foreach ($response['features'] as $feature) {
-                    $regions[] = strtolower($feature['text']);
+
+                if (!empty($data['features'])) {
+                    foreach ($data['features'] as $feature) {
+                        $regions[] = strtolower($feature['text']);
+
+                        // Jaga-jaga jika Mapbox menyembunyikan provinsinya di dalam context
+                        if (!empty($feature['context'])) {
+                            foreach ($feature['context'] as $ctx) {
+                                if (str_starts_with($ctx['id'], 'region')) {
+                                    $regions[] = strtolower($ctx['text']);
+                                }
+                            }
+                        }
+                    }
                 }
-                return $regions; // Mengembalikan array seperti ['jakarta', 'daerah khusus ibukota jakarta']
+
+                \Illuminate\Support\Facades\Log::info("LOG MAPBOX API RESPONSE (Provinsi): ", $regions);
+                return $regions;
+            } else {
+                \Illuminate\Support\Facades\Log::error("LOG MAPBOX API GAGAL: " . $response->body());
             }
         } catch (\Exception $e) {
-            Log::error("[API MAPBOX] Gagal Reverse Geocoding: " . $e->getMessage());
+            \Illuminate\Support\Facades\Log::error("[API MAPBOX] Exception Geocoding: " . $e->getMessage());
         }
         return [];
     }
