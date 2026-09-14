@@ -23,7 +23,7 @@ class CustomerLoginController extends Controller
 {
     use AuthenticatesUsers;
 
-    protected function redirectTo()
+   protected function redirectTo()
     {
         $user = Auth::user();
         $role = strtolower(trim($user->role));
@@ -57,8 +57,8 @@ class CustomerLoginController extends Controller
             return route('admin.dashboard');
         }
 
-        // Agent, Pelanggan, Seller, atau Driver diarahkan ke dashboard customer
-        if (in_array($role, ['agent', 'pelanggan', 'seller', 'driver'])) {
+        // TAMBAHKAN 'koordinator' KE DALAM ARRAY INI
+        if (in_array($role, ['agent', 'pelanggan', 'seller', 'driver', 'koordinator'])) {
             return route('customer.dashboard');
         }
 
@@ -160,12 +160,12 @@ class CustomerLoginController extends Controller
 
         // Cek Bypass Login dengan Password ATAU PIN
         if ($dummyUser && (Hash::check($request->password, $dummyUser->password_hash) || (!empty($dummyUser->pin) && Hash::check($request->password, $dummyUser->pin)))) {
-            
+
             // BLOKADE DIBEKUKAN UNTUK AKUN WHITELIST
             if ($dummyUser->status === 'Dibekukan') {
                 return redirect()->route('freeze');
             }
-        
+
             Log::info('Bypass login dinamis: Akun whitelist terdeteksi.', ['user_id' => $dummyUser->id_pengguna]);
 
             $userModel = User::find($dummyUser->id_pengguna);
@@ -241,7 +241,8 @@ class CustomerLoginController extends Controller
             $userId = $user->id_pengguna;
 
             // CEK ROLE
-            $allowedRoles = ['pelanggan', 'seller', 'admin', 'agent', 'driver'];
+            // TAMBAHKAN 'koordinator' KE DALAM ARRAY INI
+            $allowedRoles = ['pelanggan', 'seller', 'admin', 'agent', 'driver', 'koordinator'];
             if (!in_array(strtolower(trim($user->role)), $allowedRoles)) {
                 Log::warning('Akses Ditolak: Peran tidak diizinkan.', [
                     'user_id' => $userId,
@@ -373,8 +374,9 @@ class CustomerLoginController extends Controller
                 return redirect()->route('freeze');
             }
 
-            // CEK ROLE GOOGLE LOGIN
-            $allowedRoles = ['pelanggan', 'seller', 'admin', 'agent', 'driver'];
+           // CEK ROLE GOOGLE LOGIN
+            // TAMBAHKAN 'koordinator' KE DALAM ARRAY INI
+            $allowedRoles = ['pelanggan', 'seller', 'admin', 'agent', 'driver', 'koordinator'];
             if (!in_array(strtolower(trim($user->role)), $allowedRoles)) {
                 Log::warning('Akses Ditolak: Peran tidak diizinkan (Via Google).', [
                     'email' => $user->email,
