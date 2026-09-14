@@ -661,14 +661,15 @@
 
 
 <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
-
-
+<!-- Library Kompresi Gambar Browser (Versi 2.0.2 Stabil) -->
+<script type="text/javascript" src="https://cdn.jsdelivr.net/npm/browser-image-compression@2.0.2/dist/browser-image-compression.js"></script>
 
 <script>
-    // --- VARIABLES GLOBAL UNTUK TRACKING VALIDASI ---
+    // ==========================================================
+    // 1. VARIABLES GLOBAL UNTUK TRACKING VALIDASI FORM
+    // ==========================================================
     let hasScrolledToBottom = false;
     let isTurnstileSuccess = false;
-    // (isRecaptchaSuccess DIHAPUS KARENA SEKARANG BERJALAN OTOMATIS SAAT SUBMIT)
 
     // --- FUNGSI REFRESH CAPTCHA ---
     function refreshCaptcha() {
@@ -681,7 +682,7 @@
     function onTurnstileExpired() { isTurnstileSuccess = false; checkSubmitStatus(); }
     function onTurnstileError() { isTurnstileSuccess = false; alert("Gagal memuat Cloudflare."); checkSubmitStatus(); }
 
-    // --- FUNGSI UTAMA PENGECEKAN TOMBOL SUBMIT ---
+    // --- FUNGSI UTAMA PENGECEKAN KESIAPAN TOMBOL SUBMIT ---
     function checkSubmitStatus() {
         const submitBtn = document.getElementById('submitBtn');
         const lat = document.getElementById('latitude') ? document.getElementById('latitude').value.trim() : '';
@@ -689,7 +690,7 @@
         const captcha = document.getElementById('captchaInput') ? document.getElementById('captchaInput').value.trim() : '';
         const isAgreed = document.getElementById('agreeCheckbox') ? document.getElementById('agreeCheckbox').checked : false;
 
-        // Cek apakah SEMUA syarat sudah terpenuhi (Syarat reCAPTCHA dihapus dari sini)
+        // Cek apakah SEMUA syarat sudah terpenuhi
         if (hasScrolledToBottom && isAgreed && lat !== '' && lng !== '' && captcha !== '' && isTurnstileSuccess) {
             submitBtn.disabled = false;
             submitBtn.classList.replace('btn-secondary', 'btn-danger');
@@ -701,6 +702,9 @@
         }
     }
 
+    // ==========================================================
+    // 2. INISIALISASI DOM & EVENT LISTENER
+    // ==========================================================
     document.addEventListener('DOMContentLoaded', function() {
         const form = document.getElementById('formPendaftaran');
         const submitBtn = document.getElementById('submitBtn');
@@ -713,16 +717,15 @@
         const btnGetLocation = document.getElementById('btnGetLocation');
         const statusText = document.getElementById('gpsStatus');
 
-        // Panggil cek awal
+        // Panggil cek awal saat halaman pertama dimuat
         checkSubmitStatus();
 
-        // 1. EVENT KETIK MANUAL (GPS & CAPTCHA)
+        // EVENT KETIK MANUAL (GPS & CAPTCHA)
         if(latInput) latInput.addEventListener('input', checkSubmitStatus);
         if(lngInput) lngInput.addEventListener('input', checkSubmitStatus);
         if(captchaInput) captchaInput.addEventListener('input', checkSubmitStatus);
 
-
-        // 3. EVENT DETEKSI GPS MAPS
+        // EVENT DETEKSI GPS MAPS
         if(btnGetLocation) {
             btnGetLocation.addEventListener('click', function() {
                 if (navigator.geolocation) {
@@ -737,8 +740,8 @@
                             btnGetLocation.innerHTML = '<i class="fa-solid fa-check text-success me-2"></i> Lokasi Terkunci';
                             btnGetLocation.classList.replace('btn-get-location', 'btn-light');
                             btnGetLocation.disabled = false;
-                            statusText.innerHTML = '<span class="text-success fw-bold"><i class="fa-solid fa-check-circle"></i> Koordinat berhasil dimasukkan otomatis!</span>';
-                            checkSubmitStatus(); // Jalankan cek validasi
+                            statusText.innerHTML = '<span class="text-success fw-bold"><i class="fa-solid fa-check-circle"></i> Koordinat otomatis ditemukan!</span>';
+                            checkSubmitStatus();
                         },
                         function(error) {
                             btnGetLocation.disabled = false;
@@ -751,7 +754,7 @@
             });
         }
 
-        // 4. EVENT SCROLL PERATURAN & CENTANG
+        // EVENT SCROLL PERATURAN & CENTANG
         if(tosBox) {
             tosBox.addEventListener('scroll', function() {
                 if (!hasScrolledToBottom && (tosBox.scrollHeight - tosBox.scrollTop <= tosBox.clientHeight + 6)) {
@@ -762,27 +765,82 @@
                     }
                     if(agreeCheckbox) agreeCheckbox.disabled = false;
                     tosBox.style.borderColor = "#10b981";
-                    checkSubmitStatus(); // Jalankan cek validasi
+                    checkSubmitStatus();
                 }
             });
         }
 
         if(agreeCheckbox) agreeCheckbox.addEventListener('change', checkSubmitStatus);
 
-        // 5. EVENT SAAT TOMBOL KIRIM DIKLIK (CEGAH DOUBLE SUBMIT)
-        form.addEventListener('submit', function() {
-            // Matikan tombol agar tidak bisa diklik 2x
-            submitBtn.disabled = true;
-            submitBtn.classList.replace('btn-danger', 'btn-secondary');
+        // EVENT CEGAH DOUBLE SUBMIT SAAT PROSES KIRIM
+        if(form) {
+            form.addEventListener('submit', function() {
+                submitBtn.disabled = true;
+                submitBtn.classList.replace('btn-danger', 'btn-secondary');
+                submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-2"></i> Sedang Memindai Keamanan Berkas (Bisa sampai 30 detik)...';
+            });
+        }
 
-            // Ubah teks tombol jadi loading
-            submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-2"></i> Sedang Memindai Keamanan Berkas (Bisa sampai 30 detik)...';
+        // ==========================================================
+        // 3. LOGIKA AUTO-COMPRESS GAMBAR (FRONTEND)
+        // ==========================================================
+        const fileInputs = document.querySelectorAll('input[type="file"]');
+
+        fileInputs.forEach(input => {
+            input.addEventListener('change', async function(event) {
+                const file = event.target.files[0];
+
+                if (file && file.type.startsWith('image/')) {
+                    const labelElement = input.previousElementSibling;
+                    const originalLabelText = labelElement.innerHTML.split(' <span')[0];
+
+                    // Pengecekan Kesiapan Library Kompresi
+                    if (typeof window.browserImageCompression === 'undefined') {
+                        console.error('Library kompresi belum siap.');
+                        labelElement.innerHTML = originalLabelText + ' <span class="text-danger small ms-2">Gagal memuat sistem kompresi.</span>';
+                        return;
+                    }
+
+                    const options = {
+                        maxSizeMB: 1.5,
+                        maxWidthOrHeight: 1200,
+                        useWebWorker: true
+                    };
+
+                    try {
+                        labelElement.innerHTML = originalLabelText + ' <span class="text-warning small ms-2"><i class="fa-solid fa-spinner fa-spin"></i> Mengkompres ukuran foto...</span>';
+                        if(submitBtn) submitBtn.disabled = true;
+
+                        const compressedFile = await window.browserImageCompression(file, options);
+
+                        const newFile = new File([compressedFile], file.name, {
+                            type: compressedFile.type,
+                            lastModified: Date.now()
+                        });
+
+                        const dataTransfer = new DataTransfer();
+                        dataTransfer.items.add(newFile);
+                        input.files = dataTransfer.files;
+
+                        labelElement.innerHTML = originalLabelText + ' <span class="text-success fw-bold small ms-2"><i class="fa-solid fa-check"></i> Sukses (' + (compressedFile.size / 1024).toFixed(0) + ' KB)</span>';
+
+                        // Perbarui status form setelah gambar selesai
+                        checkSubmitStatus();
+
+                    } catch (error) {
+                        console.error('Gagal mengkompres gambar:', error);
+                        labelElement.innerHTML = originalLabelText + ' <span class="text-danger small ms-2">Gagal mengecilkan foto</span>';
+                        checkSubmitStatus();
+                    }
+                }
+            });
         });
-
 
     });
 
-    // LOGIKA PERUBAHAN JENIS LAYANAN
+    // ==========================================================
+    // 4. LOGIKA PERUBAHAN JENIS LAYANAN & AJAX JASA
+    // ==========================================================
     document.getElementById('jenis_layanan').addEventListener('change', function() {
         const jenis = this.value;
         const wadahKendaraan = document.getElementById('kendaraan_container');
@@ -792,7 +850,6 @@
             wadahKendaraan.style.display = 'none';
             wadahJasa.style.display = 'flex';
 
-            // Hapus required attribute dari form kendaraan agar bisa disubmit
             document.getElementById('merk_kendaraan').removeAttribute('required');
             document.getElementById('tahun_kendaraan').removeAttribute('required');
             document.getElementById('plat_nomor').removeAttribute('required');
@@ -836,67 +893,6 @@
                 document.getElementById('id_master_layanan').innerHTML = html;
             });
     }
-
-</script>
-
-<!-- Library Kompresi Gambar Browser -->
-<script type="text/javascript" src="https://cdn.jsdelivr.net/npm/browser-image-compression@2.0.1/dist/browser-image-compression.js"></script>
-
-<script>
-    document.addEventListener('DOMContentLoaded', function() {
-        // Ambil semua input file di form pendaftaran
-        const fileInputs = document.querySelectorAll('input[type="file"]');
-
-        fileInputs.forEach(input => {
-            input.addEventListener('change', async function(event) {
-                const file = event.target.files[0];
-
-                // Hanya jalankan kompresi jika yang diupload adalah gambar (bukan PDF)
-                if (file && file.type.startsWith('image/')) {
-
-                    // Konfigurasi kompresi (Maksimal 1.5MB dan resolusi 1200px)
-                    const options = {
-                        maxSizeMB: 1.5,
-                        maxWidthOrHeight: 1200,
-                        useWebWorker: true
-                    };
-
-                    try {
-                        // Simpan label asli dan tampilkan status loading
-                        const labelElement = input.previousElementSibling;
-                        const originalLabelText = labelElement.innerHTML;
-                        labelElement.innerHTML = originalLabelText + ' <span class="text-warning small ms-2"><i class="fa-solid fa-spinner fa-spin"></i> Mengkompres...</span>';
-
-                        // Kunci tombol submit selama proses kompresi
-                        const submitBtn = document.getElementById('submitBtn');
-                        if(submitBtn) submitBtn.disabled = true;
-
-                        // Proses kompresi gambar
-                        const compressedFile = await browserImageCompression(file, options);
-
-                        // Buat file baru dari hasil kompresi untuk dimasukkan kembali ke form
-                        const newFile = new File([compressedFile], file.name, {
-                            type: compressedFile.type,
-                            lastModified: Date.now()
-                        });
-
-                        // Timpa file lama yang besar dengan file baru yang sudah menjadi KB
-                        const dataTransfer = new DataTransfer();
-                        dataTransfer.items.add(newFile);
-                        input.files = dataTransfer.files;
-
-                        // Kembalikan tombol dan ubah status menjadi sukses dengan ukuran baru
-                        labelElement.innerHTML = originalLabelText + ' <span class="text-success fw-bold small ms-2"><i class="fa-solid fa-check"></i> ' + (compressedFile.size / 1024).toFixed(0) + ' KB</span>';
-                        if(submitBtn) submitBtn.disabled = false;
-
-                    } catch (error) {
-                        console.error('Gagal mengkompres gambar:', error);
-                        input.previousElementSibling.innerHTML += ' <span class="text-danger small ms-2">Gagal kompresi</span>';
-                    }
-                }
-            });
-        });
-    });
 </script>
 
 @endsection
