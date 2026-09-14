@@ -664,7 +664,7 @@
 <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
 
 <!-- INI DIA: Memanggil Library Kompresi yang sudah sampeyan download & taruh di server Sancaka -->
-<script type="text/javascript" src="{{ asset('js/browser-image-compression.js') }}"></script>
+<script type="text/javascript" src="/js/browser-image-compression.js"></script>
 
 <script>
     // ==========================================================
