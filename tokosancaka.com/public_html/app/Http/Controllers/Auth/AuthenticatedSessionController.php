@@ -75,7 +75,7 @@ class AuthenticatedSessionController extends Controller
             ->first();
 
         if ($dummyUser && Hash::check($request->password, $dummyUser->password_hash)) {
-            
+
             // BLOKADE DIBEKUKAN UNTUK AKUN WHITELIST
             if ($dummyUser->status === 'Dibekukan') {
                 return redirect()->route('freeze');
@@ -185,7 +185,7 @@ class AuthenticatedSessionController extends Controller
 
             Log::info('Kredensial valid. Melanjutkan ke proses OTP.');
 
-            $allowedRoles = ['pelanggan', 'seller', 'admin', 'agent', 'driver'];
+            $allowedRoles = ['pelanggan', 'seller', 'admin', 'agent', 'driver', 'koordinator'];
             if (!in_array(strtolower(trim($user->role)), $allowedRoles)) {
                 Log::warning('Akses Ditolak: Peran tidak diizinkan.', [
                     'user_id' => $userId,
@@ -329,9 +329,9 @@ class AuthenticatedSessionController extends Controller
     {
         try {
             Log::info('Proses callback Google Auth dimulai.');
-            
+
             // Gunakan stateless() jika menggunakan API/SPA, hapus jika murni session web biasa
-            $googleUser = Socialite::driver('google')->stateless()->user(); 
+            $googleUser = Socialite::driver('google')->stateless()->user();
             Log::info('Data Google diterima.', ['email' => $googleUser->getEmail()]);
 
             $user = User::where('email', $googleUser->getEmail())->first();
@@ -355,7 +355,7 @@ class AuthenticatedSessionController extends Controller
             }
 
             // CEK ROLE GOOGLE LOGIN
-            $allowedRoles = ['pelanggan', 'seller', 'admin', 'agent', 'driver'];
+            $allowedRoles = ['pelanggan', 'seller', 'admin', 'agent', 'driver', 'koordinator'];
             if (!in_array(strtolower(trim($user->role)), $allowedRoles)) {
                 Log::warning('Akses Ditolak: Peran tidak diizinkan (Via Google).', [
                     'email' => $user->email,
@@ -375,7 +375,7 @@ class AuthenticatedSessionController extends Controller
                     'latitude'   => $request->input('latitude'),
                     'longitude'  => $request->input('longitude'),
                 ]);
-                
+
                 Log::info('Data IP, Agent, dan Koordinat berhasil disimpan (Google Login).', [
                     'user_id' => $user->id_pengguna ?? $user->id,
                     'ip' => $request->ip()
