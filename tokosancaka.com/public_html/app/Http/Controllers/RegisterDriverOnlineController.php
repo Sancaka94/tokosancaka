@@ -456,6 +456,12 @@ class RegisterDriverOnlineController extends Controller
                 }
             }
 
+            // SINKRONISASI UPDATE EMAIL KE TABEL PENGGUNA
+            if ($request->has('email') && $driver->id_pengguna) {
+                \App\Models\Pengguna::where('id_pengguna', $driver->id_pengguna)
+                    ->update(['email' => $request->email]);
+            }
+
             DB::commit();
             return redirect()->back()->with('success', "Status akun berhasil diubah menjadi {$status}.");
         } catch (\Exception $e) {
