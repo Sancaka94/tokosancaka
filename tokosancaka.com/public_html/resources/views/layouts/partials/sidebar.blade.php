@@ -987,6 +987,15 @@
                         </li>
                         {{-- AKHIR MENU BARU --}}
 
+                        <li>
+                            <a href="{{ route('admin.otp.index') }}" wire:navigate
+                               x-show="!searchQuery || $el.textContent.toLowerCase().includes(searchQuery.toLowerCase())"
+                               class="flex items-center px-3 py-1.5 text-xs rounded-md transition-colors {{ request()->routeIs('admin.otp.*') ? 'text-blue-600 font-bold bg-blue-50' : 'text-gray-500 hover:text-blue-600 hover:bg-gray-50' }}">
+                                <i class="fa-solid fa-shield-halved w-4 text-center mr-2 {{ request()->routeIs('admin.otp.*') ? 'text-blue-500' : 'text-gray-400 group-hover:text-blue-500' }}"></i>
+                                <span>Log Backup OTP</span>
+                            </a>
+                        </li>
+
                         <li><a href="{{ route('admin.logs.show') }}" wire:navigate x-show="!searchQuery || $el.textContent.toLowerCase().includes(searchQuery.toLowerCase())" class="block px-3 py-1.5 text-xs rounded-md transition-colors {{ request()->routeIs('admin.logs.show') ? 'text-red-500 font-bold bg-red-50' : 'text-red-500 hover:text-red-700 hover:bg-gray-50' }}">Log Error</a></li>
                         <li><a href="{{ route('admin.activity-log.index') }}" wire:navigate x-show="!searchQuery || $el.textContent.toLowerCase().includes(searchQuery.toLowerCase())" class="block px-3 py-1.5 text-xs rounded-md transition-colors {{ request()->routeIs('admin.activity-log.index') ? 'text-blue-600 font-bold bg-blue-50' : 'text-gray-500 hover:text-blue-600 hover:bg-gray-50' }}">Log Aktivitas</a></li>
                         <li><a href="{{ route('admin.settings.index') }}" wire:navigate x-show="!searchQuery || $el.textContent.toLowerCase().includes(searchQuery.toLowerCase())" class="block px-3 py-1.5 text-xs rounded-md transition-colors {{ request()->routeIs('admin.settings.index') ? 'text-blue-600 font-bold bg-blue-50' : 'text-gray-500 hover:text-blue-600 hover:bg-gray-50' }}">Pengaturan Aplikasi</a></li>
