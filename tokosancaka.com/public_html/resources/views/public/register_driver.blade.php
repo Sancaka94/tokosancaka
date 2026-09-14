@@ -778,7 +778,7 @@
             });
         }
 
-        // ==========================================================
+       // ==========================================================
         // 3. LOGIKA AUTO-COMPRESS GAMBAR (MENGGUNAKAN FILE LOKAL)
         // ==========================================================
         const fileInputs = document.querySelectorAll('input[type="file"]');
@@ -791,8 +791,8 @@
                     const labelElement = input.previousElementSibling;
                     const originalLabelText = labelElement.innerHTML.split(' <span')[0];
 
-                    // Mengecek apakah file js/browser-image-compression.js sukses dimuat
-                    if (typeof window.browserImageCompression === 'undefined') {
+                    // Mengecek kesiapan library menggunakan nama variabel yang benar
+                    if (typeof window.imageCompression === 'undefined') {
                         console.error('Library kompresi lokal gagal dimuat.');
                         labelElement.innerHTML = originalLabelText + ' <span class="text-danger small ms-2">Gagal memuat sistem kompresi.</span>';
                         return;
@@ -808,8 +808,8 @@
                         labelElement.innerHTML = originalLabelText + ' <span class="text-warning small ms-2"><i class="fa-solid fa-spinner fa-spin"></i> Mengkompres ukuran foto...</span>';
                         if(submitBtn) submitBtn.disabled = true;
 
-                        // Eksekusi fungsi kompresi dari file library yang sampeyan simpan
-                        const compressedFile = await window.browserImageCompression(file, options);
+                        // Eksekusi fungsi kompresi
+                        const compressedFile = await window.imageCompression(file, options);
 
                         const newFile = new File([compressedFile], file.name, {
                             type: compressedFile.type,
