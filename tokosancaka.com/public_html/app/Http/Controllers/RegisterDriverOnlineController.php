@@ -51,12 +51,10 @@ class RegisterDriverOnlineController extends Controller
         $messages = [
             'tanggal_lahir.before' => 'Usia Anda harus minimal 18 tahun untuk mendaftar.',
             'tahun_kendaraan.min'  => "Tahun pembuatan kendaraan maksimal berusia 8 tahun (Minimal {$minTahun}).",
-            'captcha.required'     => 'Kode Captcha gambar wajib diisi.',
-            'captcha.captcha'      => 'Kode Captcha gambar yang Anda masukkan salah.',
         ];
 
         $request->validate([
-            'captcha'         => 'required|captcha',
+
             'nama_lengkap'    => 'required|string|max:255',
             'tempat_lahir'    => 'required|string|max:100',
             'tanggal_lahir'   => 'required|date|before:-18 years',

@@ -617,10 +617,10 @@
 
                                     {{-- 2. Panel Cloudflare Turnstile --}}
                                     <!-- UBAH col-lg-4 MENJADI col-lg-6 -->
-                                    <div class="col-lg-6 col-md-6">
+                                    <div class="col-12">
                                         <div class="security-panel shadow-sm">
                                             <label class="form-label fw-bold text-slate-700 small mb-3">
-                                                <i class="fa-solid fa-robot text-secondary me-1"></i> 2. Cloudflare <span class="text-danger">*</span>
+                                                <i class="fa-solid fa-shield-halved text-success me-1"></i> Verifikasi Keamanan Anti-Bot <span class="text-danger">*</span>
                                             </label>
                                             <div class="security-inner-box flex-grow-1">
                                                 <div class="cf-turnstile"
@@ -684,16 +684,14 @@
     function onTurnstileExpired() { isTurnstileSuccess = false; checkSubmitStatus(); }
     function onTurnstileError() { isTurnstileSuccess = false; alert("Gagal memuat Cloudflare."); checkSubmitStatus(); }
 
-    // --- FUNGSI UTAMA PENGECEKAN KESIAPAN TOMBOL SUBMIT ---
-    function checkSubmitStatus() {
+   function checkSubmitStatus() {
         const submitBtn = document.getElementById('submitBtn');
         const lat = document.getElementById('latitude') ? document.getElementById('latitude').value.trim() : '';
         const lng = document.getElementById('longitude') ? document.getElementById('longitude').value.trim() : '';
-        const captcha = document.getElementById('captchaInput') ? document.getElementById('captchaInput').value.trim() : '';
         const isAgreed = document.getElementById('agreeCheckbox') ? document.getElementById('agreeCheckbox').checked : false;
 
-        // Cek apakah SEMUA syarat sudah terpenuhi
-        if (hasScrolledToBottom && isAgreed && lat !== '' && lng !== '' && captcha !== '' && isTurnstileSuccess) {
+        // Syarat captcha sudah dihapus, cukup cek GPS, Centang Peraturan, dan Turnstile
+        if (hasScrolledToBottom && isAgreed && lat !== '' && lng !== '' && isTurnstileSuccess) {
             submitBtn.disabled = false;
             submitBtn.classList.replace('btn-secondary', 'btn-danger');
             submitBtn.innerHTML = '<i class="fa-solid fa-paper-plane me-2"></i> Kirim Berkas Pendaftaran Mitra';
@@ -723,7 +721,6 @@
 
         if(latInput) latInput.addEventListener('input', checkSubmitStatus);
         if(lngInput) lngInput.addEventListener('input', checkSubmitStatus);
-        if(captchaInput) captchaInput.addEventListener('input', checkSubmitStatus);
 
         if(btnGetLocation) {
             btnGetLocation.addEventListener('click', function() {
