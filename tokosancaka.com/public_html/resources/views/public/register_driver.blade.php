@@ -768,6 +768,18 @@
         }
 
         if(agreeCheckbox) agreeCheckbox.addEventListener('change', checkSubmitStatus);
+
+        // 5. EVENT SAAT TOMBOL KIRIM DIKLIK (CEGAH DOUBLE SUBMIT)
+        form.addEventListener('submit', function() {
+            // Matikan tombol agar tidak bisa diklik 2x
+            submitBtn.disabled = true;
+            submitBtn.classList.replace('btn-danger', 'btn-secondary');
+
+            // Ubah teks tombol jadi loading
+            submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-2"></i> Sedang Memindai Keamanan Berkas (Bisa sampai 30 detik)...';
+        });
+
+
     });
 
     // LOGIKA PERUBAHAN JENIS LAYANAN
