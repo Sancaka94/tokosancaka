@@ -598,23 +598,6 @@
 
                                <div class="row g-3 mb-4">
 
-                                    {{-- 1. Panel Captcha Lokal --}}
-                                    <!-- UBAH col-lg-4 MENJADI col-lg-6 -->
-                                    <div class="col-lg-6 col-md-6">
-                                        <div class="security-panel shadow-sm">
-                                            <label class="form-label fw-bold text-slate-700 small mb-3">
-                                                <i class="fa-solid fa-keyboard text-secondary me-1"></i> 1. Ketik Captcha <span class="text-danger">*</span>
-                                            </label>
-                                            <div class="security-inner-box justify-content-between mb-3 px-3">
-                                                <span id="captcha-container">{!! captcha_img('flat') !!}</span>
-                                                <button type="button" class="btn btn-outline-danger btn-sm" onclick="refreshCaptcha()" title="Muat ulang Captcha">
-                                                    <i class="fa-solid fa-arrows-rotate"></i>
-                                                </button>
-                                            </div>
-                                            <input type="text" id="captchaInput" class="form-control custom-input mt-auto" name="captcha" placeholder="Ketik gambar di atas..." required autocomplete="off">
-                                        </div>
-                                    </div>
-
                                     {{-- 2. Panel Cloudflare Turnstile --}}
                                     <!-- UBAH col-lg-4 MENJADI col-lg-6 -->
                                     <div class="col-12">
