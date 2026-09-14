@@ -420,7 +420,7 @@ class RegisterDriverOnlineController extends Controller
         return view('admin.drivers.index', compact('drivers', 'totalDrivers', 'pendingDrivers', 'approvedDrivers', 'rejectedDrivers', 'frozenDrivers'));
     }
 
-   public function updateStatus(Request $request, $id)
+  public function updateStatus(Request $request, $id)
     {
         $request->validate(['status' => 'required|in:approved,rejected,freeze']);
         $status = $request->status;
@@ -438,20 +438,23 @@ class RegisterDriverOnlineController extends Controller
 
             $driver->update($updateData);
 
-            // 👇 PERBAIKAN: Cek role saat ini agar jabatan Koordinator tidak di-downgrade
+            // SINKRONISASI ROLE PENGGUNA
             if ($driver->id_pengguna) {
                 $pengguna = Pengguna::where('id_pengguna', $driver->id_pengguna)->first();
 
                 if ($pengguna) {
                     if ($status === 'approved') {
                         // Hanya naikkan ke Driver JIKA dia masih Pelanggan.
-                        // Jika sudah Koordinator, biarkan saja.
                         if ($pengguna->role === 'Pelanggan') {
-                            $pengguna->update(['role' => 'Driver']);
+                            $pengguna->role = 'Driver'; // Bypass mass assignment
+                            $pengguna->save();
                         }
                     } elseif ($status === 'freeze') {
                         // Jika dibekukan, turunkan ke Pelanggan agar tidak bisa login app driver
-                        $pengguna->update(['role' => 'Pelanggan']);
+                        if (!in_array($pengguna->role, ['Koordinator', 'Admin'])) {
+                            $pengguna->role = 'Pelanggan';
+                            $pengguna->save();
+                        }
                     }
                 }
             }
@@ -508,46 +511,68 @@ class RegisterDriverOnlineController extends Controller
         return response()->json($layanan);
     }
 
-    public function syncExistingDrivers()
+   public function syncExistingDrivers()
     {
-        // Ambil semua data pendaftaran yang id_pengguna-nya masih kosong
-        $drivers = RegistrasiDriverSancaka::whereNull('id_pengguna')->get();
+        // Tarik SEMUA data pendaftaran driver tanpa kecuali
+        $drivers = RegistrasiDriverSancaka::all();
         $count = 0;
 
         foreach ($drivers as $driver) {
-            $pengguna = Pengguna::where('no_wa', $driver->nomor_wa)->first();
+            $pengguna = null;
 
+            // 1. Cek apakah sudah punya id_pengguna sebelumnya
+            if ($driver->id_pengguna) {
+                $pengguna = Pengguna::where('id_pengguna', $driver->id_pengguna)->first();
+            }
+
+            // 2. Jika tidak ketemu, cari menggunakan Smart Matching WA
             if (!$pengguna) {
-                // Jika belum ada akun, buatkan akun baru
+                $waInput = $driver->nomor_wa;
+                $waClean = preg_replace('/[^0-9]/', '', $waInput);
+
+                $wa0 = str_starts_with($waClean, '62') ? '0' . substr($waClean, 2) : $waClean;
+                $wa62 = str_starts_with($waClean, '0') ? '62' . substr($waClean, 1) : $waClean;
+                $waPlus62 = '+' . $wa62;
+
+                $pengguna = Pengguna::whereIn('no_wa', [$waInput, $wa0, $wa62, $waPlus62])->first();
+            }
+
+            // 3. Eksekusi Sinkronisasi & Penyesuaian Role
+            if (!$pengguna) {
+                // Jika benar-benar belum ada, buatkan akun baru
                 $pengguna = new Pengguna();
                 $pengguna->nama_lengkap  = $driver->nama_lengkap;
                 $pengguna->no_wa         = $driver->nomor_wa;
                 $pengguna->jenis_kelamin = $driver->jenis_kelamin ?? 'Laki-laki';
                 $pengguna->password_hash = \Illuminate\Support\Facades\Hash::make($driver->nomor_wa);
 
-                // Role default saat bikin baru
+                // Set role sesuai status saat ini
                 $pengguna->role          = ($driver->status === 'approved') ? 'Driver' : 'Pelanggan';
                 $pengguna->status        = 'Aktif';
                 $pengguna->saldo         = 0;
                 $pengguna->save();
             } else {
-                // 👇 PERBAIKAN: Jika akun sudah ada, pastikan TIDAK menimpa Koordinator atau Admin
+                // JIKA AKUN DITEMUKAN: Paksa role menjadi Driver jika statusnya approved
                 if ($driver->status === 'approved') {
+                    // Pastikan tidak menurunkan jabatan Admin atau Koordinator
                     if (!in_array($pengguna->role, ['Koordinator', 'Admin'])) {
-                        $pengguna->role = 'Driver';
+                        $pengguna->role = 'Driver'; // Gunakan property assignment agar kebal dari batasan $fillable
                         $pengguna->save();
                     }
                 }
             }
 
-            // Tautkan id_pengguna ke tabel registrasi driver
-            $driver->update(['id_pengguna' => $pengguna->id_pengguna]);
+            // Tautkan id_pengguna ke tabel registrasi driver jika belum sama
+            if ($driver->id_pengguna !== $pengguna->id_pengguna) {
+                $driver->update(['id_pengguna' => $pengguna->id_pengguna]);
+            }
+
             $count++;
         }
 
         return response()->json([
             'success' => true,
-            'message' => "Proses Selesai! Berhasil mensinkronkan {$count} data driver lama."
+            'message' => "Sapu Bersih Selesai! Berhasil mensinkronkan dan memperbaiki hak akses (Role) {$count} mitra driver."
         ]);
     }
 
