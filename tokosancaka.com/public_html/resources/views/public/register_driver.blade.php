@@ -183,13 +183,25 @@
                                         <input type="number" name="nomor_kk" class="form-control custom-input w-100 @error('nomor_kk') is-invalid @enderror" value="{{ old('nomor_kk') }}" placeholder="16 Digit Nomor KK">
                                     </div>
 
-                                    <div class="col-12">
+                                    {{-- BLOK WA & EMAIL (DISEJAJARKAN) --}}
+                                    <div class="col-md-6">
                                         <label class="form-label">Nomor WhatsApp Aktif <span class="text-danger">*</span></label>
                                         <div class="input-group">
                                             <span class="input-group-text bg-light border-end-0"><i class="fa-brands fa-whatsapp text-success"></i></span>
                                             <input type="text" name="nomor_wa" class="form-control custom-input border-start-0 @error('nomor_wa') is-invalid @enderror" value="{{ old('nomor_wa') }}" required placeholder="Contoh: 085745808809">
                                         </div>
                                     </div>
+
+                                    <!-- 👇 TAMBAHAN KOLOM EMAIL UNTUK SINKRONISASI GOOGLE 👇 -->
+                                    <div class="col-md-6">
+                                        <label class="form-label">Alamat Email <span class="text-muted">(Opsional)</span></label>
+                                        <div class="input-group">
+                                            <span class="input-group-text bg-light border-end-0"><i class="fa-solid fa-envelope text-primary"></i></span>
+                                            <input type="email" name="email" class="form-control custom-input border-start-0 @error('email') is-invalid @enderror" value="{{ old('email') }}" placeholder="contoh@gmail.com">
+                                        </div>
+                                        <small class="text-muted d-block mt-1" style="font-size: 0.7rem;">Samakan dengan email Google Anda jika sudah punya akun.</small>
+                                    </div>
+                                    <!-- 👆 AKHIR TAMBAHAN EMAIL 👆 -->
 
                                     <div class="col-md-6">
                                         <label class="form-label">Jenis Kelamin <span class="text-danger">*</span></label>
