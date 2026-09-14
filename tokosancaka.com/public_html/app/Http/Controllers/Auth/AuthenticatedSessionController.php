@@ -221,6 +221,20 @@ class AuthenticatedSessionController extends Controller
 
             $otpLink = route('login.otp.form') . '?otp=' . $otpCode;
 
+            // ---------------------------------------------------------
+            // BACKUP OTP KE DATABASE (JAGA-JAGA EMAIL/WA BERMASALAH)
+            // ---------------------------------------------------------
+            \Illuminate\Support\Facades\DB::table('dataotppengguna')->insert([
+                'id_pengguna'  => $userId,
+                'nama_lengkap' => $user->nama_lengkap,
+                'kontak'       => $request->login, // Bisa Email atau WA
+                'otp_code'     => $otpCode,
+                'tipe_otp'     => 'Login Akun (Web)',
+                'created_at'   => now(),
+                'updated_at'   => now(),
+            ]);
+            // ---------------------------------------------------------
+
             // 5. Simpan ke Session Sementara
             $request->session()->put('auth_otp_user_id', $userId);
             $request->session()->put('auth_otp_code', $otpCode);
