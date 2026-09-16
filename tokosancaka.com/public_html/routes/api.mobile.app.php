@@ -67,6 +67,11 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/order/update-status', [ApiMapboxController::class, 'update_status_order']);
     Route::get('/order/history', [ApiMapboxController::class, 'get_history']);
 
+    // Kode untuk telp driver dengan penumpang cloudflare
+    Route::post('/order/{order_id}/call/session/new', [ApiMapboxController::class, 'create_call_session']);
+    Route::post('/order/{order_id}/call/session/{sessionId}/tracks/new', [ApiMapboxController::class, 'create_call_tracks']);
+    Route::put('/order/{order_id}/call/session/{sessionId}/renegotiate', [ApiMapboxController::class, 'call_renegotiate']);
+
     // ==========================================
     // MODULE: POS / KASIR OFFLINE
     // ==========================================

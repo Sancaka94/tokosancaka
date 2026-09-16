@@ -2924,4 +2924,89 @@ class ApiMapboxController extends Controller
         return [];
     }
 
+    /**
+     * =========================================================================
+     * API CLOUDFLARE REALTIME (PROXY UNTUK WEBRTC)
+     * Expo Client -> Laravel -> Cloudflare
+     * =========================================================================
+     */
+
+    // 1. Membuat Sesi Panggilan Baru (newSession)
+    public function create_call_session(Request $request)
+    {
+        \Illuminate\Support\Facades\Log::info("=== [API CALLS] MEMBUAT SESI CLOUDFLARE BARU ===");
+
+        $appId = env('CLOUDFLARE_CALLS_APP_ID');
+        $token = env('CLOUDFLARE_CALLS_TOKEN');
+        $url = "https://rtc.live.cloudflare.com/v1/apps/{$appId}/sessions/new";
+
+        try {
+            // Menerima SDP Offer dari Expo
+            $sdpOffer = $request->input('sessionDescription.sdp');
+
+            $response = \Illuminate\Support\Facades\Http::withToken($token)
+                ->post($url, [
+                    'sessionDescription' => [
+                        'type' => 'offer',
+                        'sdp' => $sdpOffer
+                    ]
+                ]);
+
+            \Illuminate\Support\Facades\Log::info("LOG LOG: Sesi panggilan berhasil dibuat di Cloudflare.");
+            return response()->json($response->json(), $response->status());
+
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error("LOG LOG: CRASH CREATE CALL SESSION: " . $e->getMessage());
+            return response()->json(['success' => false, 'message' => 'Gagal membuat sesi komunikasi.'], 500);
+        }
+    }
+
+    // 2. Mendaftarkan/Meminta Track Audio/Video (newTracks)
+    public function create_call_tracks(Request $request, $sessionId)
+    {
+        \Illuminate\Support\Facades\Log::info("=== [API CALLS] MENDAFTARKAN TRACK KE CLOUDFLARE ===");
+
+        $appId = env('CLOUDFLARE_CALLS_APP_ID');
+        $token = env('CLOUDFLARE_CALLS_TOKEN');
+        $url = "https://rtc.live.cloudflare.com/v1/apps/{$appId}/sessions/{$sessionId}/tracks/new";
+
+        try {
+            $body = $request->all(); // Ambil payload (tracks & sessionDescription) dari Expo
+
+            $response = \Illuminate\Support\Facades\Http::withToken($token)
+                ->post($url, $body);
+
+            return response()->json($response->json(), $response->status());
+
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error("LOG LOG: CRASH CREATE CALL TRACKS: " . $e->getMessage());
+            return response()->json(['success' => false, 'message' => 'Gagal memproses media.'], 500);
+        }
+    }
+
+    // 3. Renegosiasi Jawaban SDP (sendAnswerSDP)
+    public function call_renegotiate(Request $request, $sessionId)
+    {
+        $appId = env('CLOUDFLARE_CALLS_APP_ID');
+        $token = env('CLOUDFLARE_CALLS_TOKEN');
+        $url = "https://rtc.live.cloudflare.com/v1/apps/{$appId}/sessions/{$sessionId}/renegotiate";
+
+        try {
+            $sdpAnswer = $request->input('sessionDescription.sdp');
+
+            $response = \Illuminate\Support\Facades\Http::withToken($token)
+                ->put($url, [
+                    'sessionDescription' => [
+                        'type' => 'answer',
+                        'sdp' => $sdpAnswer
+                    ]
+                ]);
+
+            return response()->json($response->json(), $response->status());
+
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => 'Gagal negosiasi ulang.'], 500);
+        }
+    }
+
 }
