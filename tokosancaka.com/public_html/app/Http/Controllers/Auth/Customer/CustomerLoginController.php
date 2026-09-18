@@ -526,4 +526,10 @@ class CustomerLoginController extends Controller
             ]);
         }
     }
+
+    public function redirectToFacebook(): RedirectResponse
+    {
+        Log::info('LOG LOG: Redirecting user ke Facebook Auth.');
+        return Socialite::driver('facebook')->redirect();
+    }
 }
