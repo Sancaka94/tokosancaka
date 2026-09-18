@@ -3115,7 +3115,6 @@ class ApiMapboxController extends Controller
                     if ($response->successful()) {
                         \Illuminate\Support\Facades\Log::info("LOG LOG: Panggilan tersalurkan ke HP Admin via Token {$mode}.");
                         $notifTerkirim = true;
-                        break; // Jika sukses kirim ke salah satu token, hentikan loop
                     } else {
                         \Illuminate\Support\Facades\Log::error("FCM GAGAL: " . $response->body());
                     }
