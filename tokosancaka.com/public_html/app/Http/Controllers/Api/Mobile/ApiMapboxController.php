@@ -3009,7 +3009,7 @@ class ApiMapboxController extends Controller
         }
     }
 
-    /**
+   /**
      * =========================================================================
      * API MENDERINGKAN NOTIFIKASI PANGGILAN KE HP ADMIN (HELPDESK)
      * =========================================================================
@@ -3019,28 +3019,135 @@ class ApiMapboxController extends Controller
         \Illuminate\Support\Facades\Log::info("=== [API CALL] REQUEST PANGGILAN KE HELPDESK MASUK ===");
         \Illuminate\Support\Facades\Log::info("Payload: ", $request->all());
 
-        try {
-            $roomId = $request->input('room_id');
-            $targetId = $request->input('target_id', 4); // Default 4 (Admin)
-            $user = $request->user();
+        $roomId = $request->input('room_id');
+        $targetId = $request->input('target_id', 4); // Default 4 (Admin)
+        $user = $request->user();
 
-            if (!$roomId) {
-                return response()->json(['success' => false, 'message' => 'Room ID wajib diisi'], 400);
+        if (!$roomId || !$user) {
+            return response()->json(['success' => false, 'message' => 'Data tidak lengkap atau sesi tidak valid.'], 400);
+        }
+
+        // =========================================================================
+        // 🛡️ 1. IDEMPOTENCY (PENCEGAH DOUBLE REQUEST SAAT JARINGAN LAG)
+        // =========================================================================
+        // Kita bisa ambil dari header atau gunakan room_id sebagai kuncinya
+        $idempotencyKey = $request->header('Idempotency-Key') ?? 'call_' . $roomId;
+        if (\Illuminate\Support\Facades\Cache::has('idempotency_' . $idempotencyKey)) {
+            \Illuminate\Support\Facades\Log::warning("LOG LOG: Idempotency Panggilan! Request duplikat dicegah.");
+            return \Illuminate\Support\Facades\Cache::get('idempotency_' . $idempotencyKey);
+        }
+
+        // =========================================================================
+        // 🛡️ 2. REDIS RATE LIMITING (ANTI-SPAM PANGGILAN)
+        // =========================================================================
+        // Mencegah user spam tombol telepon (Cooldown 15 Detik per User)
+        $userCallKey = "cooldown_call_helpdesk_" . $user->id_pengguna;
+        if (\Illuminate\Support\Facades\Redis::exists($userCallKey)) {
+            \Illuminate\Support\Facades\Log::warning("LOG LOG: User {$user->id_pengguna} melakukan spam panggilan.");
+            return response()->json([
+                'success' => false,
+                'message' => 'Harap tunggu beberapa saat sebelum melakukan panggilan lagi.'
+            ], 429); // 429 Too Many Requests
+        }
+        \Illuminate\Support\Facades\Redis::setex($userCallKey, 15, 'calling'); // Kunci selama 15 detik
+
+        try {
+            // =========================================================================
+            // 📞 3. AMBIL TOKEN FIREBASE TARGET (ADMIN HELPDESK)
+            // =========================================================================
+            $admin = \Illuminate\Support\Facades\DB::table('Pengguna')
+                ->where('id_pengguna', $targetId)
+                ->select('fcm_token', 'fcm_token_debug', 'nama_lengkap')
+                ->first();
+
+            if (!$admin || (empty($admin->fcm_token) && empty($admin->fcm_token_debug))) {
+                \Illuminate\Support\Facades\Log::warning("LOG LOG: Panggilan Gagal. Admin/Helpdesk tidak memiliki token FCM.");
+                return response()->json(['success' => false, 'message' => 'Helpdesk sedang offline (Sistem tidak terjangkau).'], 404);
             }
 
-            // TODO: Nanti di sini Anda tambahkan kode untuk menembak 
-            // Firebase Cloud Messaging (FCM) ke Token milik Admin (ID 4)
-            // agar HP Admin berdering.
+            $callerName = $user->nama_lengkap ?? 'Pelanggan';
 
-            return response()->json([
-                'success' => true, 
-                'message' => 'Panggilan berhasil diteruskan ke Admin',
+            // =========================================================================
+            // 🚀 4. KIRIM PUSH NOTIFICATION KE EXPO MENGGUNAKAN FCM V1
+            // =========================================================================
+            $accessToken = $this->getGoogleAccessToken();
+            $projectId = 'sancaka-express'; // Sesuaikan dengan ID Project Firebase Anda
+
+            $tokensToTry = [];
+            if (!empty($admin->fcm_token)) $tokensToTry[] = ['mode' => 'PRODUCTION', 'token' => $admin->fcm_token];
+            if (!empty($admin->fcm_token_debug)) $tokensToTry[] = ['mode' => 'DEBUG', 'token' => $admin->fcm_token_debug];
+
+            $notifTerkirim = false;
+
+            if ($accessToken && count($tokensToTry) > 0) {
+                foreach ($tokensToTry as $target) {
+                    $mode = $target['mode'];
+                    $tokenStr = $target['token'];
+
+                    $response = \Illuminate\Support\Facades\Http::withHeaders([
+                        'Authorization' => 'Bearer ' . $accessToken,
+                        'Content-Type'  => 'application/json',
+                    ])->post("https://fcm.googleapis.com/v1/projects/{$projectId}/messages:send", [
+                        'message' => [
+                            'token' => $tokenStr,
+                            'android' => [
+                                'priority' => 'HIGH',
+                                // Penting untuk CallKit: Direct boot aware / Time to live
+                                'ttl' => '30s'
+                            ],
+                            'notification' => [
+                                'title' => '📞 Panggilan Sancaka Helpdesk',
+                                'body'  => "Panggilan masuk dari {$callerName}."
+                            ],
+                            // Data wajib format STRING semuanya agar tidak crash di React Native
+                            'data' => [
+                                'action'      => 'incoming_call',
+                                'call_type'   => 'helpdesk',
+                                'room_id'     => (string) $roomId,
+                                'caller_name' => (string) $callerName,
+                                'caller_id'   => (string) $user->id_pengguna,
+                                'target_id'   => (string) $targetId
+                            ]
+                        ]
+                    ]);
+
+                    if ($response->successful()) {
+                        \Illuminate\Support\Facades\Log::info("LOG LOG: Panggilan tersalurkan ke HP Admin via Token {$mode}.");
+                        $notifTerkirim = true;
+                        break; // Jika sukses kirim ke salah satu token, hentikan loop
+                    } else {
+                        \Illuminate\Support\Facades\Log::error("FCM GAGAL: " . $response->body());
+                    }
+                }
+            } else {
+                \Illuminate\Support\Facades\Log::error("FCM GAGAL: Access Token Google gagal didapatkan.");
+            }
+
+            // Jika gagal kirim notifikasi secara total
+            if (!$notifTerkirim) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Gagal menghubungi jaringan Helpdesk.'
+                ], 500);
+            }
+
+            // =========================================================================
+            // 💾 5. SIMPAN RESPONSE KE CACHE IDEMPOTENCY
+            // =========================================================================
+            $finalResponse = response()->json([
+                'success' => true,
+                'message' => 'Memanggil Helpdesk Sancaka...',
                 'room_id' => $roomId
             ]);
 
+            // Simpan ke memori Cache selama 5 menit
+            \Illuminate\Support\Facades\Cache::put('idempotency_' . $idempotencyKey, $finalResponse, now()->addMinutes(5));
+
+            return $finalResponse;
+
         } catch (\Exception $e) {
-            \Illuminate\Support\Facades\Log::error("CRASH PANGGILAN HELPDESK: " . $e->getMessage());
-            return response()->json(['success' => false, 'message' => 'Terjadi kesalahan sistem.'], 500);
+            \Illuminate\Support\Facades\Log::error("CRASH PANGGILAN HELPDESK: " . $e->getMessage() . " | Trace: " . $e->getTraceAsString());
+            return response()->json(['success' => false, 'message' => 'Terjadi kesalahan internal server.'], 500);
         }
     }
 
