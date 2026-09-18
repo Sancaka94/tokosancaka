@@ -3084,7 +3084,7 @@ class ApiMapboxController extends Controller
                     $mode = $target['mode'];
                     $tokenStr = $target['token'];
 
-                    $response = \Illuminate\Support\Facades\Http::withHeaders([
+                   $response = \Illuminate\Support\Facades\Http::withHeaders([
                         'Authorization' => 'Bearer ' . $accessToken,
                         'Content-Type'  => 'application/json',
                     ])->post("https://fcm.googleapis.com/v1/projects/{$projectId}/messages:send", [
@@ -3092,21 +3092,22 @@ class ApiMapboxController extends Controller
                             'token' => $tokenStr,
                             'android' => [
                                 'priority' => 'HIGH',
-                                // Penting untuk CallKit: Direct boot aware / Time to live
-                                'ttl' => '30s'
+                                'ttl' => '30s',
+                                // Wajib direct boot ok agar bisa nembus layar terkunci Android
+                                'direct_boot_ok' => true
                             ],
-                            'notification' => [
-                                'title' => '📞 Panggilan Sancaka Helpdesk',
-                                'body'  => "Panggilan masuk dari {$callerName}."
-                            ],
-                            // Data wajib format STRING semuanya agar tidak crash di React Native
+                            // HAPUS BLOK 'notification' SEPENUHNYA!
+                            // Semua data dilempar lewat 'data' agar CallKit/Notifee yang merender UI Panggilan
                             'data' => [
                                 'action'      => 'incoming_call',
                                 'call_type'   => 'helpdesk',
                                 'room_id'     => (string) $roomId,
                                 'caller_name' => (string) $callerName,
                                 'caller_id'   => (string) $user->id_pengguna,
-                                'target_id'   => (string) $targetId
+                                'target_id'   => (string) $targetId,
+                                // Pindahkan title dan body ke sini agar React Native yang baca
+                                'title'       => '📞 Panggilan Sancaka Helpdesk',
+                                'body'        => "Panggilan masuk dari {$callerName}."
                             ]
                         ]
                     ]);
