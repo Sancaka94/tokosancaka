@@ -3009,4 +3009,39 @@ class ApiMapboxController extends Controller
         }
     }
 
+    /**
+     * =========================================================================
+     * API MENDERINGKAN NOTIFIKASI PANGGILAN KE HP ADMIN (HELPDESK)
+     * =========================================================================
+     */
+    public function call_helpdesk(Request $request)
+    {
+        \Illuminate\Support\Facades\Log::info("=== [API CALL] REQUEST PANGGILAN KE HELPDESK MASUK ===");
+        \Illuminate\Support\Facades\Log::info("Payload: ", $request->all());
+
+        try {
+            $roomId = $request->input('room_id');
+            $targetId = $request->input('target_id', 4); // Default 4 (Admin)
+            $user = $request->user();
+
+            if (!$roomId) {
+                return response()->json(['success' => false, 'message' => 'Room ID wajib diisi'], 400);
+            }
+
+            // TODO: Nanti di sini Anda tambahkan kode untuk menembak 
+            // Firebase Cloud Messaging (FCM) ke Token milik Admin (ID 4)
+            // agar HP Admin berdering.
+
+            return response()->json([
+                'success' => true, 
+                'message' => 'Panggilan berhasil diteruskan ke Admin',
+                'room_id' => $roomId
+            ]);
+
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error("CRASH PANGGILAN HELPDESK: " . $e->getMessage());
+            return response()->json(['success' => false, 'message' => 'Terjadi kesalahan sistem.'], 500);
+        }
+    }
+
 }

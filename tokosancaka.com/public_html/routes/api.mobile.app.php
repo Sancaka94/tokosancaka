@@ -72,6 +72,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/order/{order_id}/call/session/{sessionId}/tracks/new', [ApiMapboxController::class, 'create_call_tracks']);
     Route::put('/order/{order_id}/call/session/{sessionId}/renegotiate', [ApiMapboxController::class, 'call_renegotiate']);
 
+    Route::post('/call/helpdesk', [ApiMapboxController::class, 'call_helpdesk']);
     // ==========================================
     // MODULE: POS / KASIR OFFLINE
     // ==========================================
