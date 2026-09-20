@@ -38,6 +38,8 @@ use App\Http\Controllers\Api\Mobile\PenggunaController;
 use App\Http\Controllers\Api\Mobile\PosApiController;
 use App\Http\Controllers\Api\Mobile\UserUpgradeController;
 
+Route::post('/log-frontend', [ApiMapboxController::class, 'log_frontend']);
+
 Route::prefix('mapbox')->group(function () {
     Route::post('/cek-tarif', [ApiMapboxController::class, 'cek_tarif']);
     Route::post('/create-order', [ApiMapboxController::class, 'create_order']);

@@ -3160,4 +3160,39 @@ class ApiMapboxController extends Controller
         return response()->json(['success' => true]);
     }
 
+    public function reject_call_helpdesk(Request $request)
+    {
+        $roomId = $request->input('room_id');
+        $callerId = $request->input('caller_id');
+
+        // Cari token si Pelanggan yang menelepon
+        $caller = \Illuminate\Support\Facades\DB::table('Pengguna')->where('id_pengguna', $callerId)->first();
+
+        if ($caller && (!empty($caller->fcm_token) || !empty($caller->fcm_token_debug))) {
+            $accessToken = $this->getGoogleAccessToken();
+            $projectId = 'sancaka-express'; // Sesuaikan project ID
+
+            $tokensToTry = [];
+            if (!empty($caller->fcm_token)) $tokensToTry[] = $caller->fcm_token;
+            if (!empty($caller->fcm_token_debug)) $tokensToTry[] = $caller->fcm_token_debug;
+
+            foreach ($tokensToTry as $tokenStr) {
+                \Illuminate\Support\Facades\Http::withHeaders([
+                    'Authorization' => 'Bearer ' . $accessToken,
+                    'Content-Type'  => 'application/json',
+                ])->post("https://fcm.googleapis.com/v1/projects/{$projectId}/messages:send", [
+                    'message' => [
+                        'token' => $tokenStr,
+                        // Kirim data "action" silent, tanpa notifikasi popup
+                        'data' => [
+                            'action'  => 'call_rejected',
+                            'room_id' => (string) $roomId
+                        ]
+                    ]
+                ]);
+            }
+        }
+        return response()->json(['success' => true]);
+    }
+
 }
