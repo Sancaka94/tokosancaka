@@ -3151,4 +3151,13 @@ class ApiMapboxController extends Controller
         }
     }
 
+    public function log_frontend(Request $request)
+    {
+        $pesan = $request->input('pesan');
+        $data = $request->input('data', []);
+
+        \Illuminate\Support\Facades\Log::info("LOG HP ADMIN: " . $pesan, $data);
+        return response()->json(['success' => true]);
+    }
+
 }
