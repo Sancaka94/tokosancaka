@@ -2166,7 +2166,7 @@ Route::middleware(['auth'])->group(function () {
     // Ubah Route RAB agar menerima parameter ID proyek untuk Import/Export
     Route::post('/proyek/{proyek}/rab/import', [RabItemController::class, 'import'])->name('rab.import');
     Route::get('/proyek/{proyek}/rab/pdf', [RabItemController::class, 'exportPdf'])->name('rab.pdf');
-    Route::resource('rab', RabItemController::class);
+    Route::resource('rab', RabItemController::class)->except(['index', 'show']);
 });
 
 // =========================================================================
