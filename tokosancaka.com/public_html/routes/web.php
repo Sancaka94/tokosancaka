@@ -1871,7 +1871,7 @@ Route::get('/ipaymu', function () {
 // Pastikan ini berada di dalam group route Admin Anda
 Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () {
 
-    
+
     // ==========================================
     // LOG BACKUP OTP PENGGUNA
     // ==========================================
@@ -2001,11 +2001,11 @@ Route::prefix('admin')->middleware(['auth'])->group(function () {
     // Update status (Approve / Reject)
     Route::patch('/drivers/{id}/status', [RegisterDriverOnlineController::class, 'updateStatus'])->name('admin.drivers.status');
 
-    
+
     // === ROUTE TAMBAHAN UNTUK PROMOSI JABATAN ===
     // Update role operasional lapangan (Promosi Jabatan: Driver / Korwil / Manajer)
     Route::patch('/drivers/{id}/role', [RegisterDriverOnlineController::class, 'updateRole'])->name('admin.drivers.update_role');
-    
+
     // Hapus satu data (Single Delete)
     Route::delete('/drivers/{id}', [RegisterDriverOnlineController::class, 'destroy'])->name('admin.drivers.destroy');
 
@@ -2100,7 +2100,7 @@ Route::middleware(['auth'])->prefix('customer')->name('customer.')->group(functi
         // 🌟🌟 TAMBAHKAN DUA BARIS INI UNTUK MENU MULTI KOLI 🌟🌟
         Route::get('/koli/create', [PesananAutokirimController::class, 'createMultiAdmin'])->name('koli.create');
         Route::post('/koli/store', [PesananAutokirimController::class, 'storeMulti'])->name('autokirim.koli.store');
-    
+
         Route::post('/pesanan-autokirim/ajax-pickup', [PesananAutokirimController::class, 'generatePickupPointAjax'])->name('pesanan-autokirim.ajax-pickup');
 
 
