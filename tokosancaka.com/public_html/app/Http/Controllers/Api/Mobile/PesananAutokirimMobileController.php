@@ -326,8 +326,13 @@ class PesananAutokirimMobileController extends Controller
             $origin = AutoKirim::where('district_id', $request->pengirim_district_id)->first();
             $destination = AutoKirim::where('district_id', $request->penerima_district_id)->first();
 
-            if (!$origin || !$destination) {
-                return response()->json(['success' => false, 'message' => 'Wilayah pengirim atau penerima tidak valid.']);
+            // Tambahkan pengecekan yang lebih ketat di sini
+            if (!$origin || empty($origin->zip)) {
+                throw new Exception('Data wilayah asal (Kodepos) tidak ditemukan di sistem. Silakan pilih ulang Kecamatan Pengirim.');
+            }
+
+            if (!$destination || empty($destination->zip)) {
+                throw new Exception('Data wilayah tujuan (Kodepos) tidak ditemukan di sistem. Silakan pilih ulang Kecamatan Penerima.');
             }
 
             $localOrderId = (string) (date('ymdHis') . mt_rand(1000, 9999));
