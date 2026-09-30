@@ -17,9 +17,21 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['add_mahasiswa'])) {
     $sql_mhs = "INSERT INTO mahasiswa (nama_mahasiswa, semester) VALUES ('$nama_mahasiswa', $semester)";
     
     if ($conn->query($sql_mhs)) {
+        $new_id = $conn->insert_id;
+        // Cek apakah request berasal dari AJAX
+        if (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest') {
+            header('Content-Type: application/json');
+            echo json_encode(["status" => "success", "id" => $new_id, "nama" => $nama_mahasiswa, "semester" => $semester]);
+            exit;
+        }
         header("Location: admin.php?success_mhs=1");
         exit;
     } else {
+        if (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest') {
+            header('Content-Type: application/json');
+            echo json_encode(["status" => "error", "message" => $conn->error]);
+            exit;
+        }
         die("<div style='padding:20px; font-family:sans-serif; color:red;'><b>Query Gagal:</b> " . $conn->error . "</div>");
     }
 }
@@ -166,7 +178,7 @@ $list_mahasiswa = $conn->query("SELECT * FROM mahasiswa ORDER BY nama_mahasiswa 
                 <h2 class="text-lg font-semibold mb-4 border-b border-gray-100 pb-2 flex items-center gap-2">
                     <i class="ph ph-user-plus"></i> Tambah Mahasiswa Baru
                 </h2>
-                <form action="" method="POST" class="space-y-4">
+                <form id="formTambahMahasiswa" class="space-y-4">
                     <input type="hidden" name="add_mahasiswa" value="1">
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Nama Lengkap</label>
@@ -290,6 +302,11 @@ $list_mahasiswa = $conn->query("SELECT * FROM mahasiswa ORDER BY nama_mahasiswa 
 
                             <td class="px-6 py-4 font-bold text-right">Rp <?= number_format($history['nominal'], 0, ',', '.') ?></td>
                             <td class="px-6 py-4 flex justify-center gap-2">
+                                
+                                <a href="edit_transaksi.php?id=<?= $history['id'] ?>" title="Edit" class="bg-blue-500 hover:bg-blue-600 text-white w-8 h-8 flex items-center justify-center rounded-md transition-colors shadow-sm">
+                                    <i class="ph ph-pencil-simple text-base"></i>
+                                </a>
+                            
                                 <a href="?hapus=<?= $history['id'] ?>" onclick="return confirm('Apakah Anda yakin ingin MENGHAPUS riwayat transaksi Rp <?= number_format($history['nominal'], 0, ',', '.') ?>?');" title="Hapus" class="bg-red-500 hover:bg-red-600 text-white w-8 h-8 flex items-center justify-center rounded-md transition-colors shadow-sm">
                                     <i class="ph ph-trash text-base"></i>
                                 </a>
@@ -303,5 +320,59 @@ $list_mahasiswa = $conn->query("SELECT * FROM mahasiswa ORDER BY nama_mahasiswa 
             </div>
         </div>
     </div>
+
+    <script>
+document.getElementById('formTambahMahasiswa').addEventListener('submit', function(e) {
+    e.preventDefault(); // Mencegah halaman refresh
+    
+    let formData = new FormData(this);
+    let btnSubmit = this.querySelector('button[type="submit"]');
+    let originalText = btnSubmit.innerHTML;
+    
+    // Efek loading pada tombol
+    btnSubmit.innerHTML = '<i class="ph ph-spinner animate-spin text-lg"></i> Menyimpan...';
+    btnSubmit.disabled = true;
+
+    fetch('', {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if(data.status === 'success') {
+            // Singkronisasi otomatis dengan menambah data ke elemen <select> dropdown transaksi
+            let select = document.querySelector('select[name="mahasiswa_id"]');
+            let option = document.createElement('option');
+            option.value = data.id;
+            option.text = data.nama + ' (Sem ' + data.semester + ')';
+            select.appendChild(option);
+            
+            // Pilih otomatis opsi yang baru ditambahkan (opsional)
+            option.selected = true;
+            
+            // Reset form input
+            this.reset();
+            
+            // Tampilkan notifikasi
+            alert('Mahasiswa berhasil ditambahkan dan disinkronkan ke daftar transaksi!');
+        } else {
+            alert('Gagal menyimpan data: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Terjadi kesalahan jaringan.');
+    })
+    .finally(() => {
+        // Kembalikan kondisi tombol
+        btnSubmit.innerHTML = originalText;
+        btnSubmit.disabled = false;
+    });
+});
+</script>
+
 </body>
 </html>
