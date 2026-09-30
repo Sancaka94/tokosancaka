@@ -3,20 +3,24 @@ require 'koneksi.php';
 
 $TARGET_DANA = 2200000;
 
-// Tambahkan operator ternary untuk mencegah error jika tabel belum dibuat
+// Penarikan data yang lebih aman untuk mencegah error "Trying to access array offset on value of type null/bool"
 $query_mahasiswa =$conn->query("SELECT COUNT(id) as total FROM mahasiswa");
-$total_mahasiswa = ($query_mahasiswa) ?$query_mahasiswa->fetch_assoc()['total'] : 0;
+$row_mahasiswa = $query_mahasiswa ? $query_mahasiswa->fetch_assoc() : null;
+$total_mahasiswa = $row_mahasiswa ? ($row_mahasiswa['total'] ?? 0) : 0;
 
 $query_masuk =$conn->query("SELECT SUM(nominal) as total FROM transaksi WHERE jenis='masuk'");
-$total_masuk = ($query_masuk) ?$query_masuk->fetch_assoc()['total'] ?? 0 : 0;
+$row_masuk = $query_masuk ? $query_masuk->fetch_assoc() : null;
+$total_masuk = $row_masuk ? ($row_masuk['total'] ?? 0) : 0;
 
 $query_keluar =$conn->query("SELECT SUM(nominal) as total FROM transaksi WHERE jenis='keluar'");
-$total_keluar = ($query_keluar) ?$query_keluar->fetch_assoc()['total'] ?? 0 : 0;
+$row_keluar = $query_keluar ? $query_keluar->fetch_assoc() : null;
+$total_keluar = $row_keluar ? ($row_keluar['total'] ?? 0) : 0;
 
 $sisa_kekurangan = $TARGET_DANA -$total_masuk;
-if ($sisa_kekurangan < 0)$sisa_kekurangan = 0;
+if ($sisa_kekurangan < 0) {$sisa_kekurangan = 0;
+}
 
-// LOGIK TAMBAHAN: Menghitung Sisa Saldo (Pemasukan - Pengeluaran)
+// LOGIKA TAMBAHAN: Menghitung Sisa Saldo (Pemasukan - Pengeluaran)
 $sisa_saldo = $total_masuk -$total_keluar;
 
 // MENARIK DATA SELURUH TRANSAKSI UNTUK DITAMPILKAN DI MODAL (DIKELOMPOKKAN PER MAHASISWA)
@@ -144,11 +148,15 @@ if ($all_trx) {
                     </thead>
                     <tbody class="text-sm divide-y divide-gray-100">
                         <?php
-                        // Menambahkan m.id pada query untuk mapping rincian ke mahasiswa
+                        // Menggunakan INNER JOIN agar hanya yang menyetor yang tampil
                         $query_rekap =$conn->query("
                             SELECT m.id, m.nama_mahasiswa, m.semester, 
-                            COALESCE((SELECT SUM(nominal) FROM transaksi WHERE mahasiswa_id = m.id AND jenis='masuk'), 0) as total_setor
-                            FROM mahasiswa m ORDER BY total_setor DESC
+                            SUM(t.nominal) as total_setor
+                            FROM mahasiswa m 
+                            INNER JOIN transaksi t ON m.id = t.mahasiswa_id 
+                            WHERE t.jenis = 'masuk'
+                            GROUP BY m.id, m.nama_mahasiswa, m.semester
+                            ORDER BY total_setor DESC
                         ");
                         $no = 1;
                         if($query_rekap) while($row =$query_rekap->fetch_assoc()):
