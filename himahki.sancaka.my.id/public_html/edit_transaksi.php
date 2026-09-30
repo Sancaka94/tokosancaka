@@ -20,6 +20,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $nominal = (float)$_POST['nominal'];
     $keterangan = isset($_POST['keterangan']) ? $conn->real_escape_string($_POST['keterangan']) : '';
 
+    // 1. UPDATE DATA MAHASISWA JIKA ADA PERUBAHAN NAMA/SEMESTER
+    if ($mahasiswa_id_sql !== 'NULL' && isset($_POST['nama_mahasiswa']) && isset($_POST['semester'])) {
+        $nama_mhs = $conn->real_escape_string($_POST['nama_mahasiswa']);
+        $sem_mhs = (int)$_POST['semester'];
+        $conn->query("UPDATE mahasiswa SET nama_mahasiswa = '$nama_mhs', semester = $sem_mhs WHERE id = $mahasiswa_id_sql");
+    }
+
+    // 2. UPDATE DATA TRANSAKSI
     $sql_update = "UPDATE transaksi SET 
                     tanggal_setor = '$tanggal', 
                     mahasiswa_id = $mahasiswa_id_sql, 
@@ -29,8 +37,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                    WHERE id = $id";
                    
     if ($conn->query($sql_update)) {
-        // Kembali ke halaman admin dengan parameter sukses edit
-        echo "<script>alert('Data transaksi berhasil diupdate!'); window.location.href='admin.php';</script>";
+        echo "<script>alert('Data transaksi & mahasiswa berhasil diupdate!'); window.location.href='admin.php';</script>";
         exit;
     } else {
         $error = "Error: " . $conn->error;
@@ -96,16 +103,46 @@ $list_mahasiswa = $conn->query("SELECT * FROM mahasiswa ORDER BY nama_mahasiswa 
                 </div>
             </div>
 
-            <div>
+            <!-- Bagian Pemilihan & Edit Mahasiswa -->
+            <div class="border border-gray-200 p-4 rounded-lg bg-gray-50/50">
                 <label class="block text-sm font-medium text-gray-700 mb-1">Pilih Mahasiswa <span class="text-gray-400 font-normal">(Kosongkan jika umum)</span></label>
-                <select name="mahasiswa_id" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-1 focus:ring-blue-500 outline-none">
-                    <option value="">-- Pilih Mahasiswa --</option>
-                    <?php if($list_mahasiswa) while($row = $list_mahasiswa->fetch_assoc()): ?>
-                        <option value="<?= $row['id'] ?>" <?= ($data['mahasiswa_id'] == $row['id']) ? 'selected' : '' ?>>
+                <select name="mahasiswa_id" id="mahasiswa_select" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-1 focus:ring-blue-500 outline-none bg-white">
+                    <option value="" data-nama="" data-sem="">-- Pilih Mahasiswa --</option>
+                    <?php 
+                    $curr_nama = '';
+                    $curr_sem = '';
+                    if($list_mahasiswa) {
+                        while($row = $list_mahasiswa->fetch_assoc()): 
+                            $selected = '';
+                            if ($data['mahasiswa_id'] == $row['id']) {
+                                $selected = 'selected';
+                                $curr_nama = $row['nama_mahasiswa'];
+                                $curr_sem = $row['semester'];
+                            }
+                    ?>
+                        <option value="<?= $row['id'] ?>" data-nama="<?= htmlspecialchars($row['nama_mahasiswa']) ?>" data-sem="<?= htmlspecialchars($row['semester']) ?>" <?= $selected ?>>
                             <?= htmlspecialchars($row['nama_mahasiswa']) ?> (Sem <?= htmlspecialchars($row['semester']) ?>)
                         </option>
-                    <?php endwhile; ?>
+                    <?php 
+                        endwhile; 
+                    }
+                    ?>
                 </select>
+
+                <!-- Form Edit Data Master Mahasiswa (Muncul lewat JS jika ada mahasiswa terpilih) -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4 pt-4 border-t border-gray-200" id="box_edit_mhs" style="<?= empty($data['mahasiswa_id']) ? 'display:none;' : 'display:grid;' ?>">
+                    <div>
+                        <label class="block text-xs font-medium text-blue-700 mb-1">Edit Nama Mahasiswa</label>
+                        <input type="text" name="nama_mahasiswa" id="input_nama" value="<?= htmlspecialchars($curr_nama) ?>" class="w-full border border-blue-200 rounded-lg px-3 py-1.5 text-sm focus:ring-1 focus:ring-blue-500 outline-none bg-blue-50/30">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-blue-700 mb-1">Edit Semester</label>
+                        <input type="number" name="semester" id="input_sem" value="<?= htmlspecialchars($curr_sem) ?>" class="w-full border border-blue-200 rounded-lg px-3 py-1.5 text-sm focus:ring-1 focus:ring-blue-500 outline-none bg-blue-50/30">
+                    </div>
+                    <div class="md:col-span-2 text-xs text-gray-500 italic">
+                        *Perubahan pada nama atau semester di atas akan mengupdate data master mahasiswa di database.
+                    </div>
+                </div>
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
@@ -127,5 +164,24 @@ $list_mahasiswa = $conn->query("SELECT * FROM mahasiswa ORDER BY nama_mahasiswa 
         </form>
     </div>
 
+    <!-- Script untuk merubah input nama & semester otomatis berdasarkan dropdown -->
+    <script>
+        document.getElementById('mahasiswa_select').addEventListener('change', function() {
+            var selectedOpt = this.options[this.selectedIndex];
+            var boxMhs = document.getElementById('box_edit_mhs');
+            var inputNama = document.getElementById('input_nama');
+            var inputSem = document.getElementById('input_sem');
+
+            if (this.value !== "") {
+                boxMhs.style.display = 'grid';
+                inputNama.value = selectedOpt.getAttribute('data-nama');
+                inputSem.value = selectedOpt.getAttribute('data-sem');
+            } else {
+                boxMhs.style.display = 'none';
+                inputNama.value = '';
+                inputSem.value = '';
+            }
+        });
+    </script>
 </body>
 </html>
