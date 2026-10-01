@@ -36,7 +36,7 @@ if (isset($_GET['action'])) {
         $nama = $conn->real_escape_string(trim($_POST['nama_mahasiswa']));
         $semester = (int)$_POST['semester'];
 
-        if (empty($nama) \vert{}\vert{}$semester < 1) {
+        if (empty($nama) or $semester < 1) {
             echo json_encode(['status' => 'error', 'message' => 'Data tidak valid.']);
             exit;
         }
@@ -270,5 +270,4 @@ if (isset($_GET['action'])) {
         }
     </script>
 </body>
-
 </html>
