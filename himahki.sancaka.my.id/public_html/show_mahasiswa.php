@@ -20,19 +20,19 @@ if (isset($_GET['action'])) {
 
    // READ Data - Riwayat Transaksi Mahasiswa (LEFT JOIN + GROUP BY)
     if ($action == 'read_laporan') {
-        // Query dimodifikasi dengan GROUP BY agar nama & semester yang sama digabung jadi 1 baris
-        // Jika mahasiswa membayar lebih dari 1 kali, nominalnya akan dijumlahkan otomatis (SUM)
+        // GROUP BY murni hanya berdasarkan nama_mahasiswa
+        // Semester menggunakan MAX() untuk mengambil angka semester tertinggi jika ada salah input ganda
         $sql = "SELECT 
                     MAX(m.id) AS id_mahasiswa, 
                     m.nama_mahasiswa, 
-                    m.semester, 
+                    MAX(m.semester) AS semester, 
                     MAX(t.transaksi_id) AS transaksi_id, 
                     MAX(t.tanggal_setor) AS tanggal_setor, 
                     SUM(t.nominal) AS nominal, 
                     MAX(t.keterangan) AS keterangan 
                 FROM mahasiswa m 
                 LEFT JOIN transaksi t ON m.id = t.mahasiswa_id 
-                GROUP BY m.nama_mahasiswa, m.semester
+                GROUP BY m.nama_mahasiswa
                 ORDER BY m.nama_mahasiswa ASC";
                 
         $result = $conn->query($sql);
