@@ -18,20 +18,28 @@ if (isset($_GET['action'])) {
     header('Content-Type: application/json');
     $action =$_GET['action'];
 
-    // READ Data - Riwayat Transaksi Mahasiswa (LEFT JOIN)
+   // READ Data - Riwayat Transaksi Mahasiswa (LEFT JOIN + GROUP BY)
     if ($action == 'read_laporan') {
-        // Query untuk mengambil semua mahasiswa dan riwayat transaksinya
-        // Jika belum transaksi, nilai dari tabel transaksi akan NULL
-        $sql = "SELECT m.id AS id_mahasiswa, m.nama_mahasiswa, m.semester, 
-                       t.transaksi_id, t.tanggal_setor, t.jenis, t.nominal, t.keterangan 
+        // Query dimodifikasi dengan GROUP BY agar nama & semester yang sama digabung jadi 1 baris
+        // Jika mahasiswa membayar lebih dari 1 kali, nominalnya akan dijumlahkan otomatis (SUM)
+        $sql = "SELECT 
+                    MAX(m.id) AS id_mahasiswa, 
+                    m.nama_mahasiswa, 
+                    m.semester, 
+                    MAX(t.transaksi_id) AS transaksi_id, 
+                    MAX(t.tanggal_setor) AS tanggal_setor, 
+                    SUM(t.nominal) AS nominal, 
+                    MAX(t.keterangan) AS keterangan 
                 FROM mahasiswa m 
                 LEFT JOIN transaksi t ON m.id = t.mahasiswa_id 
-                ORDER BY m.nama_mahasiswa ASC, t.tanggal_setor ASC";
+                GROUP BY m.nama_mahasiswa, m.semester
+                ORDER BY m.nama_mahasiswa ASC";
                 
-        $result =$conn->query($sql);$data = [];
+        $result = $conn->query($sql);
+        $data = [];
         if ($result) {
-            while ($row =$result->fetch_assoc()) {
-                $data[] =$row;
+            while ($row = $result->fetch_assoc()) {
+                $data[] = $row;
             }
         }
         echo json_encode($data);
