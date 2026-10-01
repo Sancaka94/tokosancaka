@@ -124,6 +124,11 @@ $list_mahasiswa = $conn->query("SELECT * FROM mahasiswa ORDER BY nama_mahasiswa 
                 </div>
             </div>
             <div class="mt-4 md:mt-0 flex flex-wrap gap-3">
+                <!-- Tombol Baru: Data Mahasiswa -->
+                <a href="show_mahasiswa.php" class="bg-gray-900 hover:bg-black text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 shadow-sm">
+                    <i class="ph ph-users text-lg"></i> Data Mahasiswa
+                </a>
+                
                 <a href="index.php" class="bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2">
                     <i class="ph ph-globe text-lg"></i> Lihat Web Publik
                 </a>
