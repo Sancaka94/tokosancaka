@@ -1,7 +1,103 @@
 {
-    "version": "1.0.0.6064",
-    "last_update": "24 Sep 2026 19:55",
+    "version": "1.0.0.6080",
+    "last_update": "10 Oct 2026 10:54",
     "commits": [
+        {
+            "hash": "b034145f",
+            "date": "2026-10-10 10:53:59 +0700",
+            "author": "Server Bot",
+            "message": "Update System"
+        },
+        {
+            "hash": "4df5ac8b",
+            "date": "2026-10-06 11:16:27 +0700",
+            "author": "Sancaka94",
+            "message": "Auto commit"
+        },
+        {
+            "hash": "2bf0b4fd",
+            "date": "2026-10-01 07:47:27 +0700",
+            "author": "Amal Ibnu Muharram",
+            "message": "Auto commit"
+        },
+        {
+            "hash": "628ccef5",
+            "date": "2026-10-01 07:43:53 +0700",
+            "author": "Amal Ibnu Muharram",
+            "message": "Auto commit"
+        },
+        {
+            "hash": "931ba8b3",
+            "date": "2026-10-01 07:40:53 +0700",
+            "author": "Amal Ibnu Muharram",
+            "message": "Auto commit"
+        },
+        {
+            "hash": "003122ed",
+            "date": "2026-10-01 07:34:22 +0700",
+            "author": "Amal Ibnu Muharram",
+            "message": "Auto commit"
+        },
+        {
+            "hash": "193c08b4",
+            "date": "2026-10-01 07:30:58 +0700",
+            "author": "Amal Ibnu Muharram",
+            "message": "Auto commit"
+        },
+        {
+            "hash": "a49137cd",
+            "date": "2026-10-01 07:27:25 +0700",
+            "author": "Amal Ibnu Muharram",
+            "message": "Auto commit"
+        },
+        {
+            "hash": "8e8aa76d",
+            "date": "2026-10-01 07:18:52 +0700",
+            "author": "Amal Ibnu Muharram",
+            "message": "Auto commit"
+        },
+        {
+            "hash": "b8413e67",
+            "date": "2026-10-01 07:15:47 +0700",
+            "author": "Amal Ibnu Muharram",
+            "message": "Auto commit"
+        },
+        {
+            "hash": "9ecc7c59",
+            "date": "2026-10-01 06:55:12 +0700",
+            "author": "Amal Ibnu Muharram",
+            "message": "Auto commit"
+        },
+        {
+            "hash": "e6867cb5",
+            "date": "2026-10-01 06:52:39 +0700",
+            "author": "Amal Ibnu Muharram",
+            "message": "Auto commit"
+        },
+        {
+            "hash": "3d0fd3fb",
+            "date": "2026-10-01 06:48:44 +0700",
+            "author": "Amal Ibnu Muharram",
+            "message": "Auto commit"
+        },
+        {
+            "hash": "9e131afe",
+            "date": "2026-10-01 06:35:53 +0700",
+            "author": "Amal Ibnu Muharram",
+            "message": "Auto commit"
+        },
+        {
+            "hash": "608a1907",
+            "date": "2026-09-28 05:06:55 +0700",
+            "author": "Amal Ibnu Muharram",
+            "message": "Auto commit"
+        },
+        {
+            "hash": "ec0f5e71",
+            "date": "2026-09-24 19:55:19 +0700",
+            "author": "Server Bot",
+            "message": "Auto Bump Version"
+        },
         {
             "hash": "ea7d0f1c",
             "date": "2026-09-24 19:55:18 +0700",
@@ -23,102 +119,6 @@
         {
             "hash": "2a797e82",
             "date": "2026-09-21 19:44:38 +0700",
-            "author": "Sancaka94",
-            "message": "Auto commit"
-        },
-        {
-            "hash": "699f31cb",
-            "date": "2026-09-20 14:21:56 +0700",
-            "author": "Sancaka94",
-            "message": "Auto commit"
-        },
-        {
-            "hash": "bb85f67b",
-            "date": "2026-09-20 14:14:35 +0700",
-            "author": "Sancaka94",
-            "message": "Auto commit"
-        },
-        {
-            "hash": "bcc83195",
-            "date": "2026-09-20 13:49:00 +0700",
-            "author": "Sancaka94",
-            "message": "Auto commit"
-        },
-        {
-            "hash": "d17d806c",
-            "date": "2026-09-18 10:31:04 +0700",
-            "author": "Sancaka94",
-            "message": "Auto commit"
-        },
-        {
-            "hash": "9b5197e6",
-            "date": "2026-09-18 10:20:24 +0700",
-            "author": "Sancaka94",
-            "message": "Auto commit"
-        },
-        {
-            "hash": "64d50b71",
-            "date": "2026-09-18 10:15:46 +0700",
-            "author": "Sancaka94",
-            "message": "Auto commit"
-        },
-        {
-            "hash": "ff487988",
-            "date": "2026-09-18 09:31:34 +0700",
-            "author": "Sancaka94",
-            "message": "Auto commit"
-        },
-        {
-            "hash": "d1345359",
-            "date": "2026-09-18 09:29:08 +0700",
-            "author": "Sancaka94",
-            "message": "Auto commit"
-        },
-        {
-            "hash": "bdb1ad85",
-            "date": "2026-09-16 21:14:53 +0700",
-            "author": "Sancaka94",
-            "message": "Auto commit"
-        },
-        {
-            "hash": "888bfb2b",
-            "date": "2026-09-14 20:41:01 +0700",
-            "author": "Sancaka94",
-            "message": "Auto commit"
-        },
-        {
-            "hash": "83fc7573",
-            "date": "2026-09-14 19:50:03 +0700",
-            "author": "Sancaka94",
-            "message": "Auto commit"
-        },
-        {
-            "hash": "366ba20b",
-            "date": "2026-09-14 19:46:03 +0700",
-            "author": "Sancaka94",
-            "message": "Auto commit"
-        },
-        {
-            "hash": "89a2dff1",
-            "date": "2026-09-14 19:43:47 +0700",
-            "author": "Sancaka94",
-            "message": "Auto commit"
-        },
-        {
-            "hash": "ddd4fe87",
-            "date": "2026-09-14 19:40:57 +0700",
-            "author": "Sancaka94",
-            "message": "Auto commit"
-        },
-        {
-            "hash": "c42a4571",
-            "date": "2026-09-14 19:33:08 +0700",
-            "author": "Sancaka94",
-            "message": "Auto commit"
-        },
-        {
-            "hash": "93929c3f",
-            "date": "2026-09-14 18:19:36 +0700",
             "author": "Sancaka94",
             "message": "Auto commit"
         }
