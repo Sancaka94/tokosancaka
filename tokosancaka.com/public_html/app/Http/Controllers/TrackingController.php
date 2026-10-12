@@ -1188,4 +1188,80 @@ class TrackingController extends Controller
         ];
     }
 
+    /**
+     * API ENDPOINT UNTUK MODAL TRACKING DI ADMIN AUTOKIRIM (AJAX)
+     */
+    public function apiTrackAutokirim(Request $request)
+    {
+        $resi = $request->query('resi');
+        if (!$resi) {
+            return response()->json(['success' => false, 'message' => 'Resi tidak valid.']);
+        }
+
+        // Cari pesanan di tabel PesananAutokirim
+        $autokirim = \App\Models\PesananAutokirim::where('awb_number', $resi)
+            ->orWhere('order_id', $resi)
+            ->first();
+
+        if (!$autokirim) {
+            return response()->json(['success' => false, 'message' => 'Data pesanan autokirim tidak ditemukan di sistem.']);
+        }
+
+        // Map data ke format Object (meniru struktur yang dibutuhkan $this->trackAutokirim)
+        $pesanan = (object)[
+            'is_autokirim'          => true,
+            'pickup_point_code'     => $autokirim->pickup_point_code ?? '',
+            'resi'                  => $autokirim->awb_number ?? $autokirim->order_id,
+            'resi_aktual'           => $autokirim->awb_number,
+            'nomor_invoice'         => $autokirim->order_id,
+            'sender_name'           => $autokirim->pengirim_nama ?? 'N/A',
+            'sender_phone'          => $autokirim->pengirim_hp ?? '-',
+            'sender_address'        => $autokirim->pengirim_alamat ?? '-',
+            'receiver_name'         => $autokirim->penerima_nama ?? 'N/A',
+            'receiver_phone'        => $autokirim->penerima_hp ?? '-',
+            'receiver_address'      => $autokirim->penerima_alamat ?? '-',
+            'status'                => $autokirim->status,
+            'jasa_ekspedisi_aktual' => $autokirim->kurir,
+            'service_type'          => $autokirim->layanan ?? 'REG',
+            'created_at'            => $autokirim->created_at,
+        ];
+
+        // Panggil fungsi internal trackAutokirim() yang sudah Anda buat sebelumnya
+        $result = $this->trackAutokirim($pesanan);
+
+        if ($result) {
+            // Format Tanggal Utama
+            $formattedDate = isset($result['tanggal_dibuat']) && $result['tanggal_dibuat']
+                ? \Carbon\Carbon::parse($result['tanggal_dibuat'])->format('d M Y, H:i') . ' WIB'
+                : '-';
+
+            // Ubah Collection Histories menjadi Array Murni agar aman saat di-JSON-kan
+            $historiesArray = [];
+            if (isset($result['histories'])) {
+                foreach ($result['histories'] as $history) {
+                    $historiesArray[] = [
+                        'status'     => $history->status ?? 'Update',
+                        'lokasi'     => $history->lokasi ?? '-',
+                        'keterangan' => $history->keterangan ?? '-',
+                        'created_at' => isset($history->created_at)
+                                        ? \Carbon\Carbon::parse($history->created_at)->format('d M Y, H:i')
+                                        : '-'
+                    ];
+                }
+            }
+
+            // Kembalikan JSON sesuai format yang diharapkan oleh JavaScript di Blade
+            return response()->json([
+                'success' => true,
+                'result' => [
+                    'status'    => $result['status'] ?? 'Dalam Proses',
+                    'summary'   => ['date' => $formattedDate],
+                    'histories' => $historiesArray
+                ]
+            ]);
+        }
+
+        return response()->json(['success' => false, 'message' => 'Gagal menarik data dari server logistik pusat.']);
+    }
+
 }

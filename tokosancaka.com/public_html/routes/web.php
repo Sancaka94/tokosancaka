@@ -2114,7 +2114,11 @@ Route::middleware(['auth'])->prefix('customer')->name('customer.')->group(functi
         Route::post('/pesanan-autokirim/{id}/cancel', [PesananAutokirimController::class, 'cancelOrder'])->name('pesanan-autokirim.cancel');
         Route::delete('/pesanan-autokirim/{id}', [PesananAutokirimController::class, 'destroy'])->name('pesanan-autokirim.destroy');
         Route::post('/pesanan-autokirim/bulk-delete', [PesananAutokirimController::class, 'bulkDestroy'])->name('pesanan-autokirim.bulk_destroy');
-    });
+        
+        Route::get('/api/tracking-autokirim', [\App\Http\Controllers\TrackingController::class, 'apiTrackAutokirim'])->name('api.tracking-autokirim');
+
+
+        });
 
     // --- GRUP AJAX/API INTERNAL ---
     Route::prefix('api/autokirim')->name('api.autokirim.')->group(function () {

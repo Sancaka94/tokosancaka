@@ -315,6 +315,10 @@
                                         <i class="fa-solid fa-location-crosshairs"></i>
                                     </a>
 
+                                    <button type="button" onclick="openTrackingModal('{{ $resiTrack }}')" class="bg-blue-100 hover:bg-blue-200 text-blue-700 w-8 h-8 rounded flex items-center justify-center shadow-sm transition" title="Lihat Timeline Pelacakan">
+                                        <i class="fa-solid fa-location-crosshairs"></i>
+                                    </button>
+
                                     <a href="{{ route('admin.pesanan-autokirim.cetak', $item->id) }}" target="_blank" class="bg-green-100 hover:bg-green-200 text-green-700 w-8 h-8 rounded flex items-center justify-center shadow-sm" title="Cetak / Download Resi">
                                         <i class="fa-solid fa-print"></i>
                                     </a>
@@ -463,6 +467,108 @@
         }
     </script>
 
+    <!-- SCRIPT TRACKING MODAL & AJAX -->
+    <script>
+        function getTrackingIcon(status) {
+            status = status.toLowerCase();
+            if (status.includes('dibuat') || status.includes('booking')) return { icon: 'fa-box', color: 'bg-gray-500', border: 'border-gray-500' };
+            if (status.includes('pickup') || status.includes('jemput')) return { icon: 'fa-truck-pickup', color: 'bg-blue-500', border: 'border-blue-500' };
+            if (status.includes('tiba') || status.includes('hub') || status.includes('origin') || status.includes('manifest')) return { icon: 'fa-warehouse', color: 'bg-indigo-500', border: 'border-indigo-500' };
+            if (status.includes('perjalanan') || status.includes('kirim') || status.includes('transit')) return { icon: 'fa-truck-moving', color: 'bg-blue-400', border: 'border-blue-400' };
+            if (status.includes('kurir') || status.includes('antar')) return { icon: 'fa-person-carrying-box', color: 'bg-orange-500', border: 'border-orange-500' };
+            if (status.includes('selesai') || status.includes('terkirim') || status.includes('delivered')) return { icon: 'fa-handshake', color: 'bg-green-500', border: 'border-green-500' };
+            if (status.includes('gagal') || status.includes('retur')) return { icon: 'fa-triangle-exclamation', color: 'bg-red-500', border: 'border-red-500' };
+            return { icon: 'fa-circle-info', color: 'bg-gray-400', border: 'border-gray-400' };
+        }
+
+        function openTrackingModal(resi) {
+            const modal = document.getElementById('trackingModal');
+            const modalContent = document.getElementById('trackingModalContent');
+
+            // Set UI ke mode Loading
+            document.getElementById('m_track_resi').innerText = resi;
+            document.getElementById('trackingLoader').classList.remove('hidden');
+            document.getElementById('trackingContent').classList.add('hidden');
+            document.getElementById('trackingError').classList.add('hidden');
+            document.getElementById('m_track_timeline').innerHTML = ''; // Kosongkan timeline lama
+
+            // Tampilkan Modal dengan animasi
+            modal.classList.remove('hidden');
+            setTimeout(() => {
+                modalContent.classList.remove('scale-95', 'opacity-0');
+                modalContent.classList.add('scale-100', 'opacity-100');
+            }, 10);
+
+            // AJAX Fetch ke Endpoint API / Route Controller Anda
+            // PENTING: Ganti URL ini dengan endpoint API internal Anda yang mengembalikan JSON tracking
+            // Menggunakan Route Laravel yang digenerate langsung ke string JS
+            fetch(`{{ route('admin.api.tracking-autokirim') }}?resi=${resi}`)
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('trackingLoader').classList.add('hidden');
+
+                    if(data.success && data.result) {
+                        // Tampilkan Data Utama
+                        document.getElementById('trackingContent').classList.remove('hidden');
+                        document.getElementById('m_track_status').innerText = data.result.status || 'Dalam Proses';
+
+                        if(data.result.summary && data.result.summary.date) {
+                            document.getElementById('m_track_date').innerText = data.result.summary.date;
+                        }
+
+                        // Render Timeline Items
+                        const timelineContainer = document.getElementById('m_track_timeline');
+                        if (data.result.histories && data.result.histories.length > 0) {
+                            data.result.histories.forEach((history, index) => {
+                                let style = getTrackingIcon(history.status);
+
+                                // Efek khusus untuk status paling atas (Terbaru)
+                                let isFirst = index === 0;
+                                let iconSize = isFirst ? 'w-8 h-8 -left-4 text-sm' : 'w-6 h-6 -left-3 text-[10px]';
+                                let textColor = isFirst ? 'text-blue-700 font-black' : 'text-gray-700 font-bold';
+
+                                let itemHtml = `
+                                    <div class="relative pl-6 pb-6 animate-fade-in-up" style="animation-delay: ${index * 0.1}s">
+                                        <div class="absolute top-0 ${iconSize} rounded-full text-white flex items-center justify-center border-2 border-white shadow-sm ${style.color}">
+                                            <i class="fa-solid ${style.icon}"></i>
+                                        </div>
+                                        <div>
+                                            <p class="${textColor} text-sm leading-tight">${history.status}</p>
+                                            ${history.lokasi ? `<p class="text-xs text-gray-500 mt-0.5">${history.lokasi}</p>` : ''}
+                                            <p class="text-[10px] text-gray-400 mt-1"><i class="fa-regular fa-clock mr-1"></i>${history.created_at || '-'}</p>
+                                        </div>
+                                    </div>
+                                `;
+                                timelineContainer.insertAdjacentHTML('beforeend', itemHtml);
+                            });
+                        } else {
+                            timelineContainer.innerHTML = '<p class="text-sm text-gray-500 italic pl-4">Belum ada riwayat pemindaian.</p>';
+                        }
+                    } else {
+                        // Tampilkan Error jika resi tidak valid
+                        document.getElementById('trackingError').classList.remove('hidden');
+                        document.getElementById('trackingError').classList.add('flex');
+                    }
+                })
+                .catch(error => {
+                    console.error('Fetch error:', error);
+                    document.getElementById('trackingLoader').classList.add('hidden');
+                    document.getElementById('trackingError').classList.remove('hidden');
+                    document.getElementById('trackingError').classList.add('flex');
+                });
+        }
+
+        function closeTrackingModal() {
+            const modalContent = document.getElementById('trackingModalContent');
+            modalContent.classList.remove('scale-100', 'opacity-100');
+            modalContent.classList.add('scale-95', 'opacity-0');
+
+            setTimeout(() => {
+                document.getElementById('trackingModal').classList.add('hidden');
+            }, 200);
+        }
+    </script>
+
     <!-- SCRIPT KONTROL MODAL AGEN (SAFE PARSING) -->
     <script>
         function openAgentModal(buttonElement) {
@@ -525,4 +631,60 @@
     </script>
 
 </div>
+
+<!-- ========================================== -->
+    <!-- MODAL TRACKING RESI (AJAX) -->
+    <!-- ========================================== -->
+    <div id="trackingModal" class="fixed inset-0 z-[110] hidden bg-gray-900/60 backdrop-blur-sm flex justify-center items-center">
+        <div class="bg-white w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden transform scale-95 opacity-0 transition-all duration-200 flex flex-col max-h-[90vh]" id="trackingModalContent">
+
+            <!-- Header Modal -->
+            <div class="bg-gradient-to-r from-blue-600 to-blue-700 p-4 flex justify-between items-center text-white relative overflow-hidden">
+                <i class="fa-solid fa-truck-fast absolute -right-2 -bottom-2 text-6xl opacity-20"></i>
+                <h3 class="font-bold text-base relative z-10">
+                    <i class="fa-solid fa-location-crosshairs mr-2"></i> Lacak Resi: <span id="m_track_resi" class="font-mono text-yellow-300"></span>
+                </h3>
+                <button onclick="closeTrackingModal()" class="text-white/80 hover:text-white focus:outline-none relative z-10">
+                    <i class="fa-solid fa-xmark text-xl"></i>
+                </button>
+            </div>
+
+            <!-- Body Modal (Scrollable) -->
+            <div class="p-5 overflow-y-auto flex-1 bg-gray-50 relative">
+
+                <!-- State Loading -->
+                <div id="trackingLoader" class="flex flex-col items-center justify-center py-12">
+                    <i class="fa-solid fa-circle-notch fa-spin text-4xl text-blue-500 mb-3"></i>
+                    <p class="text-gray-500 text-sm font-medium">Menarik data dari ekspedisi...</p>
+                </div>
+
+                <!-- State Error -->
+                <div id="trackingError" class="hidden flex-col items-center justify-center py-8 text-center">
+                    <div class="bg-red-100 text-red-500 w-16 h-16 rounded-full flex items-center justify-center mb-3">
+                        <i class="fa-solid fa-triangle-exclamation text-3xl"></i>
+                    </div>
+                    <h4 class="font-bold text-gray-800 mb-1">Data Tidak Ditemukan</h4>
+                    <p class="text-xs text-gray-500" id="m_track_error_msg">Pastikan resi valid atau coba lagi nanti.</p>
+                </div>
+
+                <!-- Content Timeline -->
+                <div id="trackingContent" class="hidden">
+                    <!-- Highlight Status -->
+                    <div class="bg-white border border-blue-100 rounded-xl p-4 mb-5 text-center shadow-sm">
+                        <p class="text-[10px] text-blue-500 font-bold uppercase tracking-widest mb-1">Status Terakhir</p>
+                        <h4 id="m_track_status" class="text-lg font-black text-gray-800"></h4>
+                        <p id="m_track_date" class="text-xs text-gray-500 mt-1"></p>
+                    </div>
+
+                    <h5 class="font-bold text-gray-700 text-sm mb-4 border-b border-gray-200 pb-2">Riwayat Perjalanan</h5>
+
+                    <!-- Container Timeline -->
+                    <div class="relative border-l-2 border-gray-200 ml-3" id="m_track_timeline">
+                        <!-- Item Timeline akan dirender via JS disini -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
 @endsection
