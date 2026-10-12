@@ -467,104 +467,143 @@
         }
     </script>
 
-    <!-- SCRIPT TRACKING MODAL & AJAX -->
+   <!-- SCRIPT TRACKING MODAL & AJAX -->
     <script>
-        function getTrackingIcon(status) {
-            status = status.toLowerCase();
-            if (status.includes('dibuat') || status.includes('booking')) return { icon: 'fa-box', color: 'bg-gray-500', border: 'border-gray-500' };
-            if (status.includes('pickup') || status.includes('jemput')) return { icon: 'fa-truck-pickup', color: 'bg-blue-500', border: 'border-blue-500' };
-            if (status.includes('tiba') || status.includes('hub') || status.includes('origin') || status.includes('manifest')) return { icon: 'fa-warehouse', color: 'bg-indigo-500', border: 'border-indigo-500' };
-            if (status.includes('perjalanan') || status.includes('kirim') || status.includes('transit')) return { icon: 'fa-truck-moving', color: 'bg-blue-400', border: 'border-blue-400' };
-            if (status.includes('kurir') || status.includes('antar')) return { icon: 'fa-person-carrying-box', color: 'bg-orange-500', border: 'border-orange-500' };
-            if (status.includes('selesai') || status.includes('terkirim') || status.includes('delivered')) return { icon: 'fa-handshake', color: 'bg-green-500', border: 'border-green-500' };
-            if (status.includes('gagal') || status.includes('retur')) return { icon: 'fa-triangle-exclamation', color: 'bg-red-500', border: 'border-red-500' };
-            return { icon: 'fa-circle-info', color: 'bg-gray-400', border: 'border-gray-400' };
+        // 1. Fungsi untuk memisahkan Teks dan URL Gambar
+        function parseKeterangan(text) {
+            if (!text) return { teksBersih: '-', urlGambar: null };
+
+            // Regex untuk mendeteksi URL gambar (jpg, jpeg, png)
+            const regexGambar = /(https?:\/\/[^\s)]+\.(?:jpg|jpeg|png)(?:[^\s)]*)?)/ig;
+            const match = regexGambar.exec(text);
+
+            let url = null;
+            let teks = text;
+
+            if (match && match[0]) {
+                url = match[0];
+                // Hapus URL dari teks asli agar rapi
+                teks = text.replace(/\(https?:\/\/[^\s)]+\.(?:jpg\vert{}jpeg\vert{}png)(?:[^\s)]*)?\)/ig, '')
+                           .replace(regexGambar, '')
+                           .trim();
+            }
+
+            return { teksBersih: teks, urlGambar: url };
         }
 
+        // 2. Fungsi Buka Gambar Full Screen
+        function openImageViewer(url) {
+            document.getElementById('imageViewerSrc').src = url;
+            document.getElementById('imageViewerModal').style.display = 'flex';
+        }
+
+        // 3. Fungsi Tutup Gambar Full Screen
+        function closeImageViewer() {
+            document.getElementById('imageViewerModal').style.display = 'none';
+            document.getElementById('imageViewerSrc').src = '';
+        }
+
+        // 4. FUNGSI UTAMA TRACKING
         function openTrackingModal(resi) {
+            // Deklarasi elemen modal Tailwind
             const modal = document.getElementById('trackingModal');
             const modalContent = document.getElementById('trackingModalContent');
+            const loader = document.getElementById('trackingLoader');
+            const content = document.getElementById('trackingContent');
+            const errorView = document.getElementById('trackingError');
 
-            // Set UI ke mode Loading
+            // Set Nomor Resi di Header & Reset State Tampilan
             document.getElementById('m_track_resi').innerText = resi;
-            document.getElementById('trackingLoader').classList.remove('hidden');
-            document.getElementById('trackingContent').classList.add('hidden');
-            document.getElementById('trackingError').classList.add('hidden');
+            loader.classList.remove('hidden');
+            content.classList.add('hidden');
+            errorView.classList.add('hidden');
             document.getElementById('m_track_timeline').innerHTML = ''; // Kosongkan timeline lama
 
-            // Tampilkan Modal dengan animasi
+            // Animasi memunculkan modal Tailwind
             modal.classList.remove('hidden');
             setTimeout(() => {
                 modalContent.classList.remove('scale-95', 'opacity-0');
                 modalContent.classList.add('scale-100', 'opacity-100');
             }, 10);
 
-            // AJAX Fetch ke Endpoint API / Route Controller Anda
-            // PENTING: Ganti URL ini dengan endpoint API internal Anda yang mengembalikan JSON tracking
-            // Menggunakan Route Laravel yang digenerate langsung ke string JS
+            // Panggil API
             fetch(`{{ route('admin.api.tracking-autokirim') }}?resi=${resi}`)
                 .then(response => response.json())
                 .then(data => {
-                    document.getElementById('trackingLoader').classList.add('hidden');
+                    loader.classList.add('hidden'); // Sembunyikan icon loading
 
-                    if(data.success && data.result) {
-                        // Tampilkan Data Utama
-                        document.getElementById('trackingContent').classList.remove('hidden');
-                        document.getElementById('m_track_status').innerText = data.result.status || 'Dalam Proses';
+                    if (data.success) {
+                        content.classList.remove('hidden'); // Tampilkan konten utama
+                        
+                        // Isi Status Terakhir
+                        document.getElementById('m_track_status').innerText = data.result.status;
+                        document.getElementById('m_track_date').innerText = data.result.summary.date;
 
-                        if(data.result.summary && data.result.summary.date) {
-                            document.getElementById('m_track_date').innerText = data.result.summary.date;
-                        }
+                        let histories = data.result.histories;
+                        let timelineHtml = '';
 
-                        // Render Timeline Items
-                        const timelineContainer = document.getElementById('m_track_timeline');
-                        if (data.result.histories && data.result.histories.length > 0) {
-                            data.result.histories.forEach((history, index) => {
-                                let style = getTrackingIcon(history.status);
-
-                                // Efek khusus untuk status paling atas (Terbaru)
-                                let isFirst = index === 0;
-                                let iconSize = isFirst ? 'w-8 h-8 -left-4 text-sm' : 'w-6 h-6 -left-3 text-[10px]';
-                                let textColor = isFirst ? 'text-blue-700 font-black' : 'text-gray-700 font-bold';
-
-                                let itemHtml = `
-                                    <div class="relative pl-6 pb-6 animate-fade-in-up" style="animation-delay: ${index * 0.1}s">
-                                        <div class="absolute top-0 ${iconSize} rounded-full text-white flex items-center justify-center border-2 border-white shadow-sm ${style.color}">
-                                            <i class="fa-solid ${style.icon}"></i>
-                                        </div>
-                                        <div>
-                                            <p class="${textColor} text-sm leading-tight">${history.status}</p>
-                                            ${history.lokasi ? `<p class="text-xs text-gray-500 mt-0.5">${history.lokasi}</p>` : ''}
-                                            <p class="text-[10px] text-gray-400 mt-1"><i class="fa-regular fa-clock mr-1"></i>${history.created_at || '-'}</p>
-                                        </div>
+                        histories.forEach(history => {
+                            // Ekstrak gambar dari teks keterangan
+                            let info = parseKeterangan(history.keterangan);
+                            
+                            // Buat elemen gambar jika URL ditemukan
+                            let gambarHtml = '';
+                            if (info.urlGambar) {
+                                gambarHtml = `
+                                    <div class="mt-2">
+                                        <img src="${info.urlGambar}" 
+                                             onclick="openImageViewer('${info.urlGambar}')"
+                                             title="Klik untuk memperbesar"
+                                             class="w-24 h-24 object-cover rounded-lg border-2 border-gray-200 cursor-pointer hover:border-blue-500 transition-colors duration-200">
                                     </div>
                                 `;
-                                timelineContainer.insertAdjacentHTML('beforeend', itemHtml);
-                            });
-                        } else {
-                            timelineContainer.innerHTML = '<p class="text-sm text-gray-500 italic pl-4">Belum ada riwayat pemindaian.</p>';
-                        }
+                            }
+
+                            // HTML untuk Timeline disesuaikan dengan class Tailwind
+                            timelineHtml += `
+                                <div class="relative pl-6 pb-6 border-l-2 border-gray-200 last:border-0 last:pb-0">
+                                    <!-- Titik Biru Timeline -->
+                                    <span class="absolute left-[-9px] top-1 w-4 h-4 rounded-full bg-blue-500 border-4 border-white shadow-sm"></span>
+                                    
+                                    <strong class="text-gray-800 text-sm block">${history.status}</strong>
+                                    <p class="text-xs text-gray-600 mt-1">${info.teksBersih}</p>
+                                    
+                                    ${gambarHtml}
+                                    
+                                    <small class="text-[10px] text-gray-400 block mt-2">
+                                        <i class="fas fa-clock mr-1"></i> ${history.created_at}
+                                    </small>
+                                </div>
+                            `;
+                        });
+
+                        // Masukkan HTML ke ID yang benar
+                        document.getElementById('m_track_timeline').innerHTML = timelineHtml;
                     } else {
-                        // Tampilkan Error jika resi tidak valid
-                        document.getElementById('trackingError').classList.remove('hidden');
-                        document.getElementById('trackingError').classList.add('flex');
+                        // Jika resi salah / tidak ditemukan
+                        errorView.classList.remove('hidden');
+                        document.getElementById('m_track_error_msg').innerText = data.message;
                     }
                 })
                 .catch(error => {
-                    console.error('Fetch error:', error);
-                    document.getElementById('trackingLoader').classList.add('hidden');
-                    document.getElementById('trackingError').classList.remove('hidden');
-                    document.getElementById('trackingError').classList.add('flex');
+                    console.error('Error:', error);
+                    loader.classList.add('hidden');
+                    errorView.classList.remove('hidden');
+                    document.getElementById('m_track_error_msg').innerText = 'Terjadi kesalahan sistem saat mengambil data.';
                 });
         }
 
+        // 5. Fungsi Tutup Modal Tracking
         function closeTrackingModal() {
+            const modal = document.getElementById('trackingModal');
             const modalContent = document.getElementById('trackingModalContent');
+
+            // Animasi tutup Tailwind
             modalContent.classList.remove('scale-100', 'opacity-100');
             modalContent.classList.add('scale-95', 'opacity-0');
 
             setTimeout(() => {
-                document.getElementById('trackingModal').classList.add('hidden');
+                modal.classList.add('hidden');
             }, 200);
         }
     </script>
@@ -686,5 +725,15 @@
             </div>
         </div>
     </div>
+
+    <!-- Modal Layar Penuh untuk Lihat Gambar -->
+<div id="imageViewerModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 999999; background-color: rgba(0,0,0,0.85); justify-content: center; align-items: center; flex-direction: column;">
+    
+    <!-- Tombol Tutup (X) -->
+    <button onclick="closeImageViewer()" style="position: absolute; top: 20px; right: 30px; background: none; border: none; color: #fff; font-size: 40px; cursor: pointer; font-weight: bold;">&times;</button>
+    
+    <!-- Gambar -->
+    <img id="imageViewerSrc" src="" alt="Bukti Pengiriman" style="max-width: 90%; max-height: 85vh; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); object-fit: contain;">
+</div>
 
 @endsection
