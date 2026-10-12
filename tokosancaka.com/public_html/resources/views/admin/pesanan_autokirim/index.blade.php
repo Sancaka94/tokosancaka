@@ -311,7 +311,7 @@
                             <td class="p-4 align-top">
                                 <div class="flex flex-wrap gap-2 justify-end">
                                     @php $resiTrack = $item->awb_number ?? $item->order_id; @endphp
-                                    <a href="https://tokosancaka.com/tracking/search?resi={{ $resiTrack }}" target="_blank" class="bg-blue-100 hover:bg-blue-200 text-blue-700 w-8 h-8 rounded flex items-center justify-center shadow-sm" title="Lacak Paket">
+                                    <a href="https://tokosancaka.com/tracking/search?resi={{ $resiTrack }}" target="_blank" class="bg-red-100 hover:bg-red-200 text-blue-700 w-8 h-8 rounded flex items-center justify-center shadow-sm" title="Lacak Paket">
                                         <i class="fa-solid fa-location-crosshairs"></i>
                                     </a>
 
