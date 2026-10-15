@@ -46,7 +46,7 @@
                 <strong class="font-bold">Oops!</strong>
                 <span class="block sm:inline">Ada beberapa masalah dengan input Anda. Silakan periksa form di bawah.</span>
                 <ul class="mt-2 list-disc list-inside text-sm">
-                    @foreach ($errors->all() as$error)
+                    @foreach ($errors->all() as $error)
                         <li>{{ $error }}</li>
                     @endforeach
                 </ul>
@@ -190,7 +190,7 @@
                                 <select id="id_bidang" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-red-500 focus:ring-red-500" onchange="loadSubBidang(this.value)">
                                     <option value="" selected>-- Bukan Jasa (Jual Barang Fisik) --</option>
                                     @if(isset($bidangs))
-                                        @foreach($bidangs as$bidang)
+                                        @foreach($bidangs as $bidang)
                                             <option value="{{ $bidang->id }}" {{ old('id_bidang') == $bidang->id ? 'selected' : '' }}>{{ $bidang->nama_bidang }}</option>
                                         @endforeach
                                     @endif
@@ -265,7 +265,7 @@
                                 <label for="category_id" class="block text-sm font-medium text-gray-700">Kategori Barang</label>
                                 <select name="category_id" id="category_id" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-red-500 focus:ring-red-500" required>
                                     <option value="">-- Pilih Kategori Barang --</option>
-                                    @foreach($categories as$category)
+                                    @foreach($categories as $category)
                                         <option value="{{ $category->id }}" data-attributes-url="{{ route('seller.categories.attributes', $category->id) }}">
                                             {{ $category->name }}
                                         </option>
@@ -354,6 +354,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // Update slider position (SUDAH DIPERBAIKI)
             aiToggleSlider.style.transform = `translateX(${index * 100}%)`;
+
 
             // Update warna teks tombol toggle
             aiChoiceButtons.forEach(btn => {
