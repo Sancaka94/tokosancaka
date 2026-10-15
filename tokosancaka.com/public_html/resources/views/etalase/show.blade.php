@@ -541,13 +541,18 @@ if (!function_exists('formatWaNumber')) {
         {{-- Product Description Section --}}
         <div class="mt-8 bg-white rounded-lg shadow-sm p-4 md:p-6">
             <h2 class="text-lg font-semibold text-gray-800 mb-4">Deskripsi Produk</h2>
+            
             <div id="short-description" class="prose prose-sm max-w-none break-words leading-relaxed">
-                {!! nl2br(e(Str::limit($product->description, 350))) !!}
+                {{-- Gunakan strip_tags agar tidak ada tag HTML yang terpotong berantakan oleh limit --}}
+                {!! nl2br(Str::limit(strip_tags($product->description), 350)) !!}
             </div>
+            
             <div id="full-description" class="prose prose-sm max-w-none break-words leading-relaxed hidden">
-                {!! nl2br(e($product->description)) !!}
+                {{-- Hapus fungsi e() agar tag HTML bawaan TinyMCE tereksekusi dengan benar --}}
+                {!! $product->description !!}
             </div>
-            @if(strlen($product->description ?? '') > 350)
+            
+            @if(strlen(strip_tags($product->description ?? '')) > 350)
             <div class="text-center mt-4">
                  <button id="toggle-description" class="text-sm text-red-600 font-medium hover:underline">
                      Baca Selengkapnya <i class="fas fa-chevron-down text-xs ml-1"></i>
