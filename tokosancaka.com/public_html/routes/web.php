@@ -806,6 +806,9 @@ Route::middleware(['auth'])->group(function () {
 // Seller Group
 Route::middleware(['auth', RoleMiddleware::class . ':Seller|Admin'])->prefix('seller')->name('seller.')->group(function () {
     if(file_exists(__DIR__.'/web/seller.php')) require __DIR__.'/web/seller.php';
+
+    // FITUR AI GENERATE DESKRIPSI PRODUK (SELLER)
+    Route::post('/produk/generate-description', [\App\Http\Controllers\Admin\ProdukController::class, 'generateDescription'])->name('produk.generateDescription');
 });
 
 

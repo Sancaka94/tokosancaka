@@ -1,4 +1,4 @@
-@extends('layouts.customer') 
+@extends('layouts.customer')
 
 @push('styles')
 <style>
@@ -46,7 +46,7 @@
                 <strong class="font-bold">Oops!</strong>
                 <span class="block sm:inline">Ada beberapa masalah dengan input Anda. Silakan periksa form di bawah.</span>
                 <ul class="mt-2 list-disc list-inside text-sm">
-                    @foreach ($errors->all() as $error)
+                    @foreach ($errors->all() as$error)
                         <li>{{ $error }}</li>
                     @endforeach
                 </ul>
@@ -64,14 +64,47 @@
                     {{-- Informasi Produk --}}
                     <div class="bg-white p-6 rounded-lg shadow-md">
                         <h2 class="text-lg font-semibold text-gray-800 mb-4">Informasi Produk / Jasa</h2>
+
+                        <!-- TAMBAHAN: Toggle Bantuan AI -->
+                        <div class="mb-6 p-4 bg-red-50 rounded-lg border border-red-100">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <label class="text-sm font-bold text-gray-900">Bantuan AI untuk Deskripsi</label>
+                                    <p class="text-xs text-gray-500">Pilih AI untuk membuatkan deskripsi jualan yang menarik secara otomatis.</p>
+                                </div>
+                                <div id="ai-toggle-container" class="relative flex w-64 items-center rounded-full bg-gray-200 p-1">
+                                    <div id="ai-toggle-slider" class="absolute h-8 w-1/3 transform rounded-full bg-red-600 shadow-md transition-transform" style="transform: translateX(0%);"></div>
+                                    <button type="button" data-model="none" class="ai-choice-btn relative z-10 w-1/3 py-1 text-sm font-bold text-white">None</button>
+                                    <button type="button" data-model="openai" class="ai-choice-btn relative z-10 w-1/3 py-1 text-sm font-bold text-gray-600">OpenAI</button>
+                                    <button type="button" data-model="gemini" class="ai-choice-btn relative z-10 w-1/3 py-1 text-sm font-bold text-gray-600">Gemini</button>
+                                </div>
+                            </div>
+                            <input type="hidden" name="ai_model" id="ai-model-input" value="none">
+                        </div>
+
                         <div class="space-y-4">
                             <div>
                                 <label for="name" class="block text-sm font-medium text-gray-700">Judul Produk / Layanan Jasa</label>
-                                <input type="text" name="name" id="name" value="{{ old('name') }}" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm @error('name') border-red-500 @enderror focus:border-red-500 focus:ring-red-500" required>
+                                <!-- TAMBAHAN: Dibungkus flex agar input sebaris dengan tombol Generate -->
+                                <div class="flex items-center space-x-2 mt-1">
+                                    <input type="text" name="name" id="name" value="{{ old('name') }}" class="block w-full border-gray-300 rounded-md shadow-sm @error('name') border-red-500 @enderror focus:border-red-500 focus:ring-red-500" placeholder="Contoh: Sepatu Sneakers Pria / Jasa Desain Grafis" required>
+
+                                    <!-- Tombol Generate AI disembunyikan secara default -->
+                                    <div id="generate-btn-container" class="hidden">
+                                        <button type="button" id="generate-btn" class="px-4 py-2 bg-red-600 text-white font-semibold rounded-md hover:bg-red-700 whitespace-nowrap transition-colors">
+                                            <i class="fas fa-magic mr-2"></i>Generate
+                                        </button>
+                                    </div>
+                                </div>
                             </div>
+
                             <div>
-                                <label for="description" class="block text-sm font-medium text-gray-700">Deskripsi</label>
-                                <textarea name="description" id="description" rows="6" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm @error('description') border-red-500 @enderror focus:border-red-500 focus:ring-red-500" required>{{ old('description') }}</textarea>
+                                <label for="description" class="block text-sm font-medium text-gray-700 mb-1">Deskripsi</label>
+                                <!-- TAMBAHAN: Indikator Loading -->
+                                <div id="loading-indicator" class="hidden mb-2 text-sm text-red-600 font-semibold flex items-center space-x-2">
+                                    <i class="fas fa-spinner fa-spin"></i><span>Membuat deskripsi jualan otomatis, mohon tunggu...</span>
+                                </div>
+                                <textarea name="description" id="description" rows="6" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm @error('description') border-red-500 @enderror focus:border-red-500 focus:ring-red-500">{{ old('description') }}</textarea>
                             </div>
                         </div>
                     </div>
@@ -79,7 +112,7 @@
                     {{-- Gambar Produk (Utama & Pendukung) --}}
                     <div class="bg-white p-6 rounded-lg shadow-md">
                         <h2 class="text-lg font-semibold text-gray-800 mb-4">Gambar / Foto Produk</h2>
-                        
+
                         {{-- 1. GAMBAR UTAMA (WAJIB) --}}
                         <div class="mb-6">
                             <label class="block text-sm font-bold text-gray-700 mb-2">Gambar Utama (Wajib)</label>
@@ -102,7 +135,7 @@
                                 <p class="text-xs text-gray-500 mt-1">Gunakan foto dari sisi lain atau detail produk.</p>
                             </div>
                             <input type="file" name="supporting_images[]" id="supporting_images" class="hidden" accept="image/png, image/jpeg, image/webp" multiple>
-                            
+
                             {{-- Tempat munculnya pratinjau 5 gambar --}}
                             <div id="support-preview-container" class="grid grid-cols-2 md:grid-cols-5 gap-3 mt-4"></div>
                             @error('supporting_images.*') <p class="mt-2 text-sm text-red-600">{{ $message }}</p> @enderror
@@ -146,18 +179,18 @@
                 {{-- KOLOM KANAN (SIDEBAR) --}}
                 <div class="space-y-6">
 
-                    {{-- ⚡ KATEGORI JASA (Selalu Tampil di Atas) ⚡ --}}
+                    {{-- ⚡ KATEGORI JASA ⚡ --}}
                     <div class="bg-white p-6 rounded-lg shadow-md border-t-4 border-red-600" id="jasa-asset-container">
                         <h2 class="text-lg font-semibold text-gray-800 mb-2">Kategori Layanan Jasa</h2>
                         <p class="text-xs text-gray-500 mb-4">Pilih ini jika Anda menawarkan tenaga/jasa (bukan barang fisik).</p>
-                        
+
                         <div class="space-y-4">
                             <div>
                                 <label for="id_bidang" class="block text-sm font-medium text-gray-700">Divisi Bidang</label>
                                 <select id="id_bidang" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-red-500 focus:ring-red-500" onchange="loadSubBidang(this.value)">
                                     <option value="" selected>-- Bukan Jasa (Jual Barang Fisik) --</option>
                                     @if(isset($bidangs))
-                                        @foreach($bidangs as $bidang)
+                                        @foreach($bidangs as$bidang)
                                             <option value="{{ $bidang->id }}" {{ old('id_bidang') == $bidang->id ? 'selected' : '' }}>{{ $bidang->nama_bidang }}</option>
                                         @endforeach
                                     @endif
@@ -201,7 +234,6 @@
                                 <input type="number" name="stock" id="stock" value="{{ old('stock', 1) }}" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-red-500 focus:ring-red-500" required>
                             </div>
 
-                            {{-- ⚡ AREA FISIK (BERAT & DIMENSI) BISA DISEMBUNYIKAN ⚡ --}}
                             <div id="weight-container">
                                 <label for="weight" class="block text-sm font-medium text-gray-700">Berat Barang</label>
                                 <div class="relative mt-1">
@@ -212,15 +244,9 @@
                             <div id="dimensi-container">
                                 <label class="block text-sm font-medium text-gray-700">Dimensi Paket (Opsional)</label>
                                 <div class="grid grid-cols-3 gap-4 mt-1">
-                                    <div>
-                                        <input type="number" name="length" id="length" value="{{ old('length') }}" placeholder="P (cm)" class="block w-full border-gray-300 rounded-md shadow-sm text-sm">
-                                    </div>
-                                    <div>
-                                        <input type="number" name="width" id="width" value="{{ old('width') }}" placeholder="L (cm)" class="block w-full border-gray-300 rounded-md shadow-sm text-sm">
-                                    </div>
-                                    <div>
-                                        <input type="number" name="height" id="height" value="{{ old('height') }}" placeholder="T (cm)" class="block w-full border-gray-300 rounded-md shadow-sm text-sm">
-                                    </div>
+                                    <div><input type="number" name="length" id="length" value="{{ old('length') }}" placeholder="P (cm)" class="block w-full border-gray-300 rounded-md shadow-sm text-sm"></div>
+                                    <div><input type="number" name="width" id="width" value="{{ old('width') }}" placeholder="L (cm)" class="block w-full border-gray-300 rounded-md shadow-sm text-sm"></div>
+                                    <div><input type="number" name="height" id="height" value="{{ old('height') }}" placeholder="T (cm)" class="block w-full border-gray-300 rounded-md shadow-sm text-sm"></div>
                                 </div>
                             </div>
                         </div>
@@ -235,12 +261,11 @@
                                 <input type="text" name="sku" id="sku" value="{{ old('sku') }}" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-red-500 focus:ring-red-500" placeholder="Otomatis jika kosong">
                             </div>
 
-                            {{-- ⚡ KATEGORI BARANG (BISA DISEMBUNYIKAN) ⚡ --}}
                             <div id="kategori-container">
                                 <label for="category_id" class="block text-sm font-medium text-gray-700">Kategori Barang</label>
                                 <select name="category_id" id="category_id" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-red-500 focus:ring-red-500" required>
                                     <option value="">-- Pilih Kategori Barang --</option>
-                                    @foreach($categories as $category)
+                                    @foreach($categories as$category)
                                         <option value="{{ $category->id }}" data-attributes-url="{{ route('seller.categories.attributes', $category->id) }}">
                                             {{ $category->name }}
                                         </option>
@@ -275,7 +300,7 @@
                             </div>
                         </div>
                     </div>
-                    
+
                     {{-- Tombol Aksi --}}
                     <div class="bg-white p-6 rounded-lg shadow-md flex flex-col gap-3">
                         <button id="submit-button" type="submit" class="w-full px-5 py-3 bg-green-600 text-white font-bold rounded-lg hover:bg-green-700 transition flex items-center justify-center gap-2">
@@ -294,8 +319,112 @@
 @endsection
 
 @push('scripts')
+{{-- TAMBAHAN: Script TinyMCE (Gunakan env untuk API Key lebih aman) --}}
+<script src="https://cdn.tiny.cloud/1/hsfvd81ihieoadc6tlyol8xucnq3i1n2vzuzfr1948kqqcx5/tinymce/6/tinymce.min.js" referrerpolicy="origin"></script>
+
 <script>
 document.addEventListener('DOMContentLoaded', () => {
+
+    // ==========================================
+    // INISIALISASI TINYMCE & AI GENERATOR
+    // ==========================================
+
+    // Inisialisasi TinyMCE pada textarea Deskripsi
+    tinymce.init({
+        selector: 'textarea#description',
+        plugins: 'code table lists image link autoresize',
+        toolbar: 'undo redo | blocks | bold italic | alignleft aligncenter alignright | indent outdent | bullist numlist | code | table | image link',
+        height: 350, // Tinggi disesuaikan untuk deskripsi produk
+    });
+
+    const nameInput = document.getElementById('name');
+    const generateButton = document.getElementById('generate-btn');
+    const loadingIndicator = document.getElementById('loading-indicator');
+
+    const aiModelInput = document.getElementById('ai-model-input');
+    const aiToggleSlider = document.getElementById('ai-toggle-slider');
+    const aiChoiceButtons = document.querySelectorAll('.ai-choice-btn');
+    const generateBtnContainer = document.getElementById('generate-btn-container');
+
+    // Event Listener Toggle Switch 3 Pilihan AI
+    aiChoiceButtons.forEach((button, index) => {
+        button.addEventListener('click', function() {
+            const selectedModel = this.dataset.model;
+            aiModelInput.value = selectedModel;
+
+            // Update slider position
+            aiToggleSlider.style.transform = `translateX(${index * 100}%)`;
+
+            // Update warna teks tombol toggle
+            aiChoiceButtons.forEach(btn => {
+                btn.classList.remove('text-white');
+                btn.classList.add('text-gray-600');
+            });
+            this.classList.add('text-white');
+            this.classList.remove('text-gray-600');
+
+            // Show/hide generate button
+            if (selectedModel === 'none') {
+                generateBtnContainer.classList.add('hidden');
+            } else {
+                generateBtnContainer.classList.remove('hidden');
+            }
+        });
+    });
+
+    // Event Listener Tombol Generate
+    if (generateButton) {
+        generateButton.addEventListener('click', function() {
+            const titleProduct = nameInput.value.trim();
+            const selectedModel = aiModelInput.value;
+
+            if (selectedModel === 'none') return;
+
+            if (titleProduct.length < 5) {
+                alert('Silakan isi "Judul Produk" minimal 5 karakter terlebih dahulu untuk dibuatkan deskripsi oleh AI.');
+                return;
+            }
+
+            loadingIndicator.classList.remove('hidden');
+            generateButton.disabled = true;
+            tinymce.get('description').setContent('');
+
+            // PENTING: Ganti route ini dengan URL endpoint controller untuk API AI Produk Anda
+            fetch('{{ route("seller.produk.generateDescription") }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                },
+                body: JSON.stringify({
+                    name: titleProduct, // Mengirim nama produk sebagai prompt
+                    model: selectedModel
+                })
+            })
+            .then(response => {
+                if (!response.ok) {
+                    return response.json().then(err => { throw err; });
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.content) {
+                    tinymce.get('description').setContent(data.content);
+                } else {
+                    tinymce.get('description').setContent('<p style="color: red;"><strong>Error:</strong> ' + (data.error || 'Gagal mendapatkan deskripsi dari server.') + '</p>');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                let errorMessage = error.error || 'Terjadi kesalahan saat menghubungi server AI. Silakan periksa konsol.';
+                tinymce.get('description').setContent('<p style="color: red;"><strong>Error:</strong> ' + errorMessage + '</p>');
+            })
+            .finally(() => {
+                loadingIndicator.classList.add('hidden');
+                generateButton.disabled = false;
+            });
+        });
+    }
 
     // ==========================================
     // 1. UPLOADER GAMBAR UTAMA (1 FOTO)
@@ -327,10 +456,10 @@ document.addEventListener('DOMContentLoaded', () => {
     let supportingFiles = []; // Array penampung file asli
 
     if (supportUploader && supportInput && supportPreviewContainer) {
-        
+
         // Buka dialog file saat kotak diklik
         supportUploader.addEventListener('click', () => supportInput.click());
-        
+
         // Efek Drag & Drop
         supportUploader.addEventListener('dragover', (e) => { e.preventDefault(); supportUploader.classList.add('dragging'); });
         supportUploader.addEventListener('dragleave', () => supportUploader.classList.remove('dragging'));
@@ -348,7 +477,7 @@ document.addEventListener('DOMContentLoaded', () => {
             Array.from(newFiles).forEach(file => {
                 // Hanya izinkan format gambar
                 if (!file.type.match('image.*')) return;
-                
+
                 // Cek batas maksimum 5 gambar
                 if (supportingFiles.length < 5) {
                     supportingFiles.push(file);
@@ -415,7 +544,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if(weightContainer) weightContainer.style.display = 'none';
             if(dimensiContainer) dimensiContainer.style.display = 'none';
             if(kategoriContainer) kategoriContainer.style.display = 'none';
-            
+
             // Hapus Wajib (Required)
             if(weightInput) weightInput.removeAttribute('required');
             if(categorySelect) {
@@ -432,7 +561,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if(weightContainer) weightContainer.style.display = 'block';
             if(dimensiContainer) dimensiContainer.style.display = 'block';
             if(kategoriContainer) kategoriContainer.style.display = 'block';
-            
+
             // Kembalikan Wajib (Required)
             if(weightInput) weightInput.setAttribute('required', 'required');
             if(categorySelect) categorySelect.setAttribute('required', 'required');
@@ -445,7 +574,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (bidangSelect) {
         bidangSelect.addEventListener('change', toggleJasaConstraints);
-        toggleJasaConstraints(); 
+        toggleJasaConstraints();
     }
 
 
@@ -489,11 +618,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const variantContainer = document.getElementById('variant-groups-container');
     const addVariantBtn = document.getElementById('add-variant-group');
     const mainStockInput = document.getElementById('stock');
-    let variantIndex = 0; 
+    let variantIndex = 0;
 
     if (addVariantBtn && variantContainer && mainStockInput) {
         addVariantBtn.addEventListener('click', (e) => {
-            e.preventDefault(); 
+            e.preventDefault();
             variantContainer.appendChild(createVariantGroup(variantIndex));
             variantIndex++;
             toggleMainStock();
@@ -529,7 +658,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const existingWarning = document.getElementById(warningId);
         if (existingWarning) existingWarning.remove();
 
-        if (variantContainer && variantContainer.children.length > 0) { 
+        if (variantContainer && variantContainer.children.length > 0) {
             mainStockInput.disabled = true;
             mainStockInput.value = '0';
             if (mainStockInput.parentElement) {
