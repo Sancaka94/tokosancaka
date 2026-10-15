@@ -352,7 +352,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const selectedModel = this.dataset.model;
             aiModelInput.value = selectedModel;
 
-            // Update slider position
+            // Update slider position (SUDAH DIPERBAIKI)
             aiToggleSlider.style.transform = `translateX(${index * 100}%)`;
 
             // Update warna teks tombol toggle
