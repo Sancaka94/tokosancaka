@@ -118,7 +118,7 @@
                                 <div class="mb-4 bg-gray-50 p-3 rounded border border-gray-200">
                                     <p class="text-xs font-bold text-gray-600 mb-2">Gambar Pendukung Tersimpan:</p>
                                     <div class="flex flex-wrap gap-2">
-                                        @foreach($existingSupportImages as$img)
+                                        @foreach($existingSupportImages as $img)
                                             <img src="{{ asset('public/storage/' . $img) }}" class="w-16 h-16 object-cover rounded border border-gray-300">
                                         @endforeach
                                     </div>
@@ -192,7 +192,7 @@
                                 <select id="id_bidang" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-red-500 focus:ring-red-500" onchange="loadSubBidang(this.value)">
                                     <option value="" selected>-- Bukan Jasa (Jual Barang Fisik) --</option>
                                     @if(isset($bidangs))
-                                        @foreach($bidangs as$bidang)
+                                        @foreach($bidangs as $bidang)
                                             {{-- Tidak pre-selected default, user harus set ulang jika edit kategori jasa untuk memastikan hirarki AJAX berjalan --}}
                                             <option value="{{ $bidang->id }}">{{ $bidang->nama_bidang }}</option>
                                         @endforeach
@@ -276,7 +276,7 @@
                                 <label for="category_id" class="block text-sm font-medium text-gray-700">Kategori Barang</label>
                                 <select name="category_id" id="category_id" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-red-500 focus:ring-red-500" required>
                                     <option value="">-- Pilih Kategori --</option>
-                                    @foreach($categories as$category)
+                                    @foreach($categories as $category)
                                         <option value="{{ $category->id }}" 
                                                 data-attributes-url="{{ route('seller.categories.attributes', $category->id) }}"
                                                 @selected(old('category_id', $produk->category_id) ==$category->id)>
