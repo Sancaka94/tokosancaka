@@ -76,7 +76,7 @@
                                 <input type="text" name="name" id="name" value="{{ old('name', $produk->name) }}" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm @error('name') border-red-500 @enderror focus:border-red-500 focus:ring-red-500" required>
                             </div>
                             <div>
-                                <label for="description" class="block text-sm font-medium text-gray-700">Deskripsi</label>
+                                <label for="description" class="block text-sm font-medium text-gray-700 mb-1">Deskripsi</label>
                                 <textarea name="description" id="description" rows="6" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm @error('description') border-red-500 @enderror focus:border-red-500 focus:ring-red-500" required>{{ old('description', $produk->description) }}</textarea>
                             </div>
                         </div>
@@ -118,7 +118,7 @@
                                 <div class="mb-4 bg-gray-50 p-3 rounded border border-gray-200">
                                     <p class="text-xs font-bold text-gray-600 mb-2">Gambar Pendukung Tersimpan:</p>
                                     <div class="flex flex-wrap gap-2">
-                                        @foreach($existingSupportImages as $img)
+                                        @foreach($existingSupportImages as$img)
                                             <img src="{{ asset('public/storage/' . $img) }}" class="w-16 h-16 object-cover rounded border border-gray-300">
                                         @endforeach
                                     </div>
@@ -192,7 +192,7 @@
                                 <select id="id_bidang" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-red-500 focus:ring-red-500" onchange="loadSubBidang(this.value)">
                                     <option value="" selected>-- Bukan Jasa (Jual Barang Fisik) --</option>
                                     @if(isset($bidangs))
-                                        @foreach($bidangs as $bidang)
+                                        @foreach($bidangs as$bidang)
                                             {{-- Tidak pre-selected default, user harus set ulang jika edit kategori jasa untuk memastikan hirarki AJAX berjalan --}}
                                             <option value="{{ $bidang->id }}">{{ $bidang->nama_bidang }}</option>
                                         @endforeach
@@ -276,10 +276,10 @@
                                 <label for="category_id" class="block text-sm font-medium text-gray-700">Kategori Barang</label>
                                 <select name="category_id" id="category_id" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-red-500 focus:ring-red-500" required>
                                     <option value="">-- Pilih Kategori --</option>
-                                    @foreach($categories as $category)
+                                    @foreach($categories as$category)
                                         <option value="{{ $category->id }}" 
                                                 data-attributes-url="{{ route('seller.categories.attributes', $category->id) }}"
-                                                @selected(old('category_id', $produk->category_id) == $category->id)>
+                                                @selected(old('category_id', $produk->category_id) ==$category->id)>
                                             {{ $category->name }}
                                         </option>
                                     @endforeach
@@ -289,12 +289,12 @@
                             <div>
                                 <label for="tags" class="block text-sm font-medium text-gray-700">Tags (pisahkan koma)</label>
                                 @php
-                                    $tags = old('tags', $produk->tags);
+                                    $tags = old('tags',$produk->tags);
                                     if (is_string($tags)) {
                                         $decodedTags = json_decode($tags, true);
-                                        $tags = is_array($decodedTags) ? implode(', ', $decodedTags) : $tags;
+                                        $tags = is_array($decodedTags) ? implode(', ', $decodedTags) :$tags;
                                     } elseif (is_array($tags)) {
-                                        $tags = implode(', ', $tags);
+                                        $tags = implode(', ',$tags);
                                     }
                                 @endphp
                                 <input type="text" name="tags" id="tags" value="{{ $tags }}" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-red-500 focus:ring-red-500">
@@ -341,6 +341,9 @@
 @endsection
 
 @push('scripts')
+{{-- TINYMCE SCRIPT DIMASUKKAN KEMBALI AGAR DESKRIPSI EDIT SAMA DENGAN CREATE --}}
+<script src="https://cdn.tiny.cloud/1/hsfvd81ihieoadc6tlyol8xucnq3i1n2vzuzfr1948kqqcx5/tinymce/6/tinymce.min.js" referrerpolicy="origin"></script>
+
 <script>
     // Injeksi data JSON dari Controller untuk Atribut dan Varian existing
     const existingAttributes = {!! $existing_attributes_json ?? '{}' !!};
@@ -349,6 +352,16 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', () => {
+
+    // ==========================================
+    // 0. INISIALISASI TINYMCE 
+    // ==========================================
+    tinymce.init({
+        selector: 'textarea#description',
+        plugins: 'code table lists image link autoresize',
+        toolbar: 'undo redo | blocks | bold italic | alignleft aligncenter alignright | indent outdent | bullist numlist | code | table | image link',
+        height: 350,
+    });
 
     // ==========================================
     // 1. UPLOADER GAMBAR UTAMA (1 FOTO)
@@ -693,6 +706,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const submitButton = document.getElementById('submit-button');
     if (form && submitButton) {
         form.addEventListener('submit', (e) => { 
+            // Trigger TinyMCE save agar data textarea terupdate sebelum form di-submit
+            if (typeof tinymce !== 'undefined') {
+                tinymce.triggerSave();
+            }
+
             if (typeof form.checkValidity === 'function' && !form.checkValidity()) {
                 form.reportValidity();
                 e.preventDefault(); 
