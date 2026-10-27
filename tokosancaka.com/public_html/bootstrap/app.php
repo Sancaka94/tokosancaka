@@ -65,6 +65,7 @@ return Application::configure(basePath: dirname(__DIR__))
         // --- TAMBAHKAN BAGIAN INI ---
         $middleware->alias([
             'is_agent' => \App\Http\Middleware\IsAgent::class,
+            'admin'    => \App\Http\Middleware\AdminMiddleware::class,
         ]);
 
     })
