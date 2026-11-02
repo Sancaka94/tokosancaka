@@ -291,6 +291,7 @@ Route::get('/{resi}/cetak_thermal', [PesananController::class, 'cetakThermal'])
 // =========================================================================
 
 Route::get('/', function () { return view('home'); })->name('home');
+Route::get('/ujiserver', [\App\Http\Controllers\UjicobaServerController::class, 'index'])->name('ujiserver.index');
 
 // Route untuk memproses form Hubungi Kami (Publik)
 // Menjadi seperti ini:
