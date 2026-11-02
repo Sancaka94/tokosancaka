@@ -60,6 +60,7 @@ return Application::configure(basePath: dirname(__DIR__))
 
             // Jaga-jaga jika register juga bermasalah
             'register',
+            'webhook/orderbot',
 
             // Wildcard untuk menangani subdomain (misal: sancaka.tokosancaka.com/login)
             '*/login',

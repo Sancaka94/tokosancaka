@@ -23,6 +23,7 @@ class VerifyCsrfToken extends Middleware
         'dana/notify',  // Sesuaikan dengan URL di screenshot
         'dana/callback',
         'dana/*',
+        'webhook/orderbot',
 
         // Jaga-jaga jika register juga bermasalah
         'register',
