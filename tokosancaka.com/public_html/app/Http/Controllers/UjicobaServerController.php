@@ -31,9 +31,9 @@ class UjicobaServerController extends Controller
     <div class="card">
         <span class="badge">Server Online & Active</span>
         <h1>Uji Coba Server TokoSancaka</h1>
-        <p>Halaman ini dibuat dan dideploy secara otomatis oleh Hermes Agent untuk menguji alur deployment otomatis (Git Auto Commit & Push).</p>
+        <p>Halaman ini dibuat dan dideploy secara otomatis oleh Ai Agent Sancaka untuk menguji alur deployment otomatis (Git Auto Commit & Push).</p>
         <a href="/" class="btn">Kembali ke Beranda</a>
-        <div class="footer">TokoSancaka &copy; 2026 - Hermes Agent System</div>
+        <div class="footer">TokoSancaka &copy; 2026 - Ai Agent Sancaka</div>
     </div>
 </body>
 </html>
