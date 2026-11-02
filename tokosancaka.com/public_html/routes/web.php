@@ -21,6 +21,8 @@ use App\Http\Controllers\Customer\TopupDanaController;
 use App\Http\Controllers\RabItemController;
 use App\Http\Controllers\ProyekController;
 
+use App\Http\Controllers\Api\BotOrderController;
+
 // =========================================================================
 // 1. IMPORT CONTROLLER (LENGKAP)
 // =========================================================================
@@ -145,6 +147,12 @@ use App\Http\Controllers\Auth\Customer\CustomerLoginController;
 use App\Http\Controllers\ShortUrlController;
 
 use Spatie\Honeypot\ProtectAgainstSpam;
+
+
+
+
+
+Route::post('/v1/bot/create-order', [BotOrderController::class, 'createOrder']);
 
 
 Route::post('/register', [CustomerRegisterController::class, 'register'])

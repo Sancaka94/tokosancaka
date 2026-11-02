@@ -1,0 +1,294 @@
+<?php
+
+namespace App\Http\Controllers\Api;
+
+use App\Http\Controllers\Controller;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Str;
+use App\Models\Pesanan;
+use App\Models\User;
+use App\Services\KiriminAjaService;
+use Exception;
+
+class BotOrderController extends Controller
+{
+    protected $kirimaja;
+
+    public function __construct(KiriminAjaService $kirimaja)
+    {
+        $this->kirimaja = $kirimaja;
+    }
+
+    /**
+     * Endpoint utama untuk menerima order dari Bot AI (Hermes)
+     */
+    public function createOrder(Request $request)
+    {
+        // =====================================================================
+        // 1. GATEKEEPER: Validasi Keamanan (Hanya Bot Hermes yang bisa akses)
+        // =====================================================================
+        $botSecret = env('BOT_SECRET_KEY', 'sancaka-hermes-secret-2026');
+        if ($request->header('X-Bot-Secret') !== $botSecret) {
+            Log::warning('Akses API Bot ditolak (Secret Key Salah). IP: ' . $request->ip());
+            return response()->json(['status' => 'error', 'message' => 'Unauthorized Access'], 401);
+        }
+
+        Log::info('Menerima payload order dari Bot Hermes:', $request->all());
+
+        // =====================================================================
+        // 2. VALIDASI DATA JSON DARI HERMES
+        // =====================================================================
+        $validated = $request->validate([
+            'sender_name'      => 'required|string|max:100',
+            'sender_phone'     => 'required|string|max:20',
+            'sender_address'   => 'required|string|min:10',
+            'receiver_name'    => 'required|string|max:100',
+            'receiver_phone'   => 'required|string|max:20',
+            'receiver_address' => 'required|string|min:10',
+            'item_description' => 'required|string|max:255',
+            'weight'           => 'required|numeric|min:1', // dalam gram
+            'payment_method'   => 'nullable|string' // Default: TRIPAY
+        ]);
+
+        DB::beginTransaction();
+        try {
+            // =====================================================================
+            // 3. AUTO-RESOLVE ALAMAT (Teks -> ID Kecamatan KiriminAja)
+            // =====================================================================
+            $senderLocation = $this->_resolveAddress($validated['sender_address']);
+            $receiverLocation = $this->_resolveAddress($validated['receiver_address']);
+
+            if (!$senderLocation || !$receiverLocation) {
+                throw new Exception("Sistem tidak dapat memetakan teks alamat ke kode area ekspedisi. Pastikan nama Kecamatan/Kota jelas.");
+            }
+
+            // =====================================================================
+            // 4. CEK ONGKIR TERBAIK (Otomatis pilih Regular termurah)
+            // =====================================================================
+            $itemValue = 10000; // Default nilai barang jika tidak disebutkan
+            $shippingCost = $this->_getBestShippingCost(
+                $senderLocation['district_id'],
+                $senderLocation['subdistrict_id'],
+                $receiverLocation['district_id'],
+                $receiverLocation['subdistrict_id'],
+                $validated['weight'],
+                $itemValue
+            );
+
+            if (!$shippingCost) {
+                throw new Exception("Tidak ada layanan ekspedisi yang tersedia untuk rute pengiriman ini.");
+            }
+
+            // =====================================================================
+            // 5. SIAPKAN & SIMPAN DATA PESANAN (Tabel Pesanan)
+            // =====================================================================
+            // Cek apakah customer sudah terdaftar sebagai user berdasarkan No HP
+            $sanitizedPhone = $this->_sanitizePhoneNumber($validated['sender_phone']);
+            $customer = User::where('no_hp', $sanitizedPhone)->first();
+            $customerId = $customer ? $customer->id_pengguna : null;
+
+            do {
+                $nomorInvoice = 'SCK-BOT-' . date('Ymd') . '-' . strtoupper(Str::random(5));
+            } while (Pesanan::where('nomor_invoice', $nomorInvoice)->exists());
+
+            $order = Pesanan::create([
+                'nomor_invoice'           => $nomorInvoice,
+                'id_pengguna_pembeli'     => $customerId,
+                'customer_id'             => $customerId,
+                'status'                  => 'Menunggu Pembayaran',
+                'status_pesanan'          => 'Menunggu Pembayaran',
+                'tanggal_pesanan'         => now(),
+                'ip_address'              => $request->ip(),
+                'user_agent'              => 'Bot/Hermes Proxmox',
+
+                // Data Pengirim
+                'sender_name'             => $validated['sender_name'],
+                'sender_phone'            => $sanitizedPhone,
+                'sender_address'          => $validated['sender_address'],
+                'sender_district_id'      => $senderLocation['district_id'],
+                'sender_subdistrict_id'   => $senderLocation['subdistrict_id'],
+                'sender_postal_code'      => $senderLocation['postal_code'],
+
+                // Data Penerima
+                'receiver_name'           => $validated['receiver_name'],
+                'receiver_phone'          => $this->_sanitizePhoneNumber($validated['receiver_phone']),
+                'receiver_address'        => $validated['receiver_address'],
+                'receiver_district_id'    => $receiverLocation['district_id'],
+                'receiver_subdistrict_id' => $receiverLocation['subdistrict_id'],
+                'receiver_postal_code'    => $receiverLocation['postal_code'],
+
+                // Data Paket & Biaya
+                'item_description'        => $validated['item_description'],
+                'item_price'              => $itemValue,
+                'weight'                  => $validated['weight'],
+                'service_type'            => $shippingCost['service_type'],
+                'expedition'              => "regular-{$shippingCost['courier']}-{$shippingCost['service_type']}-{$shippingCost['cost']}-0-0-0",
+                'payment_method'          => strtoupper($validated['payment_method'] ?? 'TRIPAY'),
+                'shipping_cost'           => $shippingCost['cost'],
+                'price'                   => $shippingCost['cost'], // Total yang dibayar (Ongkir saja)
+                'ansuransi'               => 'tidak',
+                'insurance_cost'          => 0,
+                'cod_fee'                 => 0,
+                'item_type'               => 1 // Default Paket Umum
+            ]);
+
+            // =====================================================================
+            // 6. GENERATE LINK PEMBAYARAN TRIPAY (Open Payment / Single Checkout)
+            // =====================================================================
+            $paymentUrl = $this->_generateTripayUrl($order, $shippingCost['cost'], $customer->email ?? null);
+
+            if (!$paymentUrl) {
+                throw new Exception("Gagal membuat tautan pembayaran di sistem Tripay.");
+            }
+
+            $order->payment_url = $paymentUrl;
+            $order->save();
+
+            DB::commit();
+
+            // =====================================================================
+            // 7. KEMBALIKAN RESPONSE KE BOT HERMES
+            // =====================================================================
+            Log::info("Order via Bot sukses dibuat. Invoice: {$nomorInvoice}");
+            return response()->json([
+                'status'       => 'success',
+                'invoice'      => $order->nomor_invoice,
+                'courier'      => strtoupper($shippingCost['courier']) . ' - ' . $shippingCost['service_type'],
+                'total_weight' => $order->weight,
+                'total_cost'   => $order->price,
+                'payment_url'  => $paymentUrl
+            ]);
+
+        } catch (Exception $e) {
+            DB::rollBack();
+            Log::error('BotOrderController Error: ' . $e->getMessage());
+            return response()->json([
+                'status'  => 'error',
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Memetakan teks alamat dari AI ke District ID menggunakan API KiriminAja
+     */
+    private function _resolveAddress(string $addressText): ?array
+    {
+        try {
+            $results = $this->kirimaja->searchAddress($addressText);
+
+            // Ambil hasil pencarian pertama yang paling relevan
+            if (!empty($results['status']) && !empty($results['data']) && count($results['data']) > 0) {
+                $bestMatch = $results['data'][0];
+                return [
+                    'district_id'    => $bestMatch['district_id'],
+                    'subdistrict_id' => $bestMatch['subdistrict_id'],
+                    'postal_code'    => $bestMatch['zipcode'] ?? '00000',
+                    'full_text'      => $bestMatch['text']
+                ];
+            }
+            return null;
+        } catch (Exception $e) {
+            Log::error("Geocoding API KiriminAja Gagal: " . $e->getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * Mencari ongkos kirim reguler dan mengambil yang paling murah
+     */
+    private function _getBestShippingCost($senderDist, $senderSub, $recDist, $recSub, $weight, $itemValue)
+    {
+        $options = $this->kirimaja->getExpressPricing(
+            $senderDist, $senderSub, $recDist, $recSub,
+            $weight, 1, 1, 1, $itemValue, null, 'regular', 0
+        );
+
+        if (isset($options['status']) && $options['status'] === true && !empty($options['results'])) {
+            $bestCourier = null;
+            $lowestPrice = PHP_INT_MAX;
+
+            foreach ($options['results'] as $opt) {
+                $cost = $opt['cost'] ?? $opt['final_price'] ?? 0;
+                if ($cost > 0 && $cost < $lowestPrice) {
+                    $lowestPrice = $cost;
+                    $bestCourier = [
+                        'courier'      => $opt['service'] ?? 'unknown',
+                        'service_type' => $opt['service_type'] ?? 'reg',
+                        'cost'         => $cost
+                    ];
+                }
+            }
+            return $bestCourier;
+        }
+
+        return null;
+    }
+
+    /**
+     * Membuat Transaksi Tripay dan mengambil URL Checkout
+     */
+    private function _generateTripayUrl(Pesanan $order, int $amount, ?string $email): ?string
+    {
+        $mode = \App\Models\Api::getValue('TRIPAY_MODE', 'global', 'sandbox');
+
+        $baseUrl = ($mode === 'production')
+            ? 'https://tripay.co.id/api/transaction/create'
+            : 'https://tripay.co.id/api-sandbox/transaction/create';
+
+        $apiKey       = \App\Models\Api::getValue('TRIPAY_API_KEY', $mode);
+        $privateKey   = \App\Models\Api::getValue('TRIPAY_PRIVATE_KEY', $mode);
+        $merchantCode = \App\Models\Api::getValue('TRIPAY_MERCHANT_CODE', $mode);
+
+        if (empty($apiKey)) return null;
+
+        $expiredTime = time() + (24 * 60 * 60); // 24 Jam waktu bayar
+        $customerEmail = !empty($email) ? $email : 'customer+' . Str::random(5) . '@tokosancaka.com';
+
+        $payload = [
+            'method'         => 'QRIS', // Default ke QRIS agar mudah via WA, atau kosongkan jika ingin Tripay menampilkan semua metode
+            'merchant_ref'   => $order->nomor_invoice,
+            'amount'         => $amount,
+            'customer_name'  => $order->sender_name,
+            'customer_email' => $customerEmail,
+            'customer_phone' => $order->sender_phone,
+            'order_items'    => [
+                ['sku' => 'SHIPPING', 'name' => 'Ongkos Kirim Bot', 'price' => $amount, 'quantity' => 1]
+            ],
+            'return_url'     => route('tracking.search', ['resi' => $order->nomor_invoice]),
+            'expired_time'   => $expiredTime,
+            'signature'      => hash_hmac('sha256', $merchantCode . $order->nomor_invoice . $amount, $privateKey),
+        ];
+
+        try {
+            $response = Http::withHeaders(['Authorization' => 'Bearer ' . $apiKey])
+                            ->timeout(30)
+                            ->post($baseUrl, $payload);
+
+            $data = $response->json();
+            if (isset($data['success']) && $data['success'] === true) {
+                return $data['data']['checkout_url'] ?? null;
+            }
+            Log::error('Tripay Bot Creation Failed:', $data);
+            return null;
+        } catch (Exception $e) {
+            Log::error('Tripay Bot HTTP Exception: ' . $e->getMessage());
+            return null;
+        }
+    }
+
+    private function _sanitizePhoneNumber(string $phone): string
+    {
+        $phone = preg_replace('/[^0-9]/', '', $phone);
+        if (Str::startsWith($phone, '62')) {
+            return '0' . substr($phone, 2);
+        }
+        if (!Str::startsWith($phone, '0') && Str::startsWith($phone, '8')) {
+            return '0' . $phone;
+        }
+        return $phone;
+    }
+}
