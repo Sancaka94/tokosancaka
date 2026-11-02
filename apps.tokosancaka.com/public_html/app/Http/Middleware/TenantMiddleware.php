@@ -28,7 +28,7 @@ class TenantMiddleware
         URL::defaults(['subdomain' => $subdomain]);
 
         // 3. PENGECUALIAN DOMAIN UTAMA / DEMO
-        $excludedSubdomains = ['apps', 'admin', 'www', 'localhost', '127', 'lpkhongkong'];
+        $excludedSubdomains = ['apps', 'admin', 'www', 'localhost', '127', 'lpkhongkong', 'bot'];
         if (in_array($subdomain, $excludedSubdomains)) {
             return $next($request);
         }
