@@ -12,7 +12,10 @@ use Illuminate\Support\Str;
 use App\Models\Pesanan;
 use App\Models\User;
 use App\Services\KiriminAjaService;
+use App\Services\DokuJokulService;
+use App\Models\BotOrderDraft;
 use Exception;
+use Throwable;
 
 class BotOrderController extends Controller
 {
@@ -791,12 +794,15 @@ class BotOrderController extends Controller
         }
 
         $selected = $quote['options'][$index];
-        $message = "✅ *Pilihan kurir berhasil diterima!*\n\n"
-            . "Kurir: *" . $selected['kurir'] . "*\n"
-            . "Layanan: *" . ($selected['layanan'] ?: $selected['kode']) . "*\n"
-            . "Ongkir: *Rp " . number_format((int) $selected['ongkir'], 0, ',', '.') . "*\n"
-            . "Berat: *" . (int) $quote['weight'] . " gram*\n\n"
-            . "Silakan lanjutkan pengisian data pengirim dan penerima untuk membuat pesanan.";
+
+        // Simpan pilihan kurir ke draft MySQL dan mulai pengisian data bertahap
+        $this->_startDraftFromQuote($quote['phone'], $token, $selected, $quote);
+
+        $message = "✅ *Kurir dipilih: " . $selected['kurir'] . " - " . ($selected['layanan'] ?: $selected['kode']) . "*\n"
+            . "💰 Ongkir: *Rp " . number_format((int) $selected['ongkir'], 0, ',', '.') . "* (" . (int) $quote['weight'] . " gram)\n\n"
+            . "Sekarang lengkapi data pengiriman secara bertahap (8 langkah).\n\n"
+            . "👤 *Langkah 1/8: Nama Pengirim*\n"
+            . "Ketik nama lengkap pengirim:";
 
         $sent = $this->_sendWhatsAppText($quote['phone'], $message);
 
@@ -918,6 +924,490 @@ class BotOrderController extends Controller
             'message_type' => 'text',
             'content' => $message,
         ]);
+    }
+
+    // =====================================================================
+    // STATE MACHINE: PENGISIAN DATA BERTAHAP + KONFIRMASI + PEMBAYARAN
+    // =====================================================================
+
+    /**
+     * Webhook pesan masuk dari API.co.id.
+     *
+     * Menangani tiga jenis payload:
+     * 1. List reply  -> id "sckq|TOKEN|INDEX" (pilih kurir)  => buat draft, tanya nama pengirim
+     * 2. Button reply-> id "sckgo|TOKEN" (Ya, Lanjutkan)      => buat invoice + DOKU
+     *                   id "sckedit|TOKEN" (Ubah Data)        => mulai ulang pengisian
+     * 3. Text        -> input bertahap sesuai kolom `step` pada draft
+     */
+    public function botWhatsAppInbound(Request $request)
+    {
+        $webhookSecret = (string) config('services.apicoid.webhook_secret');
+        $providedSecret = (string) $request->header('X-WhatsApp-Webhook-Secret', '');
+
+        if ($webhookSecret !== '' &&
+            ($providedSecret === '' || !hash_equals($webhookSecret, $providedSecret))) {
+            Log::warning('Webhook inbound WhatsApp ditolak: secret tidak valid.');
+
+            return response()->json(['status' => 'error', 'message' => 'Unauthorized'], 401);
+        }
+
+        $payload = $request->all();
+
+        $phone = data_get($payload, 'data.from')
+            ?? data_get($payload, 'data.phone_number')
+            ?? data_get($payload, 'data.sender')
+            ?? data_get($payload, 'from')
+            ?? data_get($payload, 'phone_number');
+
+        if (!$phone) {
+            return response()->json(['status' => 'ignored', 'reason' => 'no_phone']);
+        }
+
+        $phone = $this->_normalizeWaPhone((string) $phone);
+
+        $interactiveId = data_get($payload, 'data.interactive_response.id')
+            ?? data_get($payload, 'data.interactive.button_reply.id')
+            ?? data_get($payload, 'data.interactive.list_reply.id')
+            ?? data_get($payload, 'data.message.interactive.button_reply.id')
+            ?? data_get($payload, 'data.message.interactive.list_reply.id')
+            ?? data_get($payload, 'data.raw.interactive.list_reply.id')
+            ?? data_get($payload, 'interactive_response.id');
+
+        // 1. Interaktif: pilihan kurir / tombol konfirmasi
+        if (is_string($interactiveId) && $interactiveId !== '') {
+            if (str_starts_with($interactiveId, 'sckq|') || str_starts_with($interactiveId, 'scknext|')) {
+                return $this->handleWhatsAppShippingWebhook($request);
+            }
+
+            if (str_starts_with($interactiveId, 'sckgo|')) {
+                return $this->_handleConfirmSelection($phone, substr($interactiveId, 6));
+            }
+
+            if (str_starts_with($interactiveId, 'sckedit|')) {
+                return $this->_handleEditRequest($phone);
+            }
+
+            if (str_starts_with($interactiveId, 'sckpay|')) {
+                return $this->_handlePaySelection($phone, substr($interactiveId, 7));
+            }
+
+            return response()->json(['status' => 'ignored', 'reason' => 'unknown_interactive_id']);
+        }
+
+        // 2. Teks biasa: input bertahap
+        $text = trim((string) (
+            data_get($payload, 'data.message.text.body')
+            ?? data_get($payload, 'data.text.body')
+            ?? data_get($payload, 'data.text')
+            ?? data_get($payload, 'text')
+            ?? data_get($payload, 'message')
+            ?? ''
+        ));
+
+        if ($text === '') {
+            return response()->json(['status' => 'ignored', 'reason' => 'no_text']);
+        }
+
+        return $this->_handleStepInput($phone, $text);
+    }
+
+    /**
+     * Menyimpan pilihan kurir ke draft dan memulai pengisian data.
+     */
+    private function _startDraftFromQuote(string $phone, string $token, array $selected, array $quote)
+    {
+        $draft = BotOrderDraft::updateOrCreate(
+            ['phone_number' => $phone],
+            [
+                'session_token'    => $token,
+                'step'             => 'AWAITING_SENDER_NAME',
+                'courier_code'     => strtoupper((string) ($selected['kurir'] ?? '')),
+                'courier_service'  => (string) (($selected['layanan'] ?? '') ?: ($selected['kode'] ?? '')),
+                'shipping_cost'    => (int) ($selected['ongkir'] ?? 0),
+                'weight'           => (int) ($quote['weight'] ?? 0),
+                'origin_text'      => $quote['asal'] ?? null,
+                'destination_text' => $quote['tujuan'] ?? null,
+                'sender_name'      => null,
+                'sender_phone'     => null,
+                'sender_address'   => null,
+                'receiver_name'    => null,
+                'receiver_phone'   => null,
+                'receiver_address' => null,
+                'item_description' => null,
+                'item_value'       => 0,
+                'invoice_number'   => null,
+                'payment_url'      => null,
+                'raw_payload'      => ['selected' => $selected],
+            ]
+        );
+
+        return $draft;
+    }
+
+    /**
+     * Handler teks bertahap: satu langkah per pesan.
+     */
+    private function _handleStepInput(string $phone, string $text)
+    {
+        $draft = BotOrderDraft::where('phone_number', $phone)->first();
+
+        if (!$draft) {
+            return response()->json(['status' => 'ignored', 'reason' => 'no_active_draft']);
+        }
+
+        $text = Str::limit($text, 250, '');
+
+        switch ($draft->step) {
+            case 'AWAITING_SENDER_NAME':
+                $draft->sender_name = $text;
+                $draft->step = 'AWAITING_SENDER_PHONE';
+                $this->_sendWhatsAppText($phone, "✅ Nama pengirim: *{$text}*\n\n📱 *Langkah 2/8: No. HP Pengirim*\nKetik nomor HP pengirim (contoh: 0857xxxxxxx)\natau ketik *sama* untuk memakai nomor WhatsApp ini.");
+                break;
+
+            case 'AWAITING_SENDER_PHONE':
+                $value = strtolower($text) === 'sama' ? $phone : $this->_normalizeWaPhone($text);
+                if (strlen(preg_replace('/\D/', '', $value)) < 9) {
+                    $this->_sendWhatsAppText($phone, "⚠️ Nomor HP tidak valid. Ketik ulang nomor HP pengirim (contoh: 0857xxxxxxx).");
+
+                    return response()->json(['status' => 'invalid_input', 'step' => $draft->step]);
+                }
+                $draft->sender_phone = $value;
+                $draft->step = 'AWAITING_SENDER_ADDRESS';
+                $this->_sendWhatsAppText($phone, "✅ No. HP pengirim tersimpan.\n\n🏠 *Langkah 3/8: Alamat Pengirim*\nKetik alamat lengkap penjemputan paket (jalan, RT/RW, kelurahan, kecamatan, kota).");
+                break;
+
+            case 'AWAITING_SENDER_ADDRESS':
+                if (strlen($text) < 10) {
+                    $this->_sendWhatsAppText($phone, "⚠️ Alamat terlalu pendek. Mohon ketik alamat lengkap (minimal 10 karakter).");
+
+                    return response()->json(['status' => 'invalid_input', 'step' => $draft->step]);
+                }
+                $draft->sender_address = $text;
+                $draft->step = 'AWAITING_RECEIVER_NAME';
+                $this->_sendWhatsAppText($phone, "✅ Alamat pengirim tersimpan.\n\n👤 *Langkah 4/8: Nama Penerima*\nKetik nama lengkap penerima paket.");
+                break;
+
+            case 'AWAITING_RECEIVER_NAME':
+                $draft->receiver_name = $text;
+                $draft->step = 'AWAITING_RECEIVER_PHONE';
+                $this->_sendWhatsAppText($phone, "✅ Nama penerima: *{$text}*\n\n📱 *Langkah 5/8: No. HP Penerima*\nKetik nomor HP penerima.");
+                break;
+
+            case 'AWAITING_RECEIVER_PHONE':
+                $value = $this->_normalizeWaPhone($text);
+                if (strlen(preg_replace('/\D/', '', $value)) < 9) {
+                    $this->_sendWhatsAppText($phone, "⚠️ Nomor HP tidak valid. Ketik ulang nomor HP penerima.");
+
+                    return response()->json(['status' => 'invalid_input', 'step' => $draft->step]);
+                }
+                $draft->receiver_phone = $value;
+                $draft->step = 'AWAITING_RECEIVER_ADDRESS';
+                $this->_sendWhatsAppText($phone, "✅ No. HP penerima tersimpan.\n\n🏠 *Langkah 6/8: Alamat Penerima*\nKetik alamat lengkap tujuan (jalan, RT/RW, kelurahan, kecamatan, kota).");
+                break;
+
+            case 'AWAITING_RECEIVER_ADDRESS':
+                if (strlen($text) < 10) {
+                    $this->_sendWhatsAppText($phone, "⚠️ Alamat terlalu pendek. Mohon ketik alamat lengkap (minimal 10 karakter).");
+
+                    return response()->json(['status' => 'invalid_input', 'step' => $draft->step]);
+                }
+                $draft->receiver_address = $text;
+                $draft->step = 'AWAITING_ITEM_DESC';
+                $this->_sendWhatsAppText($phone, "✅ Alamat penerima tersimpan.\n\n📦 *Langkah 7/8: Isi Paket*\nKetik deskripsi isi paket (contoh: baju kaos 2 pcs).");
+                break;
+
+            case 'AWAITING_ITEM_DESC':
+                $draft->item_description = $text;
+                $draft->step = 'AWAITING_ITEM_VALUE';
+                $this->_sendWhatsAppText($phone, "✅ Isi paket: *{$text}*\n\n💰 *Langkah 8/8: Nilai Barang*\nKetik nilai barang dalam rupiah (contoh: 150000). Nilai ini untuk asuransi pengiriman.");
+                break;
+
+            case 'AWAITING_ITEM_VALUE':
+                $value = (int) preg_replace('/\D/', '', $text);
+                if ($value <= 0) {
+                    $this->_sendWhatsAppText($phone, "⚠️ Nilai barang tidak valid. Ketik angka, contoh: 150000.");
+
+                    return response()->json(['status' => 'invalid_input', 'step' => $draft->step]);
+                }
+                $draft->item_value = $value;
+                $draft->step = 'AWAITING_CONFIRMATION';
+                $draft->save();
+
+                return $this->_sendSummaryConfirmation($draft);
+
+            case 'AWAITING_CONFIRMATION':
+                $this->_sendWhatsAppText($phone, "Silakan tekan tombol *Ya, Lanjutkan* pada ringkasan di atas, atau *Ubah Data* untuk mengisi ulang.");
+
+                return response()->json(['status' => 'awaiting_confirmation']);
+        }
+
+        $draft->save();
+
+        return response()->json(['status' => 'success', 'step' => $draft->step]);
+    }
+
+    /**
+     * Kirim ringkasan lengkap + tombol konfirmasi.
+     */
+    private function _sendSummaryConfirmation(BotOrderDraft $draft)
+    {
+        $phone = $draft->phone_number;
+        $rp = fn ($v) => 'Rp ' . number_format((int) $v, 0, ',', '.');
+
+        $body = "📋 *RINGKASAN PESANAN*\n"
+            . "----------------------------------\n"
+            . "🚚 Kurir: *{$draft->courier_code} - {$draft->courier_service}*\n"
+            . "⚖️ Berat: *{$draft->weight} gram*\n"
+            . "💰 Ongkir: *{$rp($draft->shipping_cost)}*\n"
+            . "----------------------------------\n"
+            . "📤 *PENGIRIM*\n"
+            . "Nama: {$draft->sender_name}\n"
+            . "HP: {$draft->sender_phone}\n"
+            . "Alamat: {$draft->sender_address}\n"
+            . "----------------------------------\n"
+            . "📥 *PENERIMA*\n"
+            . "Nama: {$draft->receiver_name}\n"
+            . "HP: {$draft->receiver_phone}\n"
+            . "Alamat: {$draft->receiver_address}\n"
+            . "----------------------------------\n"
+            . "📦 Isi: {$draft->item_description}\n"
+            . "💵 Nilai barang: *{$rp($draft->item_value)}*\n"
+            . "----------------------------------\n"
+            . "Periksa kembali data di atas. Tekan *Ya, Lanjutkan* untuk membuat tagihan pembayaran.";
+
+        $sent = $this->_sendWhatsAppButtons($phone, $body, [
+            ['id' => 'sckgo|' . $draft->session_token, 'title' => 'Ya, Lanjutkan'],
+            ['id' => 'sckedit|' . $draft->session_token, 'title' => 'Ubah Data'],
+        ]);
+
+        return response()->json(['status' => $sent ? 'success' : 'error', 'step' => 'AWAITING_CONFIRMATION']);
+    }
+
+    /**
+     * Tombol "Ubah Data": reset draft ke langkah pertama.
+     */
+    private function _handleEditRequest(string $phone)
+    {
+        $draft = BotOrderDraft::where('phone_number', $phone)->first();
+
+        if (!$draft) {
+            return response()->json(['status' => 'ignored', 'reason' => 'no_active_draft']);
+        }
+
+        $draft->fill([
+            'step'             => 'AWAITING_SENDER_NAME',
+            'sender_name'      => null,
+            'sender_phone'     => null,
+            'sender_address'   => null,
+            'receiver_name'    => null,
+            'receiver_phone'   => null,
+            'receiver_address' => null,
+            'item_description' => null,
+            'item_value'       => 0,
+        ])->save();
+
+        $this->_sendWhatsAppText($phone, "✏️ Data direset. Mari isi ulang.\n\n👤 *Langkah 1/8: Nama Pengirim*\nKetik nama lengkap pengirim:");
+
+        return response()->json(['status' => 'success', 'step' => $draft->step]);
+    }
+
+    /**
+     * Tombol "Ya, Lanjutkan": buat invoice + transaksi DOKU.
+     */
+    private function _handleConfirmSelection(string $phone, string $token)
+    {
+        $draft = BotOrderDraft::where('phone_number', $phone)->first();
+
+        if (!$draft) {
+            return response()->json(['status' => 'ignored', 'reason' => 'no_active_draft']);
+        }
+
+        if ($token !== '' && $draft->session_token !== null && $token !== $draft->session_token) {
+            return response()->json(['status' => 'ignored', 'reason' => 'token_mismatch']);
+        }
+
+        if ($draft->step !== 'AWAITING_CONFIRMATION') {
+            return response()->json(['status' => 'invalid_state', 'step' => $draft->step]);
+        }
+
+        if ($draft->invoice_number) {
+            $this->_sendWhatsAppText($phone, "ℹ️ Pesanan ini sudah dibuat. Invoice: *{$draft->invoice_number}*\nLink pembayaran: {$draft->payment_url}");
+
+            return response()->json(['status' => 'already_created', 'invoice' => $draft->invoice_number]);
+        }
+
+        DB::beginTransaction();
+
+        try {
+            $senderLocation = $this->_resolveAddress((string) $draft->sender_address);
+            $receiverLocation = $this->_resolveAddress((string) $draft->receiver_address);
+
+            if (!$senderLocation || !$receiverLocation) {
+                throw new Exception('Alamat tidak dapat dipetakan ke kode area ekspedisi. Silakan perbaiki alamat.');
+            }
+
+            $sanitizedPhone = $this->_sanitizePhoneNumber((string) $draft->sender_phone);
+            $customer = User::where('no_hp', $sanitizedPhone)->first();
+            $customerId = $customer ? $customer->id_pengguna : null;
+
+            do {
+                $nomorInvoice = 'SCK-BOT-' . date('Ymd') . '-' . strtoupper(Str::random(5));
+            } while (Pesanan::where('nomor_invoice', $nomorInvoice)->exists());
+
+            $itemValue = (int) $draft->item_value;
+
+            $order = Pesanan::create([
+                'nomor_invoice'           => $nomorInvoice,
+                'id_pengguna_pembeli'     => $customerId,
+                'customer_id'             => $customerId,
+                'status'                  => 'Menunggu Pembayaran',
+                'status_pesanan'          => 'Menunggu Pembayaran',
+                'tanggal_pesanan'         => now(),
+                'ip_address'              => null,
+                'user_agent'              => 'Bot/WhatsApp Draft',
+
+                'sender_name'             => $draft->sender_name,
+                'sender_phone'            => $sanitizedPhone,
+                'sender_address'          => $draft->sender_address,
+                'sender_district_id'      => $senderLocation['district_id'],
+                'sender_subdistrict_id'   => $senderLocation['subdistrict_id'],
+                'sender_postal_code'      => $senderLocation['postal_code'],
+
+                'receiver_name'           => $draft->receiver_name,
+                'receiver_phone'          => $this->_sanitizePhoneNumber((string) $draft->receiver_phone),
+                'receiver_address'        => $draft->receiver_address,
+                'receiver_district_id'    => $receiverLocation['district_id'],
+                'receiver_subdistrict_id' => $receiverLocation['subdistrict_id'],
+                'receiver_postal_code'    => $receiverLocation['postal_code'],
+
+                'item_description'        => $draft->item_description,
+                'item_price'              => $itemValue,
+                'weight'                  => $draft->weight,
+                'service_type'            => $draft->courier_service,
+                'expedition'              => 'regular-' . strtolower($draft->courier_code) . '-' . $draft->courier_service . '-' . $draft->shipping_cost . '-0-0-0',
+                'payment_method'          => 'DOKU',
+                'shipping_cost'           => $draft->shipping_cost,
+                'price'                   => $draft->shipping_cost,
+                'ansuransi'               => 'tidak',
+                'insurance_cost'          => 0,
+                'cod_fee'                 => 0,
+                'item_type'               => 1,
+            ]);
+
+            $doku = new DokuJokulService();
+            $paymentUrl = $doku->createPayment(
+                $order->nomor_invoice,
+                (int) $draft->shipping_cost,
+                [
+                    'name'  => $draft->sender_name,
+                    'email' => $customer->email ?? null,
+                    'phone' => $this->_sanitizePhoneNumber((string) $draft->sender_phone),
+                ]
+            );
+
+            if (!$paymentUrl) {
+                throw new Exception('Gagal membuat transaksi pembayaran DOKU.');
+            }
+
+            $order->payment_url = $paymentUrl;
+            $order->save();
+
+            $draft->invoice_number = $order->nomor_invoice;
+            $draft->payment_url = $paymentUrl;
+            $draft->step = 'COMPLETED';
+            $draft->save();
+
+            DB::commit();
+
+            $this->_sendWhatsAppText(
+                $phone,
+                "✅ *Pesanan berhasil dibuat!*\n\n"
+                . "🧾 Invoice: *{$order->nomor_invoice}*\n"
+                . "💰 Total: *Rp " . number_format((int) $draft->shipping_cost, 0, ',', '.') . "*\n"
+                . "🚚 {$draft->courier_code} - {$draft->courier_service}\n\n"
+                . "Silakan selesaikan pembayaran melalui tautan berikut:\n{$paymentUrl}\n\n"
+                . "Pesanan otomatis diproses setelah pembayaran terkonfirmasi."
+            );
+
+            Log::info('Draft WhatsApp dikonversi menjadi pesanan.', [
+                'invoice' => $order->nomor_invoice,
+                'phone'   => $phone,
+                'courier' => $draft->courier_code,
+            ]);
+
+            return response()->json([
+                'status'       => 'success',
+                'invoice'      => $order->nomor_invoice,
+                'payment_url'  => $paymentUrl,
+                'total'        => $draft->shipping_cost,
+            ]);
+        } catch (Exception $e) {
+            DB::rollBack();
+            Log::error('Gagal membuat pesanan dari draft WhatsApp: ' . $e->getMessage());
+
+            $this->_sendWhatsAppText($phone, "❌ Maaf, pesanan gagal dibuat: {$e->getMessage()}\n\nSilakan ketik *ubah* untuk memperbaiki data atau hubungi admin.");
+
+            return response()->json(['status' => 'error', 'message' => $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Placeholder: pilihan metode bayar tambahan (dipakai bila menu VA ditambahkan).
+     */
+    private function _handlePaySelection(string $phone, string $channel)
+    {
+        $draft = BotOrderDraft::where('phone_number', $phone)->first();
+
+        if (!$draft || !$draft->payment_url) {
+            return response()->json(['status' => 'ignored', 'reason' => 'no_payment']);
+        }
+
+        $this->_sendWhatsAppText($phone, "💳 Metode: *{$channel}*\nSelesaikan pembayaran di:\n{$draft->payment_url}");
+
+        return response()->json(['status' => 'success', 'channel' => $channel]);
+    }
+
+    /**
+     * Kirim pesan interaktif bertipe button.
+     */
+    private function _sendWhatsAppButtons(string $phone, string $body, array $buttons): bool
+    {
+        $rows = [];
+        foreach (array_slice($buttons, 0, 3) as $btn) {
+            $rows[] = [
+                'id'    => $btn['id'],
+                'title' => Str::limit($btn['title'], 20, ''),
+            ];
+        }
+
+        return $this->_sendWhatsAppPayload([
+            'phone_number' => $phone,
+            'channel'      => 'whatsapp',
+            'message_type' => 'interactive',
+            'interactive'  => [
+                'type'   => 'button',
+                'header' => ['type' => 'text', 'text' => 'SANCAKA EXPRESS'],
+                'body'   => ['text' => $body],
+                'footer' => ['text' => 'Data dapat diubah sebelum dibayar'],
+                'action' => ['buttons' => $rows],
+            ],
+        ]);
+    }
+
+    /**
+     * Normalisasi nomor ke format 62xxxxxxxxxx tanpa simbol.
+     */
+    private function _normalizeWaPhone(string $value): string
+    {
+        $digits = preg_replace('/\D/', '', explode('@', $value)[0]);
+
+        if (str_starts_with($digits, '0')) {
+            $digits = '62' . substr($digits, 1);
+        } elseif (str_starts_with($digits, '8')) {
+            $digits = '62' . $digits;
+        }
+
+        return $digits;
     }
 
     private function _sendWhatsAppPayload(array $payload): bool
