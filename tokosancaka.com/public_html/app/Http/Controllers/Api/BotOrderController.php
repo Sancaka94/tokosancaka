@@ -1099,6 +1099,41 @@ class BotOrderController extends Controller
         // Format API.co.id: {event_type, data:{customer_phone, message_type, content, raw:{...}}}
         $eventType = (string) (data_get($payload, 'event_type') ?? '');
 
+        // WA_EVENT_FILTER_V1 — HANYA pesan MASUK customer yang boleh diproses.
+        // message.sent / message.read / message.delivered adalah notifikasi
+        // tentang pesan KELUAR kita sendiri. Memprosesnya membuat bot membalas
+        // pesannya sendiri (balasan dobel, isi sama) dan merusak state checkout.
+        $inboundEvents = ['message.received', 'message.inbound', 'message', 'incoming_message'];
+
+        if ($eventType !== '' && !in_array(strtolower($eventType), $inboundEvents, true)) {
+            Log::info('[WA-WEBHOOK] Dilewati: bukan pesan masuk', ['event_type' => $eventType]);
+
+            return response()->json(['status' => 'ignored', 'reason' => 'not_inbound', 'event_type' => $eventType]);
+        }
+
+        // Abaikan pesan yang arahnya keluar (dikirim oleh nomor toko sendiri).
+        $direction = strtolower((string) (data_get($payload, 'data.direction') ?? ''));
+        if ($direction === 'outbound' || $direction === 'out') {
+            Log::info('[WA-WEBHOOK] Dilewati: pesan keluar', ['event_type' => $eventType]);
+
+            return response()->json(['status' => 'ignored', 'reason' => 'outbound']);
+        }
+
+        // Idempoten: webhook bisa dikirim ulang dengan message_id sama.
+        $messageId = (string) (data_get($payload, 'data.message_id')
+            ?? data_get($payload, 'data.id')
+            ?? data_get($payload, 'message_id')
+            ?? '');
+        if ($messageId !== '') {
+            $dedupeKey = 'wa_seen:' . md5($messageId);
+            if (Cache::has($dedupeKey)) {
+                Log::info('[WA-WEBHOOK] Dilewati: duplikat', ['message_id' => $messageId]);
+
+                return response()->json(['status' => 'ignored', 'reason' => 'duplicate']);
+            }
+            Cache::put($dedupeKey, 1, now()->addHours(6));
+        }
+
         $phone = data_get($payload, 'data.customer_phone')
             ?? data_get($payload, 'data.from')
             ?? data_get($payload, 'data.phone_number')
@@ -1170,9 +1205,33 @@ class BotOrderController extends Controller
             return response()->json(['status' => 'ignored', 'reason' => 'no_text']);
         }
 
+        // SECURITY_GATE_V1: tolak upaya mengakses sistem/server/kredensial.
+        // Lapisan ini wajib ada di Laravel karena webhook bisa dipanggil
+        // langsung tanpa melewati adapter Hermes.
+        if ($this->_looksLikeAttack($text)) {
+            Log::warning('[WA-SECURITY] Pesan terindikasi upaya akses sistem', [
+                'phone' => $phone,
+                'text'  => Str::limit($text, 120, ''),
+            ]);
+
+            $this->_sendWhatsAppText($phone,
+                "Maaf kak, pesan itu tidak bisa saya proses 🙏\n\n"
+                . "Saya hanya melayani:\n"
+                . "• Cek ongkir\n"
+                . "• Lacak resi\n"
+                . "• Kirim paket\n"
+                . "• Bayar tagihan\n\n"
+                . "Silakan tulis kebutuhan pengirimannya ya."
+            );
+
+            return response()->json(['status' => 'success', 'handled' => 'blocked']);
+        }
+
         // Sapaan / pilihan menu / permintaan layanan -> menu, bukan no_active_draft.
-        if ($this->_handleMenuIntent($phone, $text)) {
-            return response()->json(['status' => 'success', 'handled' => 'menu']);
+        // HANDLED_LABEL_V1: label respons mencerminkan aksi yang benar-benar terjadi.
+        $handled = $this->_handleMenuIntent($phone, $text);
+        if ($handled !== '') {
+            return response()->json(['status' => 'success', 'handled' => $handled]);
         }
 
         return $this->_handleStepInput($phone, $text);
@@ -1329,7 +1388,7 @@ class BotOrderController extends Controller
      * Deteksi sapaan / pilihan menu / permintaan layanan, lalu kirim menu.
      * Return true bila sudah ditangani (jangan lanjut ke state machine).
      */
-    private function _handleMenuIntent(string $phone, string $text): bool
+    private function _handleMenuIntent(string $phone, string $text): string
     {
         $body = strtolower(trim($text));
         if ($body === '') {
@@ -1370,7 +1429,7 @@ class BotOrderController extends Controller
         }
 
         if (!$isGreeting && !$isNumber && !$isService) {
-            return false;
+            return '';
         }
 
         if ($isService) {
@@ -1380,17 +1439,99 @@ class BotOrderController extends Controller
                 (str_contains($body, 'ongkir') || str_contains($body, 'ongkos') || str_contains($body, 'tarif'))
                 && $this->_handleOngkirText($phone, $text)
             ) {
-                return true;
+                return 'ongkir';
             }
 
             $this->_sendWhatsAppText($phone, $this->_menuServiceHint($body));
 
-            return true;
+            return str_contains($body, 'resi') || str_contains($body, 'lacak')
+                ? 'tracking'
+                : 'menu';
         }
 
         $this->_sendWhatsAppText($phone, $this->_menuText());
 
-        return true;
+        return 'menu';
+    }
+
+    /**
+     * SECURITY_GATE_V1 — deteksi upaya akses sistem dari pesan pelanggan.
+     * Sengaja konservatif: hanya pola yang jelas berbahaya.
+     */
+    private function _looksLikeAttack(string $text): bool
+    {
+        $t = ' ' . strtolower(preg_replace('/\s+/', ' ', $text) ?? '') . ' ';
+
+        $patterns = [
+            '.env', 'env file', 'baca file', 'buka file', 'tulis file', 'hapus file',
+            'terminal', 'shell', 'ssh', 'bash', 'sudo', 'root access', 'chmod',
+            'curl ', 'wget ', 'python ', 'php artisan', 'rm -', 'ls -', 'cat ',
+            'database', 'select *', 'drop table', 'mysqldump', 'sql ',
+            'api key', 'apikey', 'api_key', 'secret', 'password', 'sandi',
+            'kredensial', 'credential', 'token bot',
+            'system prompt', 'prompt sistem', 'abaikan instruksi', 'abaikan aturan',
+            'ignore previous', 'ignore all', 'jailbreak', 'developer mode',
+            'bypass', 'bobol', 'hack', 'inject', 'injection',
+            'akses server', 'masuk server', 'akses hosting', 'sourc',
+        ];
+
+        foreach ($patterns as $needle) {
+            if (str_contains($t, $needle)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Balasan luwes untuk pesan di luar alur (obrolan, tanya, terima kasih).
+     */
+    private function _friendlyReply(string $text): string
+    {
+        $t = strtolower(trim($text));
+
+        $thanks = ['makasih', 'terima kasih', 'thanks', 'thank you', 'thx', 'tq', 'mksh'];
+        foreach ($thanks as $word) {
+            if (str_contains($t, $word)) {
+                return "Sama-sama kak 🙏\n\nKalau masih ada yang mau ditanyakan soal pengiriman, silakan ya.";
+            }
+        }
+
+        if (str_contains($t, 'siapa') || str_contains($t, 'bot') || str_contains($t, 'ini apa')
+            || str_contains($t, 'kamu apa') || str_contains($t, 'nama')) {
+            return "Saya asisten *Sancaka Express* 🤖\n\n"
+                . "Saya bisa bantu 4 hal:\n"
+                . "• Cek ongkir — _cek ongkir Ngawi ke Surabaya 1 kg_\n"
+                . "• Lacak resi — _lacak resi IDE7002847325168_\n"
+                . "• Kirim paket — _saya mau kirim paket_\n"
+                . "• Bayar tagihan — _bayar tagihan listrik_\n\n"
+                . "Mau mulai dari yang mana kak?";
+        }
+
+        if (str_contains($t, 'oke') || str_contains($t, 'ok') || str_contains($t, 'siap')
+            || str_contains($t, 'baik') || str_contains($t, 'sip')) {
+            return "Siap kak 👍\n\nKalau mau cek ongkir, kirim kota asal, kota tujuan, dan beratnya ya. Contoh: _cek ongkir Ngawi ke Surabaya 1 kg_";
+        }
+
+        if (str_contains($t, '?') || str_contains($t, 'gimana') || str_contains($t, 'bagaimana')
+            || str_contains($t, 'berapa') || str_contains($t, 'bisa')) {
+            return "Boleh saya bantu jawab kak 🙂\n\n"
+                . "Supaya tepat, tulis kebutuhannya seperti ini:\n"
+                . "• _cek ongkir Ngawi ke Surabaya 1 kg_\n"
+                . "• _lacak resi IDE7002847325168_\n"
+                . "• _saya mau kirim paket_\n"
+                . "• _bayar tagihan listrik_\n\n"
+                . "Kalau butuh hal lain, tulis saja — nanti saya arahkan.";
+        }
+
+        return "Baik kak, saya catat 🙂\n\n"
+            . "Untuk hal-hal ini saya bisa bantu langsung:\n"
+            . "• *Cek ongkir* — _cek ongkir Ngawi ke Surabaya 1 kg_\n"
+            . "• *Lacak resi* — _lacak resi IDE7002847325168_\n"
+            . "• *Kirim paket* — _saya mau kirim paket_\n"
+            . "• *Bayar tagihan* — _bayar tagihan listrik_\n\n"
+            . "Ketik salah satu contoh di atas ya kak.";
     }
 
     /**
@@ -1436,15 +1577,12 @@ class BotOrderController extends Controller
     {
         $draft = BotOrderDraft::where('phone_number', $phone)->first();
 
-        Log::info('[WA-STEP] Input teks diterima', [
-            'phone'     => $phone,
-            'text'      => Str::limit($text, 80, ''),
-            'draft_id'  => $draft->id ?? null,
-            'step'      => $draft->step ?? null,
-        ]);
-
         if (!$draft) {
-            return response()->json(['status' => 'ignored', 'reason' => 'no_active_draft']);
+            // FRIENDLY_FALLBACK_V1: jangan diam. Customer yang mengobrol atau
+            // menulis hal di luar alur tetap mendapat jawaban yang mengarahkan.
+            $this->_sendWhatsAppText($phone, $this->_friendlyReply($text));
+
+            return response()->json(['status' => 'success', 'handled' => 'smalltalk']);
         }
 
         $text = Str::limit($text, 250, '');
@@ -2149,49 +2287,237 @@ class BotOrderController extends Controller
     /**
      * Memetakan teks alamat dari AI ke District ID menggunakan API KiriminAja
      */
-    private function _resolveAddress(string $addressText): ?array
+    /**
+     * ADDRESS_SCORE_V1 — resolusi alamat dengan skor kecocokan.
+     *
+     * Mengambil kandidat pertama ber-ID valid itu berbahaya: 'surabaya'
+     * bisa jatuh ke "Surabaya Baru, Bandar Surabaya, Lampung Tengah".
+     * Di sini setiap kandidat dinilai dulu, lalu yang tertinggi dipakai.
+     */
+    /**
+     * ADDRESS_SCORE_V3 — kota besar -> provinsi.
+     *
+     * KiriminAja butuh provinsi untuk membedakan kota bernama sama.
+     * Tanpa ini 'surabaya' bisa berarti desa di Lampung.
+     */
+    private const CITY_PROVINCE = [
+        'surabaya'  => 'jawa timur',
+        'malang'    => 'jawa timur',
+        'kediri'    => 'jawa timur',
+        'madiun'    => 'jawa timur',
+        'mojokerto' => 'jawa timur',
+        'probolinggo' => 'jawa timur',
+        'pasuruan'  => 'jawa timur',
+        'blitar'    => 'jawa timur',
+        'banyuwangi' => 'jawa timur',
+        'jember'    => 'jawa timur',
+        'ngawi'     => 'jawa timur',
+        'sidoarjo'  => 'jawa timur',
+        'gresik'    => 'jawa timur',
+        'lamongan'  => 'jawa timur',
+        'tuban'     => 'jawa timur',
+        'jakarta'   => 'dki jakarta',
+        'bandung'   => 'jawa barat',
+        'bogor'     => 'jawa barat',
+        'bekasi'    => 'jawa barat',
+        'depok'     => 'jawa barat',
+        'tangerang' => 'banten',
+        'serang'    => 'banten',
+        'semarang'  => 'jawa tengah',
+        'solo'      => 'jawa tengah',
+        'surakarta' => 'jawa tengah',
+        'magelang'  => 'jawa tengah',
+        'pekalongan' => 'jawa tengah',
+        'tegal'     => 'jawa tengah',
+        'yogyakarta' => 'di yogyakarta',
+        'jogja'     => 'di yogyakarta',
+        'sleman'    => 'di yogyakarta',
+        'denpasar'  => 'bali',
+        'medan'     => 'sumatera utara',
+        'palembang' => 'sumatera selatan',
+        'padang'    => 'sumatera barat',
+        'pekanbaru' => 'riau',
+        'bandar lampung' => 'lampung',
+        'lampung'   => 'lampung',
+        'makassar'  => 'sulawesi selatan',
+        'manado'    => 'sulawesi utara',
+        'banjarmasin' => 'kalimantan selatan',
+        'balikpapan' => 'kalimantan timur',
+        'samarinda' => 'kalimantan timur',
+        'pontianak' => 'kalimantan barat',
+        'jayapura'  => 'papua',
+    ];
+
+    /**
+     * Cari wilayah dengan strategi bertingkat: apa adanya -> +provinsi.
+     * Mengembalikan array kandidat terbaik atau null.
+     */
+    private function _searchAddressSmart(string $addressText, array $tokens): ?array
     {
-        try {
-            $results = $this->kirimaja->searchAddress($addressText);
+        $queries = [$addressText];
 
-            // Ambil hasil pencarian pertama yang paling relevan.
-            // Struktur respons KiriminAja: province_id, city_id, district_id,
-            // subdistrict_id, full_address (tidak ada 'text' / 'zipcode').
-            if (!empty($results['status']) && !empty($results['data']) && is_array($results['data'])) {
-                foreach ($results['data'] as $candidate) {
-                    if (!is_array($candidate)) {
-                        continue;
-                    }
+        // Tambahkan variasi "kota, provinsi" bila kata kuncinya kota besar.
+        $lastToken = $tokens ? end($tokens) : '';
+        $province = self::CITY_PROVINCE[$lastToken] ?? null;
+        if ($province !== null && !str_contains(strtolower($addressText), $province)) {
+            $queries[] = trim($lastToken . ', ' . $province);
+            $queries[] = trim($addressText . ', ' . $province);
+        }
 
-                    $districtId    = $candidate['district_id'] ?? null;
-                    $subdistrictId = $candidate['subdistrict_id'] ?? null;
+        $bestOverall = null;
+        $bestScore = 0;
 
-                    // district_id & subdistrict_id wajib ada dan berupa ID positif.
-                    if (!is_numeric($districtId) || !is_numeric($subdistrictId)
-                        || (int) $districtId <= 0 || (int) $subdistrictId <= 0) {
-                        continue;
-                    }
+        foreach ($queries as $query) {
+            try {
+                $results = $this->kirimaja->searchAddress($query);
+            } catch (\Throwable $e) {
+                continue;
+            }
 
-                    return [
+            if (empty($results['status']) || empty($results['data']) || !is_array($results['data'])) {
+                continue;
+            }
+
+            foreach ($results['data'] as $candidate) {
+                if (!is_array($candidate)) {
+                    continue;
+                }
+
+                $districtId    = $candidate['district_id'] ?? null;
+                $subdistrictId = $candidate['subdistrict_id'] ?? null;
+
+                if (!is_numeric($districtId) || !is_numeric($subdistrictId)
+                    || (int) $districtId <= 0 || (int) $subdistrictId <= 0) {
+                    continue;
+                }
+
+                $score = $this->_scoreAddressCandidate($candidate, $tokens);
+
+                if ($score > $bestScore) {
+                    $bestScore = $score;
+                    $bestOverall = [
                         'province_id'    => isset($candidate['province_id']) && is_numeric($candidate['province_id'])
                                                 ? (int) $candidate['province_id'] : null,
                         'city_id'        => isset($candidate['city_id']) && is_numeric($candidate['city_id'])
                                                 ? (int) $candidate['city_id'] : null,
                         'district_id'    => (int) $districtId,
                         'subdistrict_id' => (int) $subdistrictId,
-                        // Api tidak selalu mengirim zipcode; biarkan null (kolom nullable).
                         'postal_code'    => isset($candidate['zipcode']) && $candidate['zipcode'] !== ''
                                                 ? (string) $candidate['zipcode'] : null,
                         'full_text'      => $candidate['full_address'] ?? null,
+                        'score'          => $score,
+                        'query'          => $query,
                     ];
                 }
             }
-            return null;
+
+            // Skor tinggi pada query pertama -> tidak perlu lanjut.
+            if ($bestScore >= 10) {
+                break;
+            }
+        }
+
+        return $bestOverall;
+    }
+
+    private function _resolveAddress(string $addressText): ?array
+    {
+        try {
+            $tokens = $this->_addressTokens($addressText);
+            if (empty($tokens)) {
+                return null;
+            }
+
+            $best = $this->_searchAddressSmart($addressText, $tokens);
+            $bestScore = $best['score'] ?? 0;
+
+            // Tidak ada kandidat yang benar-benar cocok -> jangan menebak.
+            if ($best === null || $bestScore < 3) {
+                Log::info('[ADDRESS] Tidak ada wilayah yang cocok', [
+                    'query' => $addressText,
+                    'best_score' => $bestScore,
+                ]);
+
+                return null;
+            }
+
+            return $best;
         } catch (Exception $e) {
             Log::error("Geocoding API KiriminAja Gagal: " . $e->getMessage());
+
             return null;
         }
     }
+
+    /** Pecah teks alamat menjadi kata kunci bermakna. */
+    private function _addressTokens(string $text): array
+    {
+        $text = strtolower($text);
+        $text = preg_replace('/[^a-z0-9 ]+/', ' ', $text) ?? '';
+        $stop = ['jl', 'jalan', 'no', 'nomor', 'rt', 'rw', 'kec', 'kel', 'kota',
+                 'kab', 'kabupaten', 'provinsi', 'desa', 'kelurahan', 'kecamatan',
+                 'perum', 'perumahan', 'blok', 'gang', 'gg'];
+
+        $tokens = [];
+        foreach (preg_split('/\s+/', trim($text)) ?: [] as $word) {
+            if ($word === '' || in_array($word, $stop, true) || mb_strlen($word) < 3) {
+                continue;
+            }
+            $tokens[] = $word;
+        }
+
+        return array_values(array_unique($tokens));
+    }
+
+    /** Skor kecocokan satu kandidat terhadap kata kunci. */
+    private function _scoreAddressCandidate(array $candidate, array $tokens): int
+    {
+        $full = strtolower((string) ($candidate['full_address'] ?? ''));
+
+        // Nama kota/kabupaten sering tidak dikirim terpisah; ambil dari full_address.
+        $parts = array_map('trim', explode(',', $full));
+        $cityPart = '';
+        $lastPart = '';
+        if (count($parts) >= 3) {
+            $cityPart = $parts[count($parts) - 3];
+        }
+        if (count($parts) >= 2) {
+            $lastPart = $parts[0];
+        }
+
+        $score = 0;
+
+        foreach ($tokens as $token) {
+            $inFull = str_contains($full, $token);
+            $inCity = $cityPart !== '' && str_contains($cityPart, $token);
+            $inLast = $lastPart !== '' && str_contains($lastPart, $token);
+
+            if ($inCity || $inLast) {
+                $score += 5;
+            } elseif ($inFull) {
+                $score += 3;
+            } else {
+                // Kata ini tidak ada di kandidat sama sekali -> penalti.
+                $score -= 2;
+            }
+        }
+
+        // Kata terakhir biasanya kota tujuan: beri bobot ekstra.
+        // ADDRESS_SCORE_V2: kata terakhir adalah kunci kota tujuan.
+        $lastToken = end($tokens);
+        if ($lastToken !== false) {
+            if ($cityPart !== '' && str_contains($cityPart, $lastToken)) {
+                $score += 10;   // kota benar-benar cocok
+            } elseif (!str_contains($full, $lastToken)) {
+                $score -= 8;    // kata kunci tidak ada sama sekali
+            } else {
+                $score -= 6;    // hanya nyempil di nama kelurahan/desa
+            }
+        }
+
+        return $score;
+    }
+
 
     /**
      * Kirim daftar kurir interaktif ke WhatsApp via API.co.id.
