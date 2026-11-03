@@ -156,6 +156,10 @@ Route::post('/v1/bot/create-order', [BotOrderController::class, 'createOrder'])
     ->middleware('throttle:10,1')
     ->name('bot.order.create');
 
+Route::post('/v1/bot/kirim-tombol-ongkir', [BotOrderController::class, 'botKirimTombolOngkir'])
+    ->middleware('throttle:15,1')
+    ->name('bot.kirim-tombol-ongkir');
+
 Route::post('/v1/bot/tracking', [BotOrderController::class, 'botTracking'])
     ->middleware('throttle:20,1')
     ->name('bot.tracking');

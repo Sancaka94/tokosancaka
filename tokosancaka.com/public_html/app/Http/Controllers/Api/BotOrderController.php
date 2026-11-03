@@ -301,6 +301,91 @@ class BotOrderController extends Controller
 
 
     /**
+     * Endpoint bot: hitung ongkir lalu WAJIB kirim list tombol ke nomor pengirim.
+     * Dipakai Hermes saat pelanggan bertanya ongkir di WhatsApp.
+     */
+    public function botKirimTombolOngkir(Request $request)
+    {
+        if (!$this->_botAuthorized($request)) {
+            Log::warning('Bot kirim-tombol ditolak: kredensial tidak valid. IP: ' . $request->ip());
+
+            return response()->json(['status' => 'error', 'message' => 'Unauthorized Access'], 401);
+        }
+
+        $validated = $request->validate([
+            'sender_address'   => 'required|string|min:3|max:255',
+            'receiver_address' => 'required|string|min:3|max:255',
+            'weight'           => 'required|numeric|min:1|max:300000',
+            'item_value'       => 'nullable|numeric|min:0',
+            'phone_number'     => 'required|string|min:8|max:20',
+        ]);
+
+        $weight = (int) ceil((float) $validated['weight']);
+        $itemValue = (int) ($validated['item_value'] ?? 10000);
+
+        try {
+            $sender = $this->_resolveAddress($validated['sender_address']);
+            $receiver = $this->_resolveAddress($validated['receiver_address']);
+        } catch (Throwable $e) {
+            Log::error('Bot kirim-tombol: pemetaan alamat gagal: ' . $e->getMessage());
+            $sender = $receiver = null;
+        }
+
+        if (!$sender || !$receiver) {
+            return response()->json([
+                'status'  => 'error',
+                'message' => 'Alamat asal atau tujuan tidak ditemukan. Sertakan kecamatan dan kabupaten/kota.',
+            ], 422);
+        }
+
+        $options = $this->_getShippingOptions(
+            $sender['district_id'],
+            $sender['subdistrict_id'],
+            $receiver['district_id'],
+            $receiver['subdistrict_id'],
+            $weight,
+            $itemValue
+        );
+
+        if (empty($options)) {
+            return response()->json([
+                'status'  => 'error',
+                'message' => 'Tidak ada layanan ekspedisi untuk rute tersebut.',
+                'asal'    => $sender['full_text'] ?? null,
+                'tujuan'  => $receiver['full_text'] ?? null,
+            ], 404);
+        }
+
+        $wa = $this->_sendShippingListToWhatsApp($validated['phone_number'], $options, [
+            'asal'   => $sender['full_text'] ?? $validated['sender_address'],
+            'tujuan' => $receiver['full_text'] ?? $validated['receiver_address'],
+            'weight' => $weight,
+        ]);
+
+        $payload = [
+            'status'           => 'success',
+            'asal'             => $sender['full_text'] ?? $validated['sender_address'],
+            'tujuan'           => $receiver['full_text'] ?? $validated['receiver_address'],
+            'berat'            => $weight,
+            'berat_satuan'     => 'gram',
+            'jumlah_ekspedisi' => count($options),
+            'termurah'         => $options[0],
+            'ekspedisi'        => array_slice($options, 0, 9),
+            'whatsapp'         => $wa,
+        ];
+
+        // Bila list tombol gagal terkirim, jangan balas sukses.
+        if (empty($wa['whatsapp_sent'])) {
+            $payload['status'] = 'error';
+            $payload['message'] = $wa['message'] ?? 'Daftar kurir gagal dikirim ke WhatsApp.';
+
+            return response()->json($payload, 502);
+        }
+
+        return response()->json($payload, 200);
+    }
+
+    /**
      * Endpoint bot: lacak resi / order id (read-only, tanpa menyentuh pesanan).
      */
     public function botTracking(Request $request)
@@ -851,6 +936,30 @@ class BotOrderController extends Controller
                 ->timeout(30)
                 ->post('https://chat.api.co.id/api/v1/public/messages/send', $payload);
 
+            // Window 24 jam tertutup (customer belum pernah chat) -> kirim template dulu.
+            if ($this->_isWhatsAppWindowClosed($response)) {
+                $phone = (string) ($payload['phone_number'] ?? '');
+                if ($phone !== '' && $this->_sendWhatsAppOpeningTemplate($phone)) {
+                    $response = Http::withToken($apiKey)
+                        ->acceptJson()
+                        ->asJson()
+                        ->timeout(30)
+                        ->post('https://chat.api.co.id/api/v1/public/messages/send', $payload);
+                }
+            }
+
+            // Nomor pengirim belum terdaftar sebagai customer -> daftarkan lalu kirim ulang.
+            if ($this->_isApiCoIdCustomerMissing($response)) {
+                $phone = (string) ($payload['phone_number'] ?? '');
+                if ($phone !== '' && $this->_ensureWhatsAppCustomer($phone)) {
+                    $response = Http::withToken($apiKey)
+                        ->acceptJson()
+                        ->asJson()
+                        ->timeout(30)
+                        ->post('https://chat.api.co.id/api/v1/public/messages/send', $payload);
+                }
+            }
+
             if (!$response->successful() || $response->json('success') !== true) {
                 Log::error('API.co.id WhatsApp send gagal.', [
                     'http_status' => $response->status(),
@@ -864,6 +973,158 @@ class BotOrderController extends Controller
             Log::error('API.co.id WhatsApp HTTP exception: ' . $e->getMessage());
             return false;
         }
+    }
+
+    /**
+     * True bila gateway menolak karena jendela 24 jam WhatsApp tertutup.
+     */
+    private function _isWhatsAppWindowClosed($response): bool
+    {
+        $code = (string) ($response->json('error.code') ?? '');
+        $message = (string) ($response->json('error.message') ?? '');
+
+        return $code === 'WindowClosed'
+            || stripos($message, 'Only template messages allowed') !== false;
+    }
+
+    /**
+     * Kirim template pembuka agar jendela percakapan terbuka.
+     * Nama template dari APICOID_TEMPLATE_NAME; bila belum diset, tidak melakukan apa pun.
+     */
+    private function _sendWhatsAppOpeningTemplate(string $phone): bool
+    {
+        $apiKey = (string) config('services.apicoid.api_key');
+        $template = (string) config('services.apicoid.template_name');
+
+        if ($apiKey === '' || $template === '') {
+            Log::warning('API.co.id: template pembuka belum dikonfigurasi (APICOID_TEMPLATE_NAME).', [
+                'phone' => $phone,
+            ]);
+
+            return false;
+        }
+
+        $payload = [
+            'phone_number' => $phone,
+            'channel'      => 'whatsapp',
+            'message_type' => 'template',
+            'template'     => [
+                'name'     => $template,
+                // API.co.id minta object: {"code": "id"} — string ditolak VALIDATION_ERROR
+                'language' => ['code' => (string) (config('services.apicoid.template_language') ?: 'id')],
+            ],
+        ];
+
+        $phoneNumberId = (string) config('services.apicoid.phone_number_id');
+        if ($phoneNumberId !== '') {
+            $payload['whatsapp_phone_number_id'] = $phoneNumberId;
+        }
+
+        try {
+            $response = Http::withToken($apiKey)
+                ->acceptJson()
+                ->asJson()
+                ->timeout(30)
+                ->post('https://chat.api.co.id/api/v1/public/messages/send', $payload);
+
+            if (!$response->successful() || $response->json('success') !== true) {
+                Log::error('API.co.id: template pembuka gagal.', [
+                    'phone' => $phone,
+                    'template' => $template,
+                    'http_status' => $response->status(),
+                    'response' => $response->json(),
+                ]);
+
+                return false;
+            }
+
+            Log::info('API.co.id: template pembuka terkirim.', ['phone' => $phone, 'template' => $template]);
+
+            return true;
+        } catch (\Throwable $e) {
+            Log::error('API.co.id template exception: ' . $e->getMessage());
+
+            return false;
+        }
+    }
+
+    /**
+     * True bila gateway menolak karena nomor belum terdaftar sebagai customer.
+     */
+    private function _isApiCoIdCustomerMissing($response): bool
+    {
+        if ((int) $response->status() !== 404) {
+            return false;
+        }
+
+        $message = (string) ($response->json('error.message') ?? '');
+
+        return stripos($message, 'Customer not found') !== false;
+    }
+
+    /**
+     * Daftarkan nomor sebagai customer API.co.id (idempoten: cek dulu).
+     * Nomor dinormalisasi ke format 62... tanpa simbol.
+     */
+    private function _ensureWhatsAppCustomer(string $phone): bool
+    {
+        $apiKey = (string) config('services.apicoid.api_key');
+        if ($apiKey === '') {
+            return false;
+        }
+
+        $phone = preg_replace('/[^0-9]/', '', $phone);
+        if (str_starts_with($phone, '0')) {
+            $phone = '62' . substr($phone, 1);
+        }
+        if (!str_starts_with($phone, '62') || strlen($phone) < 10) {
+            return false;
+        }
+
+        try {
+            // Sudah ada? tidak perlu daftar lagi.
+            $existing = Http::withToken($apiKey)
+                ->acceptJson()
+                ->timeout(20)
+                ->get('https://chat.api.co.id/api/v1/public/customers', ['phone_number' => $phone]);
+
+            if ($existing->successful()) {
+                foreach ((array) $existing->json('data', []) as $customer) {
+                    if (is_array($customer) && ($customer['phone_number'] ?? '') === $phone) {
+                        return true;
+                    }
+                }
+            }
+
+            $created = Http::withToken($apiKey)
+                ->acceptJson()
+                ->asJson()
+                ->timeout(20)
+                ->post('https://chat.api.co.id/api/v1/public/customers', array_filter([
+                    'phone_number' => $phone,
+                    'channel'      => 'whatsapp',
+                    // Wajib menurut API.co.id (ValidationError bila kosong).
+                    'whatsapp_phone_number_id' => (string) config('services.apicoid.phone_number_id'),
+                ], function ($v) {
+                    return $v !== null && $v !== '';
+                }));
+
+            if ($created->successful()) {
+                Log::info('API.co.id: customer WhatsApp didaftarkan otomatis.', ['phone' => $phone]);
+
+                return true;
+            }
+
+            Log::warning('API.co.id: gagal mendaftarkan customer WhatsApp.', [
+                'phone' => $phone,
+                'http_status' => $created->status(),
+                'response' => $created->json(),
+            ]);
+        } catch (\Throwable $e) {
+            Log::error('API.co.id customer register exception: ' . $e->getMessage());
+        }
+
+        return false;
     }
 
 
