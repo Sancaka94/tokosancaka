@@ -1170,6 +1170,11 @@ class BotOrderController extends Controller
             return response()->json(['status' => 'ignored', 'reason' => 'no_text']);
         }
 
+        // Sapaan / pilihan menu / permintaan layanan -> menu, bukan no_active_draft.
+        if ($this->_handleMenuIntent($phone, $text)) {
+            return response()->json(['status' => 'success', 'handled' => 'menu']);
+        }
+
         return $this->_handleStepInput($phone, $text);
     }
 
@@ -1204,6 +1209,224 @@ class BotOrderController extends Controller
         );
 
         return $draft;
+    }
+
+    /**
+     * Parse permintaan cek ongkir dari teks bebas.
+     * "cek ongkir ngawi ke surabaya 1kg" -> [asal, tujuan, berat_gram]
+     * Return null bila asal/tujuan tidak terdeteksi.
+     */
+    private function _parseOngkirRequest(string $text): ?array
+    {
+        $body = strtolower(trim($text));
+
+        // Berat: "1kg", "1 kg", "2,5 kg", "500 gram", "500g"
+        $weight = null;
+        if (preg_match('/(\d+(?:[.,]\d+)?)\s*(kg|kilogram)\b/', $body, $m)) {
+            $weight = (int) round(((float) str_replace(',', '.', $m[1])) * 1000);
+        } elseif (preg_match('/(\d+)\s*(gram|gr|g)\b/', $body, $m)) {
+            $weight = (int) $m[1];
+        }
+
+        // Buang bagian berat + kata perintah agar tersisa "asal ke tujuan"
+        $clean = preg_replace('/\d+(?:[.,]\d+)?\s*(kg|kilogram|gram|gr|g)\b/', ' ', $body);
+        $clean = preg_replace('/\b(cek|ongkir|ongkos|tarif|harga|biaya|kirim|berapa|berat|dari|kak|ya|dong|tolong|saya|mau|paket|adalah|itu)\b/', ' ', (string) $clean);
+        $clean = trim(preg_replace('/\s+/', ' ', (string) $clean));
+
+        // Pisahkan dengan " ke " / " - " / ">"
+        $parts = preg_split('/\s+(?:ke|-|>|–|—|sampai)\s+/i', $clean);
+        if (!$parts || count($parts) < 2) {
+            return null;
+        }
+
+        $origin = trim($parts[0]);
+        $destination = trim($parts[1]);
+
+        if (mb_strlen($origin) < 3 || mb_strlen($destination) < 3) {
+            return null;
+        }
+
+        return [
+            'origin'      => $origin,
+            'destination' => $destination,
+            'weight'      => $weight ?: 1000,
+        ];
+    }
+
+    /**
+     * Jalankan cek ongkir dari teks pelanggan lalu kirim daftar tombol kurir.
+     * Return true bila berhasil memproses permintaan.
+     */
+    private function _handleOngkirText(string $phone, string $text): bool
+    {
+        $parsed = $this->_parseOngkirRequest($text);
+        if (!$parsed) {
+            return false;
+        }
+
+        try {
+            $sender = $this->_resolveAddress($parsed['origin']);
+            $receiver = $this->_resolveAddress($parsed['destination']);
+
+            if (!$sender || !$receiver) {
+                $this->_sendWhatsAppText(
+                    $phone,
+                    "⚠️ Wilayah tidak dikenali sistem ekspedisi.\n\n"
+                    . "Coba tulis *Kelurahan, Kecamatan, Kota*, contoh:\n"
+                    . "_cek ongkir Ketanggi Ngawi ke Wiyung Surabaya 1 kg_"
+                );
+
+                return true;
+            }
+
+            $options = $this->_getShippingOptions(
+                $sender['district_id'],
+                $sender['subdistrict_id'],
+                $receiver['district_id'],
+                $receiver['subdistrict_id'],
+                (int) $parsed['weight'],
+                10000
+            );
+
+            if (empty($options)) {
+                $this->_sendWhatsAppText(
+                    $phone,
+                    "⚠️ Tidak ada layanan ekspedisi untuk rute *{$sender['full_text']}* → *{$receiver['full_text']}*."
+                );
+
+                return true;
+            }
+
+            $wa = $this->_sendShippingListToWhatsApp($phone, array_slice($options, 0, 9), [
+                'asal'   => $sender['full_text'] ?? $parsed['origin'],
+                'tujuan' => $receiver['full_text'] ?? $parsed['destination'],
+                'weight' => (int) $parsed['weight'],
+            ]);
+
+            if (empty($wa['whatsapp_sent'])) {
+                // Fallback: kirim ringkasan teks 3 termurah.
+                $lines = ["🚚 *Ongkir " . ($sender['full_text'] ?? $parsed['origin']) . " → "
+                    . ($receiver['full_text'] ?? $parsed['destination']) . "*\n"];
+
+                foreach (array_slice($options, 0, 5) as $opt) {
+                    $lines[] = "• *" . $opt['kurir'] . "* " . $opt['layanan']
+                        . " — Rp " . number_format((int) $opt['ongkir'], 0, ',', '.')
+                        . ($opt['etd'] ? " (" . $opt['etd'] . " hari)" : "");
+                }
+
+                $this->_sendWhatsAppText($phone, implode("\n", $lines));
+            }
+
+            return true;
+        } catch (\Throwable $e) {
+            Log::error('[WA-ONGKIR] Gagal proses cek ongkir teks: ' . $e->getMessage());
+
+            return false;
+        }
+    }
+
+    /**
+     * Deteksi sapaan / pilihan menu / permintaan layanan, lalu kirim menu.
+     * Return true bila sudah ditangani (jangan lanjut ke state machine).
+     */
+    private function _handleMenuIntent(string $phone, string $text): bool
+    {
+        $body = strtolower(trim($text));
+        if ($body === '') {
+            return false;
+        }
+
+        // Bila ada draft aktif, state machine yang berhak menangani.
+        $draft = BotOrderDraft::where('phone_number', $phone)->first();
+        if ($draft && !in_array(strtoupper((string) $draft->step), ['COMPLETED', 'CANCELLED'], true)) {
+            return false;
+        }
+
+        // Bersihkan penomoran & tanda baca di depan.
+        $clean = preg_replace('/^(no\.?\s*)?0?[1-9]\)?[.:\-]?\s*/', '', $body);
+        $clean = trim(preg_replace('/[^a-z0-9& ]+/', ' ', (string) $clean));
+
+        $greetings = ['halo', 'hai', 'hi', 'hallo', 'assalamualaikum', 'selamat',
+                      'pagi', 'siang', 'sore', 'malam', 'kak', 'min', 'admin',
+                      'permisi', 'tes', 'test', 'p', 'menu', 'bantuan', 'mulai'];
+
+        $isNumber = (bool) preg_match('/^(no\.?\s*)?0?[1-9]\)?[.:]?$/', $body);
+
+        $isGreeting = $clean === ''
+            || (bool) preg_match('/^[0-9]+$/', $body)
+            || collect(explode(' ', $clean))->every(fn ($w) => in_array($w, $greetings, true));
+
+        // Permintaan layanan langsung (cek ongkir / resi / kirim / bayar).
+        $serviceHints = ['ongkir', 'ongkos', 'tarif', 'resi', 'lacak', 'tracking',
+                         'kirim paket', 'kirim barang', 'mau kirim', 'tagihan',
+                         'bayar', 'pulsa', 'top up', 'topup', 'invoice'];
+
+        $isService = false;
+        foreach ($serviceHints as $hint) {
+            if (str_contains($body, $hint)) {
+                $isService = true;
+                break;
+            }
+        }
+
+        if (!$isGreeting && !$isNumber && !$isService) {
+            return false;
+        }
+
+        if ($isService) {
+            // Permintaan cek ongkir yang sudah memuat asal/tujuan/berat:
+            // langsung proses, jangan hanya membalas instruksi.
+            if (
+                (str_contains($body, 'ongkir') || str_contains($body, 'ongkos') || str_contains($body, 'tarif'))
+                && $this->_handleOngkirText($phone, $text)
+            ) {
+                return true;
+            }
+
+            $this->_sendWhatsAppText($phone, $this->_menuServiceHint($body));
+
+            return true;
+        }
+
+        $this->_sendWhatsAppText($phone, $this->_menuText());
+
+        return true;
+    }
+
+    /**
+     * Teks menu layanan utama.
+     */
+    private function _menuText(): string
+    {
+        return "Halo kak! 👋 Saya asisten *Sancaka Express*.\n\n"
+            . "Silakan pilih layanan dengan mengetik angkanya:\n\n"
+            . "*1* — Cek ongkir pengiriman\n"
+            . "*2* — Lacak resi / tracking paket\n"
+            . "*3* — Kirim paket (pesan pengiriman)\n"
+            . "*4* — Bayar tagihan (listrik, pulsa, dll)\n\n"
+            . "Contoh: ketik *1* lalu kirim asal dan tujuan paket Anda.";
+    }
+
+    /**
+     * Instruksi lanjutan sesuai layanan yang disebut.
+     */
+    private function _menuServiceHint(string $body): string
+    {
+        if (str_contains($body, 'resi') || str_contains($body, 'lacak') || str_contains($body, 'tracking')) {
+            return "📦 *Lacak Resi*\n\nKetik nomor resi Anda, contoh:\n_lacak resi IDE7002847325168_";
+        }
+
+        if (str_contains($body, 'ongkir') || str_contains($body, 'ongkos') || str_contains($body, 'tarif')) {
+            return "🚚 *Cek Ongkir*\n\nKetik asal, tujuan, dan berat paket. Contoh:\n"
+                . "_cek ongkir Ngawi ke Surabaya 1 kg_";
+        }
+
+        if (str_contains($body, 'kirim paket') || str_contains($body, 'kirim barang') || str_contains($body, 'mau kirim')) {
+            return "📮 *Kirim Paket*\n\nKetik asal, tujuan, dan berat paket untuk melihat pilihan kurir. Contoh:\n"
+                . "_kirim paket dari Ngawi ke Bandung 2 kg_";
+        }
+
+        return "💳 *Bayar Tagihan*\n\nSebutkan jenis tagihan Anda, contoh:\n_bayar tagihan listrik_";
     }
 
     /**
