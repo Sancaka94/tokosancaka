@@ -304,6 +304,59 @@ class BotOrderController extends Controller
 
 
     /**
+     * Endpoint bot: status draft checkout untuk satu nomor WhatsApp.
+     * Dipakai Hermes sebagai guard: pelanggan di tengah alur wajib diloloskan.
+     */
+    public function botDraftStatus(Request $request)
+    {
+        if (!$this->_botAuthorized($request)) {
+            return response()->json(['status' => 'error', 'message' => 'Unauthorized Access'], 401);
+        }
+
+        $validated = $request->validate([
+            'phone_number' => 'required|string|min:8|max:20',
+        ]);
+
+        $phone = preg_replace('/[^0-9]/', '', $validated['phone_number']);
+        if (str_starts_with($phone, '0')) {
+            $phone = '62' . substr($phone, 1);
+        }
+
+        // Nomor bisa tersimpan dalam beberapa format; cek semuanya.
+        $variants = array_values(array_unique(array_filter([
+            $phone,
+            '0' . substr($phone, 2) ?: null,
+            str_starts_with($phone, '62') ? '+' . $phone : null,
+        ])));
+
+        $draft = BotOrderDraft::whereIn('phone_number', $variants)
+            ->orderByDesc('updated_at')
+            ->first();
+
+        if (!$draft) {
+            return response()->json([
+                'status' => 'success',
+                'active' => false,
+                'step'   => null,
+            ]);
+        }
+
+        $step = strtoupper((string) $draft->step);
+        $active = !in_array($step, ['COMPLETED', 'DONE', 'PAID', 'CANCEL', 'CANCELLED'], true);
+
+        // Draft kedaluwarsa: tidak diubah > 2 jam -> anggap tidak aktif.
+        if ($active && $draft->updated_at && $draft->updated_at->lt(now()->subHours(2))) {
+            $active = false;
+        }
+
+        return response()->json([
+            'status' => 'success',
+            'active' => $active,
+            'step'   => $draft->step,
+        ]);
+    }
+
+    /**
      * Endpoint bot: hitung ongkir lalu WAJIB kirim list tombol ke nomor pengirim.
      * Dipakai Hermes saat pelanggan bertanya ongkir di WhatsApp.
      */
