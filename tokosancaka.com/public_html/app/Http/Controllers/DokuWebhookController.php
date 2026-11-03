@@ -1008,6 +1008,48 @@ class DokuWebhookController extends Controller
                 return null;
             }
 
+            // REALTIME_PRICE_FIX: KiriminAja memvalidasi shipping_cost == harga
+            // shipping_price terakhir. Ambil ulang agar tidak ditolak.
+            $serviceCode = $this->_pickServiceCode($pesanan, $draft);
+            $courierCode = strtolower((string) ($draft->courier_code ?? $pesanan->expedition ?? ''));
+
+            $realtimeCost = null;
+            try {
+                $pricing = (new \App\Services\KiriminAjaService())->getExpressPricing(
+                    $senderDistrict, $senderSub, $receiverDistrict, $receiverSub,
+                    $weight, 1, 1, 1, $itemValue, null, 'regular', 0
+                );
+
+                if (is_array($pricing) && ($pricing['status'] ?? false) === true) {
+                    foreach ((array) ($pricing['results'] ?? []) as $row) {
+                        if (!is_array($row)) {
+                            continue;
+                        }
+                        $sameCourier = strtolower((string) ($row['service'] ?? '')) === $courierCode;
+                        $sameService = (string) ($row['service_type'] ?? '') === $serviceCode;
+                        if ($sameCourier && $sameService) {
+                            $realtimeCost = (int) ($row['cost'] ?? 0);
+                            break;
+                        }
+                    }
+                }
+            } catch (\Throwable $e) {
+                Log::warning('[WEBHOOK-DOKU] Gagal ambil harga real-time: ' . $e->getMessage());
+            }
+
+            $storedCost = (int) ($pesanan->shipping_cost ?? $draft->shipping_cost ?? 0);
+
+            if ($realtimeCost !== null && $realtimeCost > 0) {
+                if ($storedCost > 0 && $storedCost !== $realtimeCost) {
+                    Log::warning('[WEBHOOK-DOKU] Selisih ongkir ' . $pesanan->nomor_invoice
+                        . ': tersimpan=' . $storedCost . ' realtime=' . $realtimeCost
+                        . ' (pickup memakai harga real-time)');
+                }
+                $shippingCostForPickup = $realtimeCost;
+            } else {
+                $shippingCostForPickup = $storedCost;
+            }
+
             $payload = [
                 'address'          => $pesanan->sender_address,
                 'phone'            => $this->normalizeWaPhone((string) ($pesanan->sender_phone ?? $draft->sender_phone)),
@@ -1034,10 +1076,10 @@ class DokuWebhookController extends Controller
                     'height'                   => (int) ($pesanan->height ?? 10),
                     'length'                   => (int) ($pesanan->length ?? 10),
                     'item_value'               => $itemValue,
-                    'shipping_cost'            => (int) ($pesanan->shipping_cost ?? $draft->shipping_cost ?? 0),
+                    'shipping_cost'            => (int) $shippingCostForPickup,
                     'service'                  => strtolower((string) ($draft->courier_code ?? $pesanan->expedition ?? '')),
                     // service_type harus KODE layanan (mis. 00/REG), bukan nama. Ambil dari expedition.
-                    'service_type'             => $this->_pickServiceCode($pesanan, $draft),
+                    'service_type'             => $serviceCode,
                     'insurance_amount'         => 0,
                     'item_name'                => mb_substr((string) ($pesanan->item_description ?? 'Paket'), 0, 50),
                     'package_type_id'          => 1,
@@ -1089,6 +1131,25 @@ class DokuWebhookController extends Controller
             }
 
             $resi = (string) $resi;
+
+            // AWB_GUARD_FIX: pickup_number (EPR-xxxx) bukan AWB kurir.
+            // Jangan pernah menyimpannya sebagai resi/resi_aktual.
+            $pickupRef = (string) (data_get($response, 'pickup_number') ?? '');
+            $looksLikePickup = str_starts_with(strtoupper($resi), 'EPR-')
+                || ($pickupRef !== '' && $resi === $pickupRef);
+
+            if ($looksLikePickup) {
+                if ($pickupRef !== '') {
+                    $pesanan->shipping_ref = $pickupRef;
+                }
+                $pesanan->status_pesanan = 'Menunggu Pickup';
+                $pesanan->save();
+
+                Log::info('[WEBHOOK-DOKU] Pickup terdaftar, AWB menyusul: ' . ($pickupRef ?: $resi)
+                    . ' untuk ' . $pesanan->nomor_invoice);
+
+                return null;
+            }
 
             $pesanan->resi = $resi;
             $pesanan->resi_aktual = $resi;

@@ -23,6 +23,7 @@ use App\Http\Controllers\ProyekController;
 
 use App\Http\Controllers\Api\BotOrderController;
 use App\Http\Controllers\Api\TemplateWhatsAppController;
+use App\Http\Controllers\Api\AwbFollowupController;
 
 // =========================================================================
 // 1. IMPORT CONTROLLER (LENGKAP)
@@ -168,6 +169,18 @@ Route::prefix('v1/bot/templates')->group(function () {
     Route::get('/{id}', [TemplateWhatsAppController::class, 'show'])->name('bot.templates.show');
     Route::delete('/{id}', [TemplateWhatsAppController::class, 'destroy'])->name('bot.templates.destroy');
 });
+
+Route::post('/v1/bot/pending-awb', [AwbFollowupController::class, 'pendingAwb'])
+    ->middleware('throttle:30,1')
+    ->name('bot.pending-awb');
+
+Route::post('/v1/bot/simpan-awb', [AwbFollowupController::class, 'simpanAwb'])
+    ->middleware('throttle:30,1')
+    ->name('bot.simpan-awb');
+
+Route::post('/v1/bot/kirim-teks', [AwbFollowupController::class, 'kirimTeks'])
+    ->middleware('throttle:30,1')
+    ->name('bot.kirim-teks');
 
 Route::post('/v1/bot/draft-status', [BotOrderController::class, 'botDraftStatus'])
     ->middleware('throttle:60,1')
