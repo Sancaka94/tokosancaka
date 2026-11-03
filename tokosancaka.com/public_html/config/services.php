@@ -52,6 +52,8 @@ return [
         'webhook_secret'  => env('APICOID_WEBHOOK_SECRET'),
         // Nomor tujuan default kirim daftar kurir interaktif (nomor bot toko)
         'default_phone'   => env('APICOID_DEFAULT_PHONE'),
+        // Nomor admin penerima notifikasi pesanan ekspedisi baru (pisahkan koma)
+        'admin_numbers'   => env('ADMIN_WA_NUMBERS'),
         // Template pembuka saat jendela 24 jam tertutup (customer baru)
         'template_name'     => env('APICOID_TEMPLATE_NAME'),
         'template_language' => env('APICOID_TEMPLATE_LANGUAGE', 'id'),
