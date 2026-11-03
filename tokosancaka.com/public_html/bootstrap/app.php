@@ -25,6 +25,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'digiflazz/webhook', // <--- Tambahkan baris ini
             'payment/*', // Jika ada webhook payment lain
             'webhook/fonnte', // <--- Tambahkan baris ini
+            'v1/bot/*',        // Endpoint bot (X-Bot-Secret) — dipanggil server-to-server
             'webhook/apicoid', // Webhook pesan masuk WhatsApp (API.co.id)
             'webhook/whatsapp/apicoid',
             //'api/telegram/webhook', // Sesuaikan dengan route
