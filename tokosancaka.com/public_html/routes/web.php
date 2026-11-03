@@ -152,7 +152,25 @@ use Spatie\Honeypot\ProtectAgainstSpam;
 
 
 
-Route::post('/v1/bot/create-order', [BotOrderController::class, 'createOrder']);
+Route::post('/v1/bot/create-order', [BotOrderController::class, 'createOrder'])
+    ->middleware('throttle:10,1')
+    ->name('bot.order.create');
+
+Route::post('/v1/bot/tracking', [BotOrderController::class, 'botTracking'])
+    ->middleware('throttle:20,1')
+    ->name('bot.tracking');
+
+Route::post('/v1/bot/ongkir-list', [BotOrderController::class, 'botShippingList'])
+    ->middleware('throttle:20,1')
+    ->name('bot.ongkir-list');
+
+Route::post('/v1/bot/kirim-paket', [BotOrderController::class, 'botKirimPaket'])
+    ->middleware('throttle:10,1')
+    ->name('bot.kirim-paket');
+
+Route::post('/v1/bot/cek-ongkir', [BotOrderController::class, 'checkShippingCost'])
+    ->middleware('throttle:10,1')
+    ->name('bot.cek-ongkir');
 
 
 Route::post('/register', [CustomerRegisterController::class, 'register'])

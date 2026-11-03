@@ -301,6 +301,255 @@ class BotOrderController extends Controller
 
 
     /**
+     * Endpoint bot: lacak resi / order id (read-only, tanpa menyentuh pesanan).
+     */
+    public function botTracking(Request $request)
+    {
+        if (!$this->_botAuthorized($request)) {
+            Log::warning('Bot tracking ditolak: kredensial tidak valid. IP: ' . $request->ip());
+            return response()->json(['status' => 'error', 'message' => 'Unauthorized Access'], 401);
+        }
+
+        $validated = $request->validate([
+            'resi' => 'required|string|min:4|max:64',
+        ]);
+
+        // Hanya karakter yang wajar untuk nomor resi — cegah input aneh ke API mitra.
+        $resi = preg_replace('/[^A-Za-z0-9\-._]/', '', $validated['resi']);
+        if ($resi === '' || strlen($resi) < 4) {
+            return response()->json([
+                'status'  => 'error',
+                'message' => 'Nomor resi tidak valid.',
+            ], 422);
+        }
+
+        try {
+            $result = $this->kirimaja->trackPackage($resi);
+        } catch (Throwable $e) {
+            Log::error('Bot tracking error: ' . $e->getMessage());
+            return response()->json([
+                'status'  => 'error',
+                'message' => 'Layanan pelacakan sedang tidak tersedia.',
+            ], 502);
+        }
+
+        if (empty($result['status'])) {
+            return response()->json([
+                'status'  => 'error',
+                'message' => $result['text'] ?? 'Resi tidak ditemukan.',
+                'resi'    => $resi,
+            ], 404);
+        }
+
+        $summary = (array) ($result['data']['summary'] ?? []);
+        $histories = [];
+        foreach (array_slice((array) ($result['data']['histories'] ?? []), 0, 20) as $h) {
+            if (!is_array($h)) {
+                continue;
+            }
+            $histories[] = [
+                'waktu'    => $h['created_at'] ?? $h['time'] ?? null,
+                'status'   => $h['status'] ?? $h['desc'] ?? null,
+                'catatan'  => $h['note'] ?? $h['description'] ?? null,
+                'lokasi'   => $h['location'] ?? null,
+            ];
+        }
+
+        return response()->json([
+            'status'          => 'success',
+            'resi'            => $resi,
+            'ringkasan'       => [
+                'kurir'   => $summary['courier'] ?? $summary['service'] ?? null,
+                'layanan' => $summary['service_type'] ?? null,
+                'status'  => $summary['status'] ?? null,
+                'pengirim' => $summary['sender_name'] ?? null,
+                'penerima' => $summary['receiver_name'] ?? null,
+            ],
+            'riwayat'         => $histories,
+            'jumlah_riwayat'  => count($histories),
+        ], 200);
+    }
+
+    /**
+     * Endpoint bot: daftar semua ekspedisi (read-only, TIDAK mengirim WhatsApp).
+     */
+    public function botShippingList(Request $request)
+    {
+        if (!$this->_botAuthorized($request)) {
+            Log::warning('Bot ongkir-list ditolak: kredensial tidak valid. IP: ' . $request->ip());
+            return response()->json(['status' => 'error', 'message' => 'Unauthorized Access'], 401);
+        }
+
+        $validated = $request->validate([
+            'sender_address'   => 'required|string|min:3|max:255',
+            'receiver_address' => 'required|string|min:3|max:255',
+            'weight'           => 'required|numeric|min:1|max:300000',
+            'item_value'       => 'nullable|numeric|min:0',
+        ]);
+
+        $weight = (int) ceil((float) $validated['weight']);
+        $itemValue = (int) ($validated['item_value'] ?? 10000);
+
+        try {
+            $sender = $this->_resolveAddress($validated['sender_address']);
+            $receiver = $this->_resolveAddress($validated['receiver_address']);
+        } catch (Throwable $e) {
+            Log::error('Bot ongkir-list: pemetaan alamat gagal: ' . $e->getMessage());
+            $sender = $receiver = null;
+        }
+
+        if (!$sender || !$receiver) {
+            return response()->json([
+                'status'  => 'error',
+                'message' => 'Alamat asal atau tujuan tidak ditemukan. Sertakan kecamatan dan kabupaten/kota.',
+            ], 422);
+        }
+
+        $options = $this->_getShippingOptions(
+            $sender['district_id'],
+            $sender['subdistrict_id'],
+            $receiver['district_id'],
+            $receiver['subdistrict_id'],
+            $weight,
+            $itemValue
+        );
+
+        if (empty($options)) {
+            return response()->json([
+                'status'  => 'error',
+                'message' => 'Ongkos kirim tidak tersedia untuk rute ini.',
+                'asal'    => $sender['full_text'] ?? null,
+                'tujuan'  => $receiver['full_text'] ?? null,
+            ], 404);
+        }
+
+        return response()->json([
+            'status'           => 'success',
+            'asal'             => $sender['full_text'] ?? $validated['sender_address'],
+            'tujuan'           => $receiver['full_text'] ?? $validated['receiver_address'],
+            'berat'            => $weight,
+            'berat_satuan'     => 'gram',
+            'jumlah_ekspedisi' => count($options),
+            'ekspedisi'        => $options,
+            'catatan'          => 'Tarif estimasi. Tidak ada pesanan dibuat.',
+        ], 200);
+    }
+
+    /**
+     * Endpoint bot: siapkan ringkasan pengiriman (validasi + ongkir terpilih).
+     * READ-ONLY — tidak membuat Pesanan dan tidak membuat transaksi pembayaran.
+     */
+    public function botKirimPaket(Request $request)
+    {
+        if (!$this->_botAuthorized($request)) {
+            Log::warning('Bot kirim-paket ditolak: kredensial tidak valid. IP: ' . $request->ip());
+            return response()->json(['status' => 'error', 'message' => 'Unauthorized Access'], 401);
+        }
+
+        $validated = $request->validate([
+            'sender_name'      => 'required|string|min:2|max:100',
+            'sender_phone'     => 'required|string|min:8|max:20',
+            'sender_address'   => 'required|string|min:3|max:255',
+            'receiver_name'    => 'required|string|min:2|max:100',
+            'receiver_phone'   => 'required|string|min:8|max:20',
+            'receiver_address' => 'required|string|min:3|max:255',
+            'weight'           => 'required|numeric|min:1|max:300000',
+            'item_value'       => 'nullable|numeric|min:0',
+            'kurir'            => 'nullable|string|max:30',
+            'kode'             => 'nullable|string|max:30',
+        ]);
+
+        $weight = (int) ceil((float) $validated['weight']);
+        $itemValue = (int) ($validated['item_value'] ?? 10000);
+
+        try {
+            $sender = $this->_resolveAddress($validated['sender_address']);
+            $receiver = $this->_resolveAddress($validated['receiver_address']);
+        } catch (Throwable $e) {
+            Log::error('Bot kirim-paket: pemetaan alamat gagal: ' . $e->getMessage());
+            $sender = $receiver = null;
+        }
+
+        if (!$sender || !$receiver) {
+            return response()->json([
+                'status'  => 'error',
+                'message' => 'Alamat asal atau tujuan tidak ditemukan. Sertakan kecamatan dan kabupaten/kota.',
+            ], 422);
+        }
+
+        $options = $this->_getShippingOptions(
+            $sender['district_id'],
+            $sender['subdistrict_id'],
+            $receiver['district_id'],
+            $receiver['subdistrict_id'],
+            $weight,
+            $itemValue
+        );
+
+        if (empty($options)) {
+            return response()->json([
+                'status'  => 'error',
+                'message' => 'Tidak ada layanan ekspedisi untuk rute tersebut.',
+            ], 404);
+        }
+
+        $wantedKurir = strtoupper(trim((string) ($validated['kurir'] ?? '')));
+        $wantedKode = strtoupper(trim((string) ($validated['kode'] ?? '')));
+
+        $chosen = null;
+        foreach ($options as $opt) {
+            if ($wantedKurir !== '' && strtoupper((string) $opt['kurir']) !== $wantedKurir) {
+                continue;
+            }
+            if ($wantedKode !== '' && strtoupper((string) $opt['kode']) !== $wantedKode) {
+                continue;
+            }
+            $chosen = $opt;
+            break;
+        }
+
+        if (!$chosen) {
+            $chosen = $options[0];
+        }
+
+        return response()->json([
+            'status'        => 'success',
+            'pengirim'      => [
+                'nama'  => $validated['sender_name'],
+                'phone' => $validated['sender_phone'],
+                'alamat' => $sender['full_text'] ?? null,
+            ],
+            'penerima'      => [
+                'nama'  => $validated['receiver_name'],
+                'phone' => $validated['receiver_phone'],
+                'alamat' => $receiver['full_text'] ?? null,
+            ],
+            'berat'         => $weight,
+            'berat_satuan'  => 'gram',
+            'nilai_barang'  => $itemValue,
+            'terpilih'      => $chosen,
+            'ringkasan_biaya' => [
+                'ongkir' => (int) $chosen['ongkir'],
+                'ongkir_format' => 'Rp ' . number_format((int) $chosen['ongkir'], 0, ',', '.'),
+                'total'  => (int) $chosen['ongkir'],
+                'total_format' => 'Rp ' . number_format((int) $chosen['ongkir'], 0, ',', '.'),
+            ],
+            'catatan'       => 'Ringkasan estimasi. Belum ada pesanan dibuat dan belum ada pembayaran.',
+        ], 200);
+    }
+
+    /**
+     * Gatekeeper bot: fail-closed, perbandingan constant-time.
+     */
+    private function _botAuthorized(Request $request): bool
+    {
+        $botSecret = (string) config('services.bot_order.secret');
+        $providedSecret = (string) $request->header('X-Bot-Secret', '');
+
+        return $botSecret !== '' && $providedSecret !== '' && hash_equals($botSecret, $providedSecret);
+    }
+
+    /**
      * Endpoint tambahan: cek ongkir dan kirim pilihan kurir interaktif ke WhatsApp.
      * Tidak membuat Pesanan dan tidak memanggil Tripay.
      */
