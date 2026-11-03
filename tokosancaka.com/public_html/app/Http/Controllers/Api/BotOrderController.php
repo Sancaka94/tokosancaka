@@ -1676,6 +1676,35 @@ class BotOrderController extends Controller
 
             $itemValue = (int) $draft->item_value;
 
+            // PRICE_GUARD_V1: harga quote bisa basi/berbeda dari KiriminAja.
+            // Samakan dengan harga real-time sebelum pesanan dibuat, supaya
+            // pickup tidak ditolak dan customer tidak membayar lebih.
+            $quotedCost = (int) $draft->shipping_cost;
+            $finalCost = $quotedCost;
+            $realtime = $this->_resolveRealtimeCost(
+                $senderLocation, $receiverLocation, (int) $draft->weight,
+                $itemValue, (string) $draft->courier_code, (string) $draft->courier_service
+            );
+
+            if ($realtime !== null && $realtime > 0 && $realtime !== $quotedCost) {
+                Log::warning('[PRICE-GUARD] Selisih ongkir draft ' . $draft->id
+                    . ': quote=' . $quotedCost . ' realtime=' . $realtime
+                    . ' kurir=' . $draft->courier_code);
+
+                $finalCost = $realtime;
+                $draft->shipping_cost = $realtime;
+                $draft->save();
+
+                $this->_sendWhatsAppText(
+                    $phone,
+                    "ℹ️ *Tarif diperbarui*\n\n"
+                    . "Ongkir menyesuaikan tarif ekspedisi terkini:\n"
+                    . "• Sebelumnya: Rp " . number_format($quotedCost, 0, ',', '.') . "\n"
+                    . "• Tarif berlaku: *Rp " . number_format($realtime, 0, ',', '.') . "*\n\n"
+                    . "Mohon konfirmasi ulang pada ringkasan berikut."
+                );
+            }
+
             $order = Pesanan::create([
                 'nomor_invoice'           => $nomorInvoice,
                 'id_pengguna_pembeli'     => $customerId,
@@ -1706,8 +1735,8 @@ class BotOrderController extends Controller
                 'service_type'            => $draft->courier_service,
                 'expedition'              => 'regular-' . strtolower($draft->courier_code) . '-' . $draft->courier_service . '-' . $draft->shipping_cost . '-0-0-0',
                 'payment_method'          => 'DOKU',
-                'shipping_cost'           => $draft->shipping_cost,
-                'price'                   => $draft->shipping_cost,
+                'shipping_cost'           => $finalCost,
+                'price'                   => $finalCost,
                 'ansuransi'               => 'tidak',
                 'insurance_cost'          => 0,
                 'cod_fee'                 => 0,
@@ -2225,6 +2254,45 @@ class BotOrderController extends Controller
             'quote_token'   => $token,
             'berlaku_menit' => 20,
         ];
+    }
+
+    /**
+     * PRICE_GUARD_V1: ambil harga real-time untuk kurir+layanan terpilih.
+     * Return null bila tidak ditemukan (jangan memblokir pembuatan pesanan).
+     */
+    private function _resolveRealtimeCost(array $sender, array $receiver, int $weight, int $itemValue, string $courierCode, string $serviceName): ?int
+    {
+        try {
+            $options = $this->_getShippingOptions(
+                $sender['district_id'],
+                $sender['subdistrict_id'],
+                $receiver['district_id'],
+                $receiver['subdistrict_id'],
+                max($weight, 1),
+                max($itemValue, 1000)
+            );
+        } catch (\Throwable $e) {
+            Log::warning('[PRICE-GUARD] Gagal ambil harga real-time: ' . $e->getMessage());
+
+            return null;
+        }
+
+        $wantCourier = strtoupper(trim($courierCode));
+        $wantService = trim($serviceName);
+
+        foreach ($options as $opt) {
+            if (strtoupper((string) $opt['kurir']) !== $wantCourier) {
+                continue;
+            }
+            $name = (string) $opt['layanan'];
+            if ($wantService !== '' && $name !== $wantService) {
+                continue;
+            }
+
+            return (int) $opt['ongkir'];
+        }
+
+        return null;
     }
 
     /**
