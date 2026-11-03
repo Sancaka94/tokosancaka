@@ -169,6 +169,10 @@ Route::prefix('v1/bot/templates')->group(function () {
     Route::delete('/{id}', [TemplateWhatsAppController::class, 'destroy'])->name('bot.templates.destroy');
 });
 
+Route::post('/v1/bot/cek-resi', [\App\Http\Controllers\TrackingController::class, 'botCekResi'])
+    ->middleware('throttle:20,1')
+    ->name('bot.cek-resi');
+
 Route::post('/v1/bot/tracking', [BotOrderController::class, 'botTracking'])
     ->middleware('throttle:20,1')
     ->name('bot.tracking');

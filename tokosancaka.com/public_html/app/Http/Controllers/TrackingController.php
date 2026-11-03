@@ -702,6 +702,234 @@ class TrackingController extends Controller
         ];
     }
 
+    /**
+     * Endpoint bot (Hermes/WhatsApp): cek resi ringkas untuk pelanggan.
+     * Memakai ulang trackPackage() agar tidak ada duplikasi logika pelacakan.
+     */
+    public function botCekResi(Request $request)
+    {
+        // Gatekeeper: hanya bot yang punya secret.
+        $botSecret = (string) config('services.bot_order.secret');
+        $provided = (string) $request->header('X-Bot-Secret', '');
+
+        if ($botSecret === '' || $provided === '' || !hash_equals($botSecret, $provided)) {
+            \Log::warning('Bot cek-resi ditolak: kredensial tidak valid. IP: ' . $request->ip());
+
+            return response()->json(['status' => 'error', 'message' => 'Unauthorized Access'], 401);
+        }
+
+        $validated = $request->validate([
+            'resi'         => 'required|string|min:4|max:64',
+            'phone_number' => 'nullable|string|max:20',
+        ]);
+
+        // Bersihkan: hanya karakter yang wajar untuk nomor resi.
+        $resi = preg_replace('/[^A-Za-z0-9\-._]/', '', $validated['resi']);
+        if ($resi === '' || strlen($resi) < 4) {
+            return response()->json([
+                'status'  => 'error',
+                'message' => 'Nomor resi tidak valid.',
+            ], 422);
+        }
+
+        // BOT_TRACK_V2: lacak langsung ke sumber (bukan lewat trackPackage yang
+        // mengembalikan view untuk halaman web).
+        $result = null;
+
+        try {
+            $pesanan = \App\Models\Pesanan::where('resi', $resi)
+                ->orWhere('resi_aktual', $resi)
+                ->orWhere('nomor_invoice', $resi)
+                ->orWhere('shipping_ref', $resi)
+                ->first();
+
+            if ($pesanan) {
+                $expeditionRaw = strtolower((string) (
+                    $pesanan->expedition
+                    ?? $pesanan->jasa_ekspedisi_aktual
+                    ?? $pesanan->service_type
+                    ?? ''
+                ));
+
+                if (str_contains($expeditionRaw, 'deliveree')) {
+                    $raw = $this->trackDeliveree($pesanan);
+                    $result = $raw ?: null;
+                } elseif (str_contains($expeditionRaw, 'lalamove')) {
+                    $raw = $this->trackLalamove($pesanan);
+                    $result = $raw ?: null;
+                } else {
+                    // Jalur utama: KiriminAja
+                    $kiriminAja = new \App\Services\KiriminAjaService();
+                    $orderId = $pesanan->resi_aktual
+                        ?: ($pesanan->nomor_invoice ?? $pesanan->resi);
+                    $serviceType = (string) ($pesanan->service_type ?? 'regular');
+                    if (str_contains($serviceType, '-')) {
+                        $serviceType = explode('-', $serviceType)[0];
+                    }
+                    if (str_contains($serviceType, ' ')) {
+                        $serviceType = 'regular';
+                    }
+
+                    $trackingData = $kiriminAja->track($serviceType, $orderId);
+
+                    if (is_array($trackingData) && ($trackingData['status'] ?? false)) {
+                        $result = $this->normalizeKiriminAjaResponse($trackingData, $pesanan);
+
+                        // BOT_RAW_HIST: simpan struktur asli untuk bot (lebih kaya).
+                        $result['raw_histories'] = array_slice(
+                            (array) ($trackingData['histories'] ?? []),
+                            0,
+                            10
+                        );
+                        $result['raw_text'] = $trackingData['text'] ?? null;
+                    }
+
+                    if (empty($result)) {
+                        // Fallback: data lokal, tetap informatif untuk pelanggan.
+                        $result = [
+                            'is_pesanan'      => true,
+                            'resi'            => $pesanan->resi,
+                            'resi_aktual'     => $pesanan->resi_aktual,
+                            'pengirim'        => $pesanan->sender_name ?? 'N/A',
+                            'alamat_pengirim' => $pesanan->sender_address ?? '-',
+                            'penerima'        => $pesanan->receiver_name ?? 'N/A',
+                            'alamat_penerima' => $pesanan->receiver_address ?? '-',
+                            'no_pengirim'     => $pesanan->sender_phone ?? '-',
+                            'no_penerima'     => $pesanan->receiver_phone ?? '-',
+                            'status'          => $pesanan->status_pesanan ?? $pesanan->status,
+                            'tanggal_dibuat'  => $pesanan->created_at,
+                            'histories'       => [],
+                            'ekspedisi'       => $pesanan->expedition ?? null,
+                        ];
+                    }
+                }
+            }
+        } catch (\Throwable $e) {
+            \Log::error('Bot cek-resi: pelacakan gagal: ' . $e->getMessage());
+
+            return response()->json([
+                'status'  => 'error',
+                'message' => 'Layanan pelacakan sedang tidak tersedia. Coba lagi nanti.',
+                'resi'    => $resi,
+            ], 502);
+        }
+
+        if (empty($result) || !is_array($result)) {
+            return response()->json([
+                'status'  => 'error',
+                'message' => 'Resi tidak ditemukan. Periksa kembali penulisan nomor resi.',
+                'resi'    => $resi,
+            ], 404);
+        }
+
+        // BOT_HIST_V2: ringkas riwayat untuk konsumsi bot.
+        $histories = [];
+
+        // BOT_RAW_HIST: struktur asli KiriminAja (status berisi teks lengkap).
+        if (!empty($result['raw_histories'])) {
+            foreach (array_slice((array) $result['raw_histories'], 0, 8) as $raw) {
+                $raw = (array) $raw;
+                $teks = trim(strip_tags((string) ($raw['status'] ?? '')));
+                if ($teks === '') {
+                    continue;
+                }
+
+                $histories[] = [
+                    'waktu'      => $raw['created_at'] ?? null,
+                    'status'     => $teks,
+                    'lokasi'     => null,
+                    'keterangan' => $raw['driver'] ?? null,
+                ];
+            }
+        }
+
+        foreach (array_slice((array) ($result['histories'] ?? []), 0, 8) as $h) {
+            $h = (array) $h;
+
+            $status = trim((string) ($h['status'] ?? ''));
+            $ket = trim((string) ($h['keterangan'] ?? $h['catatan'] ?? ''));
+            $lokasi = trim((string) ($h['lokasi'] ?? ''));
+
+            // Bila status kosong/hanya 'Update', pakai keterangan sebagai isi baris.
+            if ($status === '' || strtolower($status) === 'update') {
+                $status = $ket !== '' ? $ket : 'Update';
+            }
+
+            // Bersihkan tag HTML dari keterangan (data dari API/web).
+            $status = trim(strip_tags($status));
+
+            $histories[] = [
+                'waktu'      => $h['created_at'] ?? $h['waktu'] ?? null,
+                'status'     => $status,
+                'lokasi'     => ($lokasi !== '' && $lokasi !== '-') ? $lokasi : null,
+                'keterangan' => $ket !== '' ? trim(strip_tags($ket)) : null,
+            ];
+        }
+
+        $statusTerkini = (string) ($result['status'] ?? 'Dalam Proses');
+        $resiTampil = (string) ($result['resi_aktual'] ?? $result['resi'] ?? $resi);
+        $ekspedisi = trim((string) ($result['ekspedisi'] ?? $result['jasa_ekspedisi_aktual'] ?? ''));
+        $penerima = (string) ($result['penerima'] ?? '-');
+
+        // Teks siap kirim ke WhatsApp (dipakai bot agar tidak menyusun sendiri).
+        $lines = [
+            '*STATUS PAKET*',
+            '',
+            'No. Resi: *' . $resiTampil . '*',
+        ];
+        if ($ekspedisi !== '') {
+            $lines[] = 'Ekspedisi: ' . $ekspedisi;
+        }
+        $lines[] = 'Status: *' . $statusTerkini . '*';
+        $lines[] = 'Penerima: ' . $penerima;
+
+        if (!empty($histories)) {
+            $lines[] = '';
+            $lines[] = '*Riwayat terakhir:*';
+            foreach (array_slice($histories, 0, 5) as $h) {
+                $waktu = $h['waktu'] ? \Carbon\Carbon::parse($h['waktu'])->format('d/m H:i') : '';
+                $lokasi = $h['lokasi'] && $h['lokasi'] !== '-' ? ' — ' . $h['lokasi'] : '';
+                $lines[] = '• ' . trim(($h['status'] ?? 'Update') . $lokasi) . ($waktu ? ' (' . $waktu . ')' : '');
+            }
+        } else {
+            $lines[] = '';
+            $lines[] = 'Belum ada riwayat perjalanan. Paket sedang disiapkan/dijemput kurir.';
+        }
+
+        $whatsappText = implode("\n", $lines);
+
+        $response = [
+            'status'          => 'success',
+            'resi'            => $resiTampil,
+            'ekspedisi'       => $ekspedisi ?: null,
+            'status_paket'    => $statusTerkini,
+            'penerima'        => $penerima,
+            'pengirim'        => (string) ($result['pengirim'] ?? '-'),
+            'riwayat'         => $histories,
+            'jumlah_riwayat'  => count($histories),
+            'whatsapp_text'   => $whatsappText,
+        ];
+
+        // Bila nomor diisi, kirim langsung ke WhatsApp pelanggan.
+        $phoneInput = trim((string) ($validated['phone_number'] ?? ''));
+        if ($phoneInput !== '') {
+            try {
+                $bot = app(\App\Http\Controllers\Api\BotOrderController::class);
+                $sent = $bot->sendWhatsAppTextPublic($phoneInput, $whatsappText);
+                $response['whatsapp'] = [
+                    'sent'    => (bool) $sent,
+                    'phone'   => preg_replace('/[^0-9]/', '', $phoneInput),
+                    'message' => $sent ? 'Status resi terkirim ke WhatsApp.' : 'Gagal mengirim ke WhatsApp.',
+                ];
+            } catch (\Throwable $e) {
+                \Log::error('Bot cek-resi: kirim WA gagal: ' . $e->getMessage());
+                $response['whatsapp'] = ['sent' => false, 'message' => 'Gagal mengirim ke WhatsApp.'];
+            }
+        }
+
+        return response()->json($response, 200);
+    }
+
     public function refreshTimeline()
     {
         return redirect()->back()->with('success', 'Timeline diperbarui');
