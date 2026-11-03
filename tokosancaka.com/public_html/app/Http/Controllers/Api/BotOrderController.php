@@ -1565,9 +1565,13 @@ class BotOrderController extends Controller
     {
         $rows = [];
         foreach (array_slice($buttons, 0, 3) as $btn) {
+            // API.co.id mewajibkan wrapper {type:"reply", reply:{id,title}}.
             $rows[] = [
-                'id'    => $btn['id'],
-                'title' => Str::limit($btn['title'], 20, ''),
+                'type'  => 'reply',
+                'reply' => [
+                    'id'    => $btn['id'],
+                    'title' => Str::limit($btn['title'], 20, ''),
+                ],
             ];
         }
 
