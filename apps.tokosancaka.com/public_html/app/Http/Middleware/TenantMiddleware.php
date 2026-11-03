@@ -15,23 +15,36 @@ class TenantMiddleware
 {
     public function handle(Request $request, Closure $next)
     {
-        // 1. JALUR VIP: Biarkan webhook / callback lewat tanpa halangan
+        // 1. Pengecualian webhook dan API
         if ($request->is('dana/*') || $request->is('api/*')) {
             return $next($request);
         }
 
-        // 2. DETEKSI SUBDOMAIN
-        $host = $request->getHost();
+        // 2. Deteksi hostname
+        $host = strtolower($request->getHost());
+
+        // 3. Domain yang tidak menggunakan sistem tenant
+        $excludedHosts = [
+            'bot.tokosancaka.com',
+            'apps.tokosancaka.com',
+            'admin.tokosancaka.com',
+            'www.tokosancaka.com',
+            'tokosancaka.com',
+            'localhost',
+            '127.0.0.1',
+        ];
+
+        if (in_array($host, $excludedHosts, true)) {
+            return $next($request);
+        }
+
+        // 4. Deteksi subdomain
         $parts = explode('.', $host);
         $subdomain = $parts[0] ?? '';
 
         URL::defaults(['subdomain' => $subdomain]);
 
-        // 3. PENGECUALIAN DOMAIN UTAMA / DEMO
-        $excludedSubdomains = ['apps', 'admin', 'www', 'localhost', '127', 'lpkhongkong', 'bot'];
-        if (in_array($subdomain, $excludedSubdomains)) {
-            return $next($request);
-        }
+        // Lanjutkan kode tenant Anda mulai dari konfigurasi demo.
 
         // [MAGIC FIX: PAKSA CONFIG DI RUNTIME UNTUK DEMO]
         if ($subdomain === 'demo') {
