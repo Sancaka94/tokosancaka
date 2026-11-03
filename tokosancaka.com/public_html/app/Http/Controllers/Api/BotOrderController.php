@@ -1043,17 +1043,28 @@ class BotOrderController extends Controller
 
         $payload = $request->all();
 
-        $phone = data_get($payload, 'data.from')
+        // Format API.co.id: {event_type, data:{customer_phone, message_type, content, raw:{...}}}
+        $eventType = (string) (data_get($payload, 'event_type') ?? '');
+
+        $phone = data_get($payload, 'data.customer_phone')
+            ?? data_get($payload, 'data.from')
             ?? data_get($payload, 'data.phone_number')
-            ?? data_get($payload, 'data.sender')
+            ?? data_get($payload, 'data.raw.from')
             ?? data_get($payload, 'from')
             ?? data_get($payload, 'phone_number');
 
         if (!$phone) {
+            Log::info('[WA-WEBHOOK] Dilewati: tanpa nomor pengirim', ['event_type' => $eventType]);
+
             return response()->json(['status' => 'ignored', 'reason' => 'no_phone']);
         }
 
         $phone = $this->_normalizeWaPhone((string) $phone);
+
+        // Abaikan pesan keluar (event message.sent) agar tidak loop.
+        if (($messageDirection = data_get($payload, 'data.direction')) === 'outbound') {
+            return response()->json(['status' => 'ignored', 'reason' => 'outbound']);
+        }
 
         $interactiveId = data_get($payload, 'data.interactive_response.id')
             ?? data_get($payload, 'data.interactive.button_reply.id')
@@ -1061,6 +1072,8 @@ class BotOrderController extends Controller
             ?? data_get($payload, 'data.message.interactive.button_reply.id')
             ?? data_get($payload, 'data.message.interactive.list_reply.id')
             ?? data_get($payload, 'data.raw.interactive.list_reply.id')
+            ?? data_get($payload, 'data.raw.interactive.button_reply.id')
+            ?? data_get($payload, 'data.raw.button.id')
             ?? data_get($payload, 'interactive_response.id');
 
         // 1. Interaktif: pilihan kurir / tombol konfirmasi
@@ -1086,15 +1099,21 @@ class BotOrderController extends Controller
 
         // 2. Teks biasa: input bertahap
         $text = trim((string) (
-            data_get($payload, 'data.message.text.body')
+            data_get($payload, 'data.content')
+            ?? data_get($payload, 'data.raw.text.body')
+            ?? data_get($payload, 'data.message.text.body')
             ?? data_get($payload, 'data.text.body')
             ?? data_get($payload, 'data.text')
             ?? data_get($payload, 'text')
-            ?? data_get($payload, 'message')
             ?? ''
         ));
 
         if ($text === '') {
+            Log::info('[WA-WEBHOOK] Dilewati: tanpa teks', [
+                'event_type' => $eventType,
+                'type'       => data_get($payload, 'data.message_type'),
+            ]);
+
             return response()->json(['status' => 'ignored', 'reason' => 'no_text']);
         }
 
