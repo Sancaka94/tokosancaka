@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 use App\Models\Pesanan;
 use App\Models\User;
@@ -197,6 +198,8 @@ class BotOrderController extends Controller
             'weight'           => 'required|numeric|min:1|max:300000',
             'item_value'       => 'nullable|numeric|min:0',
             'all'              => 'nullable|boolean',
+            'phone_number'     => 'nullable|string|max:20',
+            'wa'               => 'nullable|boolean',
         ]);
 
         $weight = (int) ceil((float) $validated['weight']);
@@ -278,8 +281,342 @@ class BotOrderController extends Controller
             $payload['ekspedisi'] = $allOptions;
         }
 
+        // wa=true -> kirim daftar kurir interaktif ke WhatsApp (API.co.id).
+        // Nomor tujuan: phone_number, fallback APICOID_DEFAULT_PHONE (nomor bot toko).
+        $wantWa = (bool) ($validated['wa'] ?? $request->boolean('wa'));
+        $phoneInput = trim((string) ($validated['phone_number'] ?? ''));
+        if ($phoneInput === '' && $wantWa) {
+            $phoneInput = trim((string) config('services.apicoid.default_phone'));
+        }
+        if ($phoneInput !== '') {
+            $payload['whatsapp'] = $this->_sendShippingListToWhatsApp($phoneInput, $allOptions, [
+                'asal'   => $payload['asal'],
+                'tujuan' => $payload['tujuan'],
+                'weight' => $weight,
+            ]);
+        }
+
         return response()->json($payload, 200);
     }
+
+
+    /**
+     * Endpoint tambahan: cek ongkir dan kirim pilihan kurir interaktif ke WhatsApp.
+     * Tidak membuat Pesanan dan tidak memanggil Tripay.
+     */
+    public function sendShippingOptionsWhatsApp(Request $request)
+    {
+        $validated = $request->validate([
+            'phone_number'     => 'required|string|max:20',
+            'sender_address'   => 'required|string|min:3|max:255',
+            'receiver_address' => 'required|string|min:3|max:255',
+            'weight'           => 'required|numeric|min:1|max:300000',
+            'item_value'       => 'nullable|numeric|min:0',
+        ]);
+
+        $phone = preg_replace('/[^0-9]/', '', $validated['phone_number']);
+        if (Str::startsWith($phone, '0')) {
+            $phone = '62' . substr($phone, 1);
+        } elseif (Str::startsWith($phone, '8')) {
+            $phone = '62' . $phone;
+        }
+
+        if (!Str::startsWith($phone, '62') || strlen($phone) < 10) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Nomor WhatsApp harus menggunakan format Indonesia, contoh 6281234567890.',
+            ], 422);
+        }
+
+        try {
+            $senderLocation = $this->_resolveAddress($validated['sender_address']);
+            $receiverLocation = $this->_resolveAddress($validated['receiver_address']);
+
+            if (!$senderLocation || !$receiverLocation) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Alamat asal atau tujuan tidak ditemukan. Sertakan kecamatan dan kabupaten/kota.',
+                ], 422);
+            }
+
+            $weight = (int) ceil((float) $validated['weight']);
+            $itemValue = (int) ($validated['item_value'] ?? 10000);
+
+            $options = $this->_getShippingOptions(
+                $senderLocation['district_id'],
+                $senderLocation['subdistrict_id'],
+                $receiverLocation['district_id'],
+                $receiverLocation['subdistrict_id'],
+                $weight,
+                $itemValue
+            );
+
+            if (empty($options)) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Tidak ada layanan ekspedisi untuk rute tersebut.',
+                ], 404);
+            }
+
+            $token = Str::lower(Str::random(12));
+            $cacheKey = 'sck_wa_shipping_quote:' . $token;
+
+            Cache::put($cacheKey, [
+                'phone' => $phone,
+                'asal' => $senderLocation['full_text'] ?? $validated['sender_address'],
+                'tujuan' => $receiverLocation['full_text'] ?? $validated['receiver_address'],
+                'weight' => $weight,
+                'options' => $options,
+            ], now()->addMinutes(20));
+
+            $sent = $this->_sendWhatsAppShippingList($phone, $token, 0, $options);
+
+            if (!$sent) {
+                Cache::forget($cacheKey);
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Gagal mengirim daftar kurir melalui API.co.id. Periksa API key dan respons gateway.',
+                ], 502);
+            }
+
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Daftar pilihan kurir interaktif berhasil dikirim ke WhatsApp.',
+                'jumlah_ekspedisi' => count($options),
+                'berat_gram' => $weight,
+                'quote_token' => $token,
+                'berlaku_menit' => 20,
+            ]);
+        } catch (\Throwable $e) {
+            Log::error('WhatsApp shipping list error: ' . $e->getMessage());
+
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Terjadi kesalahan saat menyiapkan pilihan ongkir.',
+            ], 500);
+        }
+    }
+
+    /**
+     * Endpoint tambahan: menerima callback pilihan list dari webhook API.co.id.
+     * ID pilihan: sckq|TOKEN|INDEX atau scknext|TOKEN|PAGE.
+     */
+    public function handleWhatsAppShippingWebhook(Request $request)
+    {
+        $webhookSecret = (string) config('services.apicoid.webhook_secret');
+        $providedSecret = (string) $request->header('X-WhatsApp-Webhook-Secret', '');
+
+        if ($webhookSecret !== '' &&
+            ($providedSecret === '' || !hash_equals($webhookSecret, $providedSecret))) {
+            Log::warning('Webhook WhatsApp ditolak: secret tidak valid.');
+            return response()->json(['status' => 'error', 'message' => 'Unauthorized'], 401);
+        }
+
+        // Menoleransi beberapa bentuk payload webhook. Cocokkan dengan payload aktual
+        // dari dashboard API.co.id sebelum produksi.
+        $interactiveId = data_get($request->all(), 'data.interactive_response.id')
+            ?? data_get($request->all(), 'data.interactive.list_reply.id')
+            ?? data_get($request->all(), 'data.message.interactive.list_reply.id')
+            ?? data_get($request->all(), 'data.raw.interactive.list_reply.id')
+            ?? data_get($request->all(), 'interactive_response.id');
+
+        if (!$interactiveId || !is_string($interactiveId)) {
+            return response()->json(['status' => 'ignored']);
+        }
+
+        $parts = explode('|', $interactiveId);
+        if (count($parts) !== 3 || !in_array($parts[0], ['sckq', 'scknext'], true)) {
+            return response()->json(['status' => 'ignored']);
+        }
+
+        [, $token, $value] = $parts;
+        $quote = Cache::get('sck_wa_shipping_quote:' . $token);
+
+        if (!$quote || empty($quote['phone']) || empty($quote['options'])) {
+            return response()->json([
+                'status' => 'expired',
+                'message' => 'Sesi pilihan ongkir sudah kedaluwarsa. Silakan cek ongkir kembali.',
+            ]);
+        }
+
+        if ($parts[0] === 'scknext') {
+            $page = max(0, (int) $value);
+            $sent = $this->_sendWhatsAppShippingList(
+                $quote['phone'],
+                $token,
+                $page,
+                $quote['options']
+            );
+
+            return response()->json(['status' => $sent ? 'success' : 'error']);
+        }
+
+        $index = (int) $value;
+        if (!array_key_exists($index, $quote['options'])) {
+            return response()->json(['status' => 'invalid_selection'], 422);
+        }
+
+        $selected = $quote['options'][$index];
+        $message = "✅ *Pilihan kurir berhasil diterima!*\n\n"
+            . "Kurir: *" . $selected['kurir'] . "*\n"
+            . "Layanan: *" . ($selected['layanan'] ?: $selected['kode']) . "*\n"
+            . "Ongkir: *Rp " . number_format((int) $selected['ongkir'], 0, ',', '.') . "*\n"
+            . "Berat: *" . (int) $quote['weight'] . " gram*\n\n"
+            . "Silakan lanjutkan pengisian data pengirim dan penerima untuk membuat pesanan.";
+
+        $sent = $this->_sendWhatsAppText($quote['phone'], $message);
+
+        Log::info('Pilihan kurir WhatsApp diterima.', [
+            'quote_token' => $token,
+            'courier' => $selected['kurir'],
+            'service' => $selected['kode'],
+            'cost' => $selected['ongkir'],
+        ]);
+
+        return response()->json([
+            'status' => $sent ? 'success' : 'error',
+            'selected' => [
+                'kurir' => $selected['kurir'],
+                'layanan' => $selected['layanan'],
+                'kode' => $selected['kode'],
+                'ongkir' => $selected['ongkir'],
+                'etd' => $selected['etd'],
+            ],
+        ], $sent ? 200 : 502);
+    }
+
+    /**
+     * Mengirim maksimal 9 layanan + 1 pilihan halaman berikutnya.
+     * Batas 10 row total menjaga kompatibilitas list message WhatsApp.
+     */
+    private function _sendWhatsAppShippingList(string $phone, string $token, int $page, array $options): bool
+    {
+        $perPage = 9;
+        $offset = $page * $perPage;
+        $pageOptions = array_slice($options, $offset, $perPage);
+
+        if (empty($pageOptions)) {
+            return false;
+        }
+
+        $rows = [];
+        foreach ($pageOptions as $localIndex => $option) {
+            $index = $offset + $localIndex;
+            $title = trim($option['kurir'] . ' ' . ($option['layanan'] ?: $option['kode']));
+            $title = Str::limit($title, 24, '');
+
+            $description = 'Rp ' . number_format((int) $option['ongkir'], 0, ',', '.');
+            if (!empty($option['etd'])) {
+                $description .= ' | ' . $option['etd'] . ' hari';
+            }
+            if (!empty($option['cod'])) {
+                $description .= ' | COD';
+            }
+
+            $rows[] = [
+                'id' => 'sckq|' . $token . '|' . $index,
+                'title' => $title !== '' ? $title : 'Layanan ' . ($index + 1),
+                'description' => Str::limit($description, 72, ''),
+            ];
+        }
+
+        if (($offset + $perPage) < count($options)) {
+            $rows[] = [
+                'id' => 'scknext|' . $token . '|' . ($page + 1),
+                'title' => 'Lihat pilihan berikutnya',
+                'description' => 'Menampilkan layanan kurir selanjutnya',
+            ];
+        }
+
+        $interactive = [
+            'type' => 'list',
+            'header' => [
+                'type' => 'text',
+                'text' => 'SANCAKA EXPRESS',
+            ],
+            'body' => [
+                'text' => "📦 *Pilihan layanan pengiriman*\n"
+                    . "Asal: " . ($this->_getCachedQuoteValue($token, 'asal') ?? '-') . "\n"
+                    . "Tujuan: " . ($this->_getCachedQuoteValue($token, 'tujuan') ?? '-') . "\n"
+                    . "Berat: " . ($this->_getCachedQuoteValue($token, 'weight') ?? '-') . " gram\n\n"
+                    . "Silakan pilih kurir dan layanan yang Anda inginkan.",
+            ],
+            'footer' => [
+                'text' => 'Estimasi dan tarif dapat berubah',
+            ],
+            'action' => [
+                'button' => 'Pilih Kurir',
+                'sections' => [
+                    [
+                        'title' => 'Layanan Pengiriman',
+                        'rows' => $rows,
+                    ],
+                ],
+            ],
+        ];
+
+        $payload = [
+            'phone_number' => $phone,
+            'channel' => 'whatsapp',
+            'message_type' => 'interactive',
+            'interactive' => $interactive,
+        ];
+
+        $phoneNumberId = config('services.apicoid.phone_number_id');
+        if (!empty($phoneNumberId)) {
+            $payload['whatsapp_phone_number_id'] = $phoneNumberId;
+        }
+
+        return $this->_sendWhatsAppPayload($payload);
+    }
+
+    private function _getCachedQuoteValue(string $token, string $field)
+    {
+        $quote = Cache::get('sck_wa_shipping_quote:' . $token);
+        return $quote[$field] ?? null;
+    }
+
+    private function _sendWhatsAppText(string $phone, string $message): bool
+    {
+        return $this->_sendWhatsAppPayload([
+            'phone_number' => $phone,
+            'channel' => 'whatsapp',
+            'message_type' => 'text',
+            'content' => $message,
+        ]);
+    }
+
+    private function _sendWhatsAppPayload(array $payload): bool
+    {
+        $apiKey = (string) config('services.apicoid.api_key');
+
+        if ($apiKey === '') {
+            Log::error('API.co.id WhatsApp API key belum dikonfigurasi.');
+            return false;
+        }
+
+        try {
+            $response = Http::withToken($apiKey)
+                ->acceptJson()
+                ->asJson()
+                ->timeout(30)
+                ->post('https://chat.api.co.id/api/v1/public/messages/send', $payload);
+
+            if (!$response->successful() || $response->json('success') !== true) {
+                Log::error('API.co.id WhatsApp send gagal.', [
+                    'http_status' => $response->status(),
+                    'response' => $response->json(),
+                ]);
+                return false;
+            }
+
+            return true;
+        } catch (\Throwable $e) {
+            Log::error('API.co.id WhatsApp HTTP exception: ' . $e->getMessage());
+            return false;
+        }
+    }
+
 
     /**
      * Memetakan teks alamat dari AI ke District ID menggunakan API KiriminAja
@@ -326,6 +663,69 @@ class BotOrderController extends Controller
             Log::error("Geocoding API KiriminAja Gagal: " . $e->getMessage());
             return null;
         }
+    }
+
+    /**
+     * Kirim daftar kurir interaktif ke WhatsApp via API.co.id.
+     * Mengembalikan status ringkas untuk respons JSON bot.
+     */
+    private function _sendShippingListToWhatsApp(string $phoneInput, array $options, array $meta): array
+    {
+        $phone = preg_replace('/[^0-9]/', '', $phoneInput);
+        if (Str::startsWith($phone, '0')) {
+            $phone = '62' . substr($phone, 1);
+        } elseif (Str::startsWith($phone, '8')) {
+            $phone = '62' . $phone;
+        }
+
+        if (!Str::startsWith($phone, '62') || strlen($phone) < 10) {
+            return [
+                'whatsapp_sent' => false,
+                'message'       => 'Nomor WhatsApp harus format Indonesia, contoh 6281234567890.',
+            ];
+        }
+
+        if (empty($options)) {
+            return [
+                'whatsapp_sent' => false,
+                'message'       => 'Tidak ada layanan ekspedisi untuk dikirim.',
+            ];
+        }
+
+        if ((string) config('services.apicoid.api_key') === '') {
+            return [
+                'whatsapp_sent' => false,
+                'message'       => 'API.co.id belum dikonfigurasi di server (APICOID_API_KEY).',
+            ];
+        }
+
+        $token = Str::lower(Str::random(12));
+        Cache::put('sck_wa_shipping_quote:' . $token, [
+            'phone'   => $phone,
+            'asal'    => $meta['asal'] ?? null,
+            'tujuan'  => $meta['tujuan'] ?? null,
+            'weight'  => $meta['weight'] ?? null,
+            'options' => $options,
+        ], now()->addMinutes(20));
+
+        $sent = $this->_sendWhatsAppShippingList($phone, $token, 0, $options);
+
+        if (!$sent) {
+            Cache::forget('sck_wa_shipping_quote:' . $token);
+
+            return [
+                'whatsapp_sent' => false,
+                'message'       => 'Gagal mengirim daftar kurir via API.co.id.',
+            ];
+        }
+
+        return [
+            'whatsapp_sent' => true,
+            'phone'         => $phone,
+            'jumlah_baris'  => min(count($options), 9),
+            'quote_token'   => $token,
+            'berlaku_menit' => 20,
+        ];
     }
 
     /**

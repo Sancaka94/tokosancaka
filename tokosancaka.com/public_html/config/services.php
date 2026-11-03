@@ -45,12 +45,26 @@ return [
     ],
 
 
+    'apicoid' => [
+        // WhatsApp gateway API.co.id (chat.api.co.id)
+        'api_key'         => env('APICOID_API_KEY'),
+        'phone_number_id' => env('APICOID_PHONE_NUMBER_ID'),
+        'webhook_secret'  => env('APICOID_WEBHOOK_SECRET'),
+        // Nomor tujuan default kirim daftar kurir interaktif (nomor bot toko)
+        'default_phone'   => env('APICOID_DEFAULT_PHONE'),
+    ],
+
     'kiriminaja' => [
         'base_url' => env('KIRIMINAJA_BASE_URL', 'https://client.kiriminaja.com'),
         'token'    => env('KIRIMINAJA_TOKEN'),
     ],
     'fonnte' => [
         'key' => env('FONNTE_API_KEY'),
+    ],
+
+    // --- API Bot (Hermes) ---
+    'bot_order' => [
+        'secret' => env('BOT_SECRET_KEY'),
     ],
 
     'dana' => [
