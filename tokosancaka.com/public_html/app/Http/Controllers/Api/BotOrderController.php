@@ -809,8 +809,8 @@ class BotOrderController extends Controller
 
         $message = "✅ *Kurir dipilih: " . $selected['kurir'] . " - " . ($selected['layanan'] ?: $selected['kode']) . "*\n"
             . "💰 Ongkir: *Rp " . number_format((int) $selected['ongkir'], 0, ',', '.') . "* (" . (int) $quote['weight'] . " gram)\n\n"
-            . "Sekarang lengkapi data pengiriman secara bertahap (8 langkah).\n\n"
-            . "👤 *Langkah 1/8: Nama Pengirim*\n"
+            . "Sekarang lengkapi data pengiriman secara bertahap (10 langkah).\n\n"
+            . "👤 *Langkah 1/10: Nama Pengirim*\n"
             . "Ketik nama lengkap pengirim:";
 
         $sent = $this->_sendWhatsAppText($quote['phone'], $message);
@@ -1177,7 +1177,7 @@ class BotOrderController extends Controller
             case 'AWAITING_SENDER_NAME':
                 $draft->sender_name = $text;
                 $draft->step = 'AWAITING_SENDER_PHONE';
-                $this->_sendWhatsAppText($phone, "✅ Nama pengirim: *{$text}*\n\n📱 *Langkah 2/8: No. HP Pengirim*\nKetik nomor HP pengirim (contoh: 0857xxxxxxx)\natau ketik *sama* untuk memakai nomor WhatsApp ini.");
+                $this->_sendWhatsAppText($phone, "✅ Nama pengirim: *{$text}*\n\n📱 *Langkah 2/10: No. HP Pengirim*\nKetik nomor HP pengirim (contoh: 0857xxxxxxx)\natau ketik *sama* untuk memakai nomor WhatsApp ini.");
                 break;
 
             case 'AWAITING_SENDER_PHONE':
@@ -1188,25 +1188,38 @@ class BotOrderController extends Controller
                     return response()->json(['status' => 'invalid_input', 'step' => $draft->step]);
                 }
                 $draft->sender_phone = $value;
+                $draft->step = 'AWAITING_SENDER_AREA';
+                $this->_sendWhatsAppText($phone, "✅ No. HP pengirim tersimpan.\n\n🏙️ *Langkah 3/10: Kelurahan, Kecamatan, Kota Pengirim*\nKetik *Kelurahan, Kecamatan, Kota* (contoh: Ketanggi, Ngawi, Ngawi).\n\n⚠️ Jangan tulis nama jalan di sini — alamat jalan ditanyakan pada langkah berikutnya.");
+                break;
+
+            case 'AWAITING_SENDER_AREA':
+                $area = $this->_resolveAddress($text);
+                if (!$area) {
+                    $this->_sendWhatsAppText($phone, "⚠️ Wilayah *{$text}* tidak dikenali sistem ekspedisi.\n\nKetik ulang dengan format *Kelurahan, Kecamatan, Kota* (contoh: Ketanggi, Ngawi, Ngawi).");
+
+                    return response()->json(['status' => 'invalid_area', 'step' => $draft->step]);
+                }
+                $draft->origin_text = $area['full_text'] ?: $text;
+                $draft->sender_address = $area['full_text'] ?: $text;
                 $draft->step = 'AWAITING_SENDER_ADDRESS';
-                $this->_sendWhatsAppText($phone, "✅ No. HP pengirim tersimpan.\n\n🏠 *Langkah 3/8: Alamat Pengirim*\nKetik alamat lengkap penjemputan paket (jalan, RT/RW, kelurahan, kecamatan, kota).");
+                $this->_sendWhatsAppText($phone, "✅ Wilayah pengirim: *{$draft->origin_text}*\n\n📍 *Langkah 4/10: Detail Alamat Pengirim*\nKetik nama jalan, nomor rumah, RT/RW (contoh: Jl Dr Wahidin No 18 A RT 22 RW 05).");
                 break;
 
             case 'AWAITING_SENDER_ADDRESS':
-                if (strlen($text) < 10) {
-                    $this->_sendWhatsAppText($phone, "⚠️ Alamat terlalu pendek. Mohon ketik alamat lengkap (minimal 10 karakter).");
+                if (strlen($text) < 5) {
+                    $this->_sendWhatsAppText($phone, "⚠️ Alamat terlalu pendek. Ketik nama jalan dan nomor rumah (contoh: Jl Dr Wahidin No 18 A RT 22 RW 05).");
 
                     return response()->json(['status' => 'invalid_input', 'step' => $draft->step]);
                 }
-                $draft->sender_address = $text;
+                $draft->sender_address = trim(($draft->origin_text ? $draft->origin_text . ', ' : '') . $text);
                 $draft->step = 'AWAITING_RECEIVER_NAME';
-                $this->_sendWhatsAppText($phone, "✅ Alamat pengirim tersimpan.\n\n👤 *Langkah 4/8: Nama Penerima*\nKetik nama lengkap penerima paket.");
+                $this->_sendWhatsAppText($phone, "✅ Alamat pengirim tersimpan.\n\n👤 *Langkah 5/10: Nama Penerima*\nKetik nama lengkap penerima paket.");
                 break;
 
             case 'AWAITING_RECEIVER_NAME':
                 $draft->receiver_name = $text;
                 $draft->step = 'AWAITING_RECEIVER_PHONE';
-                $this->_sendWhatsAppText($phone, "✅ Nama penerima: *{$text}*\n\n📱 *Langkah 5/8: No. HP Penerima*\nKetik nomor HP penerima.");
+                $this->_sendWhatsAppText($phone, "✅ Nama penerima: *{$text}*\n\n📱 *Langkah 6/10: No. HP Penerima*\nKetik nomor HP penerima.");
                 break;
 
             case 'AWAITING_RECEIVER_PHONE':
@@ -1217,25 +1230,38 @@ class BotOrderController extends Controller
                     return response()->json(['status' => 'invalid_input', 'step' => $draft->step]);
                 }
                 $draft->receiver_phone = $value;
+                $draft->step = 'AWAITING_RECEIVER_AREA';
+                $this->_sendWhatsAppText($phone, "✅ No. HP penerima tersimpan.\n\n🏙️ *Langkah 7/10: Kelurahan, Kecamatan, Kota Penerima*\nKetik *Kelurahan, Kecamatan, Kota* (contoh: Wiyung, Wiyung, Surabaya).\n\n⚠️ Jangan tulis nama jalan di sini — alamat jalan ditanyakan pada langkah berikutnya.");
+                break;
+
+            case 'AWAITING_RECEIVER_AREA':
+                $area = $this->_resolveAddress($text);
+                if (!$area) {
+                    $this->_sendWhatsAppText($phone, "⚠️ Wilayah *{$text}* tidak dikenali sistem ekspedisi.\n\nKetik ulang dengan format *Kelurahan, Kecamatan, Kota* (contoh: Wiyung, Wiyung, Surabaya).");
+
+                    return response()->json(['status' => 'invalid_area', 'step' => $draft->step]);
+                }
+                $draft->destination_text = $area['full_text'] ?: $text;
+                $draft->receiver_address = $area['full_text'] ?: $text;
                 $draft->step = 'AWAITING_RECEIVER_ADDRESS';
-                $this->_sendWhatsAppText($phone, "✅ No. HP penerima tersimpan.\n\n🏠 *Langkah 6/8: Alamat Penerima*\nKetik alamat lengkap tujuan (jalan, RT/RW, kelurahan, kecamatan, kota).");
+                $this->_sendWhatsAppText($phone, "✅ Wilayah penerima: *{$draft->destination_text}*\n\n📍 *Langkah 8/10: Detail Alamat Penerima*\nKetik nama jalan/perumahan, nomor rumah, RT/RW (contoh: Perum Graha Kebraon Regency 2 No A3).");
                 break;
 
             case 'AWAITING_RECEIVER_ADDRESS':
-                if (strlen($text) < 10) {
-                    $this->_sendWhatsAppText($phone, "⚠️ Alamat terlalu pendek. Mohon ketik alamat lengkap (minimal 10 karakter).");
+                if (strlen($text) < 5) {
+                    $this->_sendWhatsAppText($phone, "⚠️ Alamat terlalu pendek. Ketik nama jalan/perumahan dan nomor rumah.");
 
                     return response()->json(['status' => 'invalid_input', 'step' => $draft->step]);
                 }
-                $draft->receiver_address = $text;
+                $draft->receiver_address = trim(($draft->destination_text ? $draft->destination_text . ', ' : '') . $text);
                 $draft->step = 'AWAITING_ITEM_DESC';
-                $this->_sendWhatsAppText($phone, "✅ Alamat penerima tersimpan.\n\n📦 *Langkah 7/8: Isi Paket*\nKetik deskripsi isi paket (contoh: baju kaos 2 pcs).");
+                $this->_sendWhatsAppText($phone, "✅ Alamat penerima tersimpan.\n\n📦 *Langkah 9/10: Isi Paket*\nKetik deskripsi isi paket (contoh: baju kaos 2 pcs).");
                 break;
 
             case 'AWAITING_ITEM_DESC':
                 $draft->item_description = $text;
                 $draft->step = 'AWAITING_ITEM_VALUE';
-                $this->_sendWhatsAppText($phone, "✅ Isi paket: *{$text}*\n\n💰 *Langkah 8/8: Nilai Barang*\nKetik nilai barang dalam rupiah (contoh: 150000). Nilai ini untuk asuransi pengiriman.");
+                $this->_sendWhatsAppText($phone, "✅ Isi paket: *{$text}*\n\n💰 *Langkah 10/10: Nilai Barang*\nKetik nilai barang dalam rupiah (contoh: 150000). Nilai ini untuk asuransi pengiriman.");
                 break;
 
             case 'AWAITING_ITEM_VALUE':
@@ -1322,7 +1348,7 @@ class BotOrderController extends Controller
             'item_value'       => 0,
         ])->save();
 
-        $this->_sendWhatsAppText($phone, "✏️ Data direset. Mari isi ulang.\n\n👤 *Langkah 1/8: Nama Pengirim*\nKetik nama lengkap pengirim:");
+        $this->_sendWhatsAppText($phone, "✏️ Data direset. Mari isi ulang.\n\n👤 *Langkah 1/10: Nama Pengirim*\nKetik nama lengkap pengirim:");
 
         return response()->json(['status' => 'success', 'step' => $draft->step]);
     }
@@ -1355,8 +1381,10 @@ class BotOrderController extends Controller
         DB::beginTransaction();
 
         try {
-            $senderLocation = $this->_resolveAddress((string) $draft->sender_address);
-            $receiverLocation = $this->_resolveAddress((string) $draft->receiver_address);
+            // Resolve memakai wilayah (origin/destination_text) yang sudah
+            // tervalidasi di langkah AREA; alamat jalan hanya pelengkap.
+            $senderLocation = $this->_resolveAddress((string) ($draft->origin_text ?: $draft->sender_address));
+            $receiverLocation = $this->_resolveAddress((string) ($draft->destination_text ?: $draft->receiver_address));
 
             if (!$senderLocation || !$receiverLocation) {
                 throw new Exception('Alamat tidak dapat dipetakan ke kode area ekspedisi. Silakan perbaiki alamat.');

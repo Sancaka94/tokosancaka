@@ -44,13 +44,20 @@ class BotOrderDraft extends Model
         'item_value'    => 'integer',
     ];
 
-    /** Urutan langkah pengisian data. */
+    /**
+     * Urutan langkah pengisian data.
+     * Alamat dipisah: wilayah (kelurahan/kecamatan/kota) divalidasi ke
+     * KiriminAja lebih dulu, baru detail jalan — karena API alamat hanya
+     * mengenali nama wilayah, bukan alamat jalan.
+     */
     public const STEPS = [
         'AWAITING_SENDER_NAME',
         'AWAITING_SENDER_PHONE',
+        'AWAITING_SENDER_AREA',
         'AWAITING_SENDER_ADDRESS',
         'AWAITING_RECEIVER_NAME',
         'AWAITING_RECEIVER_PHONE',
+        'AWAITING_RECEIVER_AREA',
         'AWAITING_RECEIVER_ADDRESS',
         'AWAITING_ITEM_DESC',
         'AWAITING_ITEM_VALUE',
