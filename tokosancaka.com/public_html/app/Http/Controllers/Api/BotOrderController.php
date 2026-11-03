@@ -796,7 +796,16 @@ class BotOrderController extends Controller
         $selected = $quote['options'][$index];
 
         // Simpan pilihan kurir ke draft MySQL dan mulai pengisian data bertahap
-        $this->_startDraftFromQuote($quote['phone'], $token, $selected, $quote);
+        $draft = $this->_startDraftFromQuote($quote['phone'], $token, $selected, $quote);
+
+        Log::info('[WA-KURIR] Kurir dipilih, draft dibuat', [
+            'draft_id' => $draft->id ?? null,
+            'phone'    => $quote['phone'],
+            'kurir'    => $selected['kurir'],
+            'layanan'  => $selected['layanan'] ?? $selected['kode'],
+            'ongkir'   => $selected['ongkir'],
+            'step'     => $draft->step ?? null,
+        ]);
 
         $message = "✅ *Kurir dipilih: " . $selected['kurir'] . " - " . ($selected['layanan'] ?: $selected['kode']) . "*\n"
             . "💰 Ongkir: *Rp " . number_format((int) $selected['ongkir'], 0, ',', '.') . "* (" . (int) $quote['weight'] . " gram)\n\n"
@@ -1015,6 +1024,13 @@ class BotOrderController extends Controller
      */
     public function botWhatsAppInbound(Request $request)
     {
+        Log::info('[WA-WEBHOOK] Inbound diterima', [
+            'ip'      => $request->ip(),
+            'method'  => $request->method(),
+            'headers' => array_keys($request->headers->all()),
+            'payload' => $request->all(),
+        ]);
+
         $webhookSecret = (string) config('services.apicoid.webhook_secret');
         $providedSecret = (string) $request->header('X-WhatsApp-Webhook-Secret', '');
 
@@ -1124,6 +1140,13 @@ class BotOrderController extends Controller
     private function _handleStepInput(string $phone, string $text)
     {
         $draft = BotOrderDraft::where('phone_number', $phone)->first();
+
+        Log::info('[WA-STEP] Input teks diterima', [
+            'phone'     => $phone,
+            'text'      => Str::limit($text, 80, ''),
+            'draft_id'  => $draft->id ?? null,
+            'step'      => $draft->step ?? null,
+        ]);
 
         if (!$draft) {
             return response()->json(['status' => 'ignored', 'reason' => 'no_active_draft']);
