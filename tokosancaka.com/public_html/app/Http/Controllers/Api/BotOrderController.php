@@ -916,6 +916,80 @@ class BotOrderController extends Controller
         return $quote[$field] ?? null;
     }
 
+    /**
+     * Daftar channel pembayaran DOKU yang ditawarkan lewat WhatsApp.
+     * Key = id tombol (sckpay|KEY), value = label + payment_method_types DOKU.
+     */
+    public const WA_PAYMENT_CHANNELS = [
+        'QRIS'    => ['label' => 'QRIS (semua e-wallet)', 'types' => ['QRIS']],
+        'BCA'     => ['label' => 'VA Bank BCA', 'types' => ['VIRTUAL_ACCOUNT_BCA']],
+        'MANDIRI' => ['label' => 'VA Bank Mandiri', 'types' => ['VIRTUAL_ACCOUNT_BANK_MANDIRI']],
+        'BRI'     => ['label' => 'VA Bank BRI', 'types' => ['VIRTUAL_ACCOUNT_BRI']],
+        'BNI'     => ['label' => 'VA Bank BNI', 'types' => ['VIRTUAL_ACCOUNT_BNI']],
+        'PERMATA' => ['label' => 'VA Bank Permata', 'types' => ['VIRTUAL_ACCOUNT_BANK_PERMATA']],
+        'CIMB'    => ['label' => 'VA Bank CIMB Niaga', 'types' => ['VIRTUAL_ACCOUNT_BANK_CIMB']],
+        'BSI'     => ['label' => 'VA Bank Syariah Indonesia', 'types' => ['VIRTUAL_ACCOUNT_BANK_SYARIAH_MANDIRI']],
+        'DANAMON' => ['label' => 'VA Bank Danamon', 'types' => ['VIRTUAL_ACCOUNT_BANK_DANAMON']],
+        'ALFAMART' => ['label' => 'Alfamart', 'types' => ['ONLINE_TO_OFFLINE_ALFA']],
+    ];
+
+    /**
+     * Kirim menu pilihan channel pembayaran (list interaktif) ke WhatsApp.
+     */
+    private function _sendPaymentChannelList(string $phone, string $invoice, int $amount, string $token)
+    {
+        $rows = [];
+        foreach (self::WA_PAYMENT_CHANNELS as $key => $channel) {
+            $rows[] = [
+                'id'          => 'sckpay|' . $token . '|' . $key,
+                'title'       => Str::limit($channel['label'], 24, ''),
+                'description' => 'Bayar via ' . $channel['label'],
+            ];
+        }
+
+        // List message maksimal 10 baris.
+        $rows = array_slice($rows, 0, 10);
+
+        $payload = [
+            'phone_number' => $phone,
+            'channel'      => 'whatsapp',
+            'message_type' => 'interactive',
+            'interactive'  => [
+                'type'   => 'list',
+                'header' => ['type' => 'text', 'text' => 'SANCAKA EXPRESS'],
+                'body'   => [
+                    'text' => "💳 *Pilih Metode Pembayaran*\n\n"
+                        . "🧾 Invoice: *{$invoice}*\n"
+                        . "💰 Total: *Rp " . number_format($amount, 0, ',', '.') . "*\n\n"
+                        . "Silakan pilih bank VA atau QRIS untuk melanjutkan pembayaran.",
+                ],
+                'footer' => ['text' => 'Tagihan berlaku 60 menit'],
+                'action' => [
+                    'button'   => 'Pilih Pembayaran',
+                    'sections' => [[
+                        'title' => 'Metode Pembayaran',
+                        'rows'  => $rows,
+                    ]],
+                ],
+            ],
+        ];
+
+        $phoneNumberId = config('services.apicoid.phone_number_id');
+        if (!empty($phoneNumberId)) {
+            $payload['whatsapp_phone_number_id'] = $phoneNumberId;
+        }
+
+        return $this->_sendWhatsAppPayload($payload);
+    }
+
+    /**
+     * Wrapper publik untuk kirim teks WhatsApp (dipakai DokuWebhookController).
+     */
+    public function sendWhatsAppTextPublic(string $phone, string $message): bool
+    {
+        return $this->_sendWhatsAppText($phone, $message);
+    }
+
     private function _sendWhatsAppText(string $phone, string $message): bool
     {
         return $this->_sendWhatsAppPayload([
@@ -1212,7 +1286,7 @@ class BotOrderController extends Controller
     }
 
     /**
-     * Tombol "Ya, Lanjutkan": buat invoice + transaksi DOKU.
+     * Tombol "Ya, Lanjutkan": buat invoice, lalu kirim menu pilihan pembayaran.
      */
     private function _handleConfirmSelection(string $phone, string $token)
     {
@@ -1294,52 +1368,32 @@ class BotOrderController extends Controller
                 'item_type'               => 1,
             ]);
 
-            $doku = new DokuJokulService();
-            $paymentUrl = $doku->createPayment(
-                $order->nomor_invoice,
-                (int) $draft->shipping_cost,
-                [
-                    'name'  => $draft->sender_name,
-                    'email' => $customer->email ?? null,
-                    'phone' => $this->_sanitizePhoneNumber((string) $draft->sender_phone),
-                ]
-            );
-
-            if (!$paymentUrl) {
-                throw new Exception('Gagal membuat transaksi pembayaran DOKU.');
-            }
-
-            $order->payment_url = $paymentUrl;
-            $order->save();
-
             $draft->invoice_number = $order->nomor_invoice;
-            $draft->payment_url = $paymentUrl;
-            $draft->step = 'COMPLETED';
+            $draft->payment_url = null;
+            $draft->step = 'AWAITING_PAYMENT_CHANNEL';
             $draft->save();
 
             DB::commit();
 
-            $this->_sendWhatsAppText(
+            // Kirim menu pilihan metode pembayaran (VA bank / QRIS) ke WhatsApp.
+            $this->_sendPaymentChannelList(
                 $phone,
-                "✅ *Pesanan berhasil dibuat!*\n\n"
-                . "🧾 Invoice: *{$order->nomor_invoice}*\n"
-                . "💰 Total: *Rp " . number_format((int) $draft->shipping_cost, 0, ',', '.') . "*\n"
-                . "🚚 {$draft->courier_code} - {$draft->courier_service}\n\n"
-                . "Silakan selesaikan pembayaran melalui tautan berikut:\n{$paymentUrl}\n\n"
-                . "Pesanan otomatis diproses setelah pembayaran terkonfirmasi."
+                $order->nomor_invoice,
+                (int) $draft->shipping_cost,
+                $token
             );
 
-            Log::info('Draft WhatsApp dikonversi menjadi pesanan.', [
+            Log::info('Draft WhatsApp dikonversi menjadi pesanan (menunggu pilihan channel).', [
                 'invoice' => $order->nomor_invoice,
                 'phone'   => $phone,
                 'courier' => $draft->courier_code,
             ]);
 
             return response()->json([
-                'status'       => 'success',
-                'invoice'      => $order->nomor_invoice,
-                'payment_url'  => $paymentUrl,
-                'total'        => $draft->shipping_cost,
+                'status'      => 'success',
+                'invoice'     => $order->nomor_invoice,
+                'total'       => $draft->shipping_cost,
+                'next'        => 'pilih_metode_pembayaran',
             ]);
         } catch (Exception $e) {
             DB::rollBack();
@@ -1352,19 +1406,114 @@ class BotOrderController extends Controller
     }
 
     /**
-     * Placeholder: pilihan metode bayar tambahan (dipakai bila menu VA ditambahkan).
+     * Pilihan channel pembayaran dari list WA: buat transaksi DOKU sesuai bank/QRIS.
+     * ID tombol: sckpay|TOKEN|CHANNEL
      */
-    private function _handlePaySelection(string $phone, string $channel)
+    private function _handlePaySelection(string $phone, string $payload)
     {
+        $parts = explode('|', $payload);
+        $token = $parts[0] ?? '';
+        $channelKey = strtoupper((string) ($parts[1] ?? ''));
+
         $draft = BotOrderDraft::where('phone_number', $phone)->first();
 
-        if (!$draft || !$draft->payment_url) {
-            return response()->json(['status' => 'ignored', 'reason' => 'no_payment']);
+        if (!$draft || !$draft->invoice_number) {
+            $this->_sendWhatsAppText($phone, "ℹ️ Tidak ada tagihan aktif. Silakan mulai lagi dengan menanyakan ongkir.");
+
+            return response()->json(['status' => 'ignored', 'reason' => 'no_invoice']);
         }
 
-        $this->_sendWhatsAppText($phone, "💳 Metode: *{$channel}*\nSelesaikan pembayaran di:\n{$draft->payment_url}");
+        if (!isset(self::WA_PAYMENT_CHANNELS[$channelKey])) {
+            $this->_sendWhatsAppText($phone, "⚠️ Metode pembayaran tidak dikenali. Silakan pilih dari daftar yang dikirim.");
 
-        return response()->json(['status' => 'success', 'channel' => $channel]);
+            return response()->json(['status' => 'invalid_channel', 'channel' => $channelKey], 422);
+        }
+
+        // Bila channel & tagihan sudah pernah dibuat, kirim ulang tautannya.
+        if ($draft->payment_url) {
+            $this->_sendWhatsAppText(
+                $phone,
+                "💳 *" . self::WA_PAYMENT_CHANNELS[$channelKey]['label'] . "*\n"
+                . "🧾 Invoice: *{$draft->invoice_number}*\n\n"
+                . "Lanjutkan pembayaran di tautan berikut:\n{$draft->payment_url}"
+            );
+
+            return response()->json([
+                'status'      => 'already_created',
+                'invoice'     => $draft->invoice_number,
+                'payment_url' => $draft->payment_url,
+            ]);
+        }
+
+        $order = Pesanan::where('nomor_invoice', $draft->invoice_number)->first();
+
+        if (!$order) {
+            $this->_sendWhatsAppText($phone, "❌ Pesanan tidak ditemukan. Silakan mulai ulang pemesanan.");
+
+            return response()->json(['status' => 'error', 'message' => 'order_not_found'], 404);
+        }
+
+        $channel = self::WA_PAYMENT_CHANNELS[$channelKey];
+
+        try {
+            $doku = new DokuJokulService();
+            $customer = User::where('no_hp', $this->_sanitizePhoneNumber((string) $draft->sender_phone))->first();
+
+            $result = $doku->createSpecificCheckoutPayment(
+                $order->nomor_invoice,
+                (int) $draft->shipping_cost,
+                [
+                    'name'  => $draft->sender_name,
+                    'email' => $customer->email ?? 'customer@tokosancaka.com',
+                    'phone' => $this->_sanitizePhoneNumber((string) $draft->sender_phone),
+                ],
+                'DOKU_' . $channelKey
+            );
+
+            if (empty($result['success']) || empty($result['payment_url'])) {
+                $msg = $result['message'] ?? 'Gagal membuat tagihan DOKU.';
+                Log::error('DOKU channel payment gagal', ['invoice' => $order->nomor_invoice, 'channel' => $channelKey, 'message' => $msg]);
+                $this->_sendWhatsAppText($phone, "❌ {$msg}\n\nSilakan pilih metode pembayaran lain.");
+
+                return response()->json(['status' => 'error', 'message' => $msg], 502);
+            }
+
+            $paymentUrl = $result['payment_url'];
+
+            $order->payment_url = $paymentUrl;
+            $order->payment_method = 'DOKU';
+            $order->save();
+
+            $draft->payment_url = $paymentUrl;
+            $draft->step = 'AWAITING_PAYMENT';
+            $draft->save();
+
+            $this->_sendWhatsAppText(
+                $phone,
+                "💳 *" . $channel['label'] . "*\n"
+                . "🧾 Invoice: *{$order->nomor_invoice}*\n"
+                . "💰 Total: *Rp " . number_format((int) $draft->shipping_cost, 0, ',', '.') . "*\n\n"
+                . "Selesaikan pembayaran di tautan berikut:\n{$paymentUrl}\n\n"
+                . "Pesanan otomatis diproses setelah pembayaran terkonfirmasi."
+            );
+
+            Log::info('Tagihan DOKU dibuat dari pilihan channel WhatsApp.', [
+                'invoice' => $order->nomor_invoice,
+                'channel' => $channelKey,
+            ]);
+
+            return response()->json([
+                'status'      => 'success',
+                'invoice'     => $order->nomor_invoice,
+                'channel'     => $channelKey,
+                'payment_url' => $paymentUrl,
+            ]);
+        } catch (Throwable $e) {
+            Log::error('Exception pembuatan tagihan DOKU: ' . $e->getMessage());
+            $this->_sendWhatsAppText($phone, "❌ Terjadi kesalahan saat membuat tagihan. Silakan coba lagi.");
+
+            return response()->json(['status' => 'error', 'message' => $e->getMessage()], 500);
+        }
     }
 
     /**

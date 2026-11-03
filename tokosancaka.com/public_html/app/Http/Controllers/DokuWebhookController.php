@@ -105,6 +105,13 @@ class DokuWebhookController extends Controller
                 $this->sendExpoPaymentNotification($orderId);
 
                 // -------------------------------------------------------------
+                // A.0 NOTIFIKASI WHATSAPP UNTUK PESANAN DARI BOT WA (SCK-BOT-)
+                // -------------------------------------------------------------
+                if (Str::startsWith($orderId, 'SCK-BOT-')) {
+                    $this->_notifyWhatsAppBotOrder($orderId, $data);
+                }
+
+                // -------------------------------------------------------------
                 // A.1 AKTIVASI TENANT BARU (SEWA-)
                 // -------------------------------------------------------------
                 if (Str::startsWith($orderId, 'SEWA-')) {
@@ -875,5 +882,79 @@ class DokuWebhookController extends Controller
         } catch (\Exception $e) {
             Log::error("[WEBHOOK-DOKU] ❌ Gagal kirim notifikasi Expo: " . $e->getMessage());
         }
+    }
+
+    /**
+     * Kirim notifikasi WhatsApp ke customer saat pesanan dari Bot WA (SCK-BOT-*)
+     * berhasil dibayar. Nomor tujuan diambil dari bot_order_drafts.
+     */
+    private function _notifyWhatsAppBotOrder(string $orderId, array $data): void
+    {
+        try {
+            $draft = \App\Models\BotOrderDraft::where('invoice_number', $orderId)->first();
+
+            if (!$draft) {
+                Log::warning("[WEBHOOK-DOKU] Draft WA untuk invoice $orderId tidak ditemukan — notifikasi dilewati.");
+
+                return;
+            }
+
+            $phone = $this->normalizeWaPhone((string) $draft->phone_number);
+            if ($phone === '') {
+                Log::warning("[WEBHOOK-DOKU] Nomor WA kosong untuk invoice $orderId.");
+
+                return;
+            }
+
+            $amount = (int) ($data['order']['amount'] ?? $draft->shipping_cost);
+
+            // Tandai pesanan sebagai lunas (idempoten: hanya ubah bila belum lunas).
+            $pesanan = \App\Models\Pesanan::where('nomor_invoice', $orderId)->first();
+            if ($pesanan && !in_array(strtolower((string) $pesanan->status_pesanan), ['pembayaran lunas', 'lunas', 'menunggu pickup'], true)) {
+                $pesanan->status = 'Pembayaran Lunas';
+                $pesanan->status_pesanan = 'Menunggu Pickup';
+                $pesanan->save();
+
+                Log::info("[WEBHOOK-DOKU] Pesanan $orderId ditandai lunas & menunggu pickup.");
+            }
+
+            $body = "✅ *PEMBAYARAN BERHASIL*\n\n"
+                . "🧾 Invoice: *{$orderId}*\n"
+                . "💰 Total: *Rp " . number_format($amount, 0, ',', '.') . "*\n"
+                . "🚚 Kurir: {$draft->courier_code} - {$draft->courier_service}\n"
+                . "📥 Penerima: {$draft->receiver_name} ({$draft->receiver_phone})\n\n"
+                . "Pesanan Anda sedang disiapkan untuk penjemputan oleh kurir. "
+                . "Nomor resi akan dikirim ke chat ini setelah paket dijemput.\n\n"
+                . "Terima kasih telah berbelanja di Sancaka Express 🙏";
+
+            $result = app(\App\Http\Controllers\Api\BotOrderController::class)
+                ->sendWhatsAppTextPublic($phone, $body);
+
+            if (!$result) {
+                Log::error("[WEBHOOK-DOKU] Gagal kirim notifikasi WA untuk $orderId ke $phone.");
+            }
+
+            // Bersihkan draft setelah tuntas agar tidak dipakai ulang.
+            $draft->step = 'COMPLETED';
+            $draft->save();
+        } catch (\Throwable $e) {
+            Log::error("[WEBHOOK-DOKU] Exception notifikasi WA BotOrder: " . $e->getMessage());
+        }
+    }
+
+    /**
+     * Normalisasi nomor ke format 62xxxxxxxxxx.
+     */
+    private function normalizeWaPhone(string $value): string
+    {
+        $digits = preg_replace('/\D/', '', explode('@', $value)[0]);
+
+        if (str_starts_with($digits, '0')) {
+            $digits = '62' . substr($digits, 1);
+        } elseif (str_starts_with($digits, '8')) {
+            $digits = '62' . $digits;
+        }
+
+        return $digits;
     }
 }
