@@ -25,6 +25,8 @@ return Application::configure(basePath: dirname(__DIR__))
             'digiflazz/webhook', // <--- Tambahkan baris ini
             'payment/*', // Jika ada webhook payment lain
             'webhook/fonnte', // <--- Tambahkan baris ini
+            'webhook/apicoid', // Webhook pesan masuk WhatsApp (API.co.id)
+            'webhook/whatsapp/apicoid',
             //'api/telegram/webhook', // Sesuaikan dengan route
             'api/webhook/doku-jokul', // <--- PASTIIN INI ADA
             'api/callback/tripay',
