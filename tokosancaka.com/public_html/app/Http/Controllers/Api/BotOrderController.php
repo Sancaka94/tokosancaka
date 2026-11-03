@@ -1149,6 +1149,25 @@ class BotOrderController extends Controller
 
         $phone = $this->_normalizeWaPhone((string) $phone);
 
+        // CROSSPATH_DEDUPE_V1: jalur Hermes tidak mengirim message_id, sedangkan
+        // jalur API.co.id mengirim. Tanpa kunci kedua, pesan yang sama diproses
+        // dua kali -> customer menerima balasan dobel.
+        $contentForHash = trim((string) (data_get($payload, 'data.content')
+            ?? data_get($payload, 'data.text')
+            ?? data_get($payload, 'content')
+            ?? ''));
+        if ($contentForHash !== '') {
+            $crossKey = 'wa_seen_body:' . md5($phone . '|' . mb_strtolower($contentForHash));
+            if (Cache::has($crossKey)) {
+                Log::info('[WA-WEBHOOK] Dilewati: isi pesan sama dalam 90 detik', [
+                    'phone' => $phone,
+                ]);
+
+                return response()->json(['status' => 'ignored', 'reason' => 'duplicate_content']);
+            }
+            Cache::put($crossKey, 1, now()->addSeconds(90));
+        }
+
         // Abaikan pesan keluar (event message.sent) agar tidak loop.
         if (($messageDirection = data_get($payload, 'data.direction')) === 'outbound') {
             return response()->json(['status' => 'ignored', 'reason' => 'outbound']);
@@ -1294,14 +1313,38 @@ class BotOrderController extends Controller
 
         // Pisahkan dengan " ke " / " - " / ">"
         $parts = preg_split('/\s+(?:ke|-|>|–|—|sampai)\s+/i', $clean);
-        if (!$parts || count($parts) < 2) {
+        // PARTIAL_ONGKIR_V1: boleh hanya asal ("dari Ngawi") atau hanya
+        // tujuan ("ke Surabaya 1 kg"); sisanya dilengkapi dari konteks nomor.
+        if (!$parts) {
             return null;
         }
 
-        $origin = trim($parts[0]);
-        $destination = trim($parts[1]);
+        $origin = trim($parts[0] ?? '');
+        $destination = trim($parts[1] ?? '');
 
-        if (mb_strlen($origin) < 3 || mb_strlen($destination) < 3) {
+        // Hanya berlaku bila memang hanya SATU wilayah yang terbaca:
+        //   "dari Ngawi"      -> asal saja
+        //   "ke Surabaya 1kg" -> tujuan saja
+        // Kasus dua wilayah ("ngawi ke surabaya") tidak disentuh.
+        $hasDari = (bool) preg_match('/\bdari\b/', $body);
+        $hasKe = (bool) preg_match('/\bke\b/', $body);
+        $onlyOne = ($destination === '' && $origin !== '');
+
+        if ($onlyOne) {
+            if ($hasDari && !$hasKe) {
+                $destination = '';
+            } elseif ($hasKe && !$hasDari) {
+                $destination = $origin;
+                $origin = '';
+            }
+        }
+
+        $origin = trim(preg_replace('/\b(dari|ke)\b/', ' ', $origin) ?? '');
+        $destination = trim(preg_replace('/\b(dari|ke)\b/', ' ', $destination) ?? '');
+
+        // PARTIAL_ONGKIR_V1: "cek ongkir ke surabaya 1kg" -> asal kosong.
+        // Kirim saja yang ada; asal diisi pemanggil dari konteks nomor.
+        if ($origin === '' && $destination === '') {
             return null;
         }
 
@@ -1323,9 +1366,53 @@ class BotOrderController extends Controller
             return false;
         }
 
+        // PARTIAL_ONGKIR_V1: lengkapi dari konteks nomor bila sebagian kosong.
+        $ctxKey = 'sck_ongkir_ctx:' . md5((string) $phone);
+        $ctx = Cache::get($ctxKey) ?: [];
+
+        $origin = trim((string) ($parsed['origin'] ?? ''));
+        $destination = trim((string) ($parsed['destination'] ?? ''));
+
+        if ($origin === '') {
+            $origin = (string) ($ctx['origin'] ?? '');
+        }
+        if ($destination === '') {
+            $destination = (string) ($ctx['destination'] ?? '');
+        }
+
+        // Asal tetap tidak diketahui -> tanya dengan ramah, bukan instruksi kaku.
+        if ($origin === '') {
+            if ($destination !== '') {
+                Cache::put($ctxKey, ['destination' => $destination], now()->addHours(6));
+                $this->_sendWhatsAppText($phone,
+                    "Siap kak, tujuannya *{$destination}* 🙏\n\n"
+                    . "Kota asal pengirimannya dari mana ya?\n"
+                    . "Contoh: _dari Ngawi_"
+                );
+
+                return true;
+            }
+
+            return false;
+        }
+
+        if ($destination === '') {
+            Cache::put($ctxKey, ['origin' => $origin], now()->addHours(6));
+            $this->_sendWhatsAppText($phone,
+                "Baik kak, asal dari *{$origin}* 🙏\n\n"
+                . "Tujuannya ke kota mana? Sebutkan juga beratnya ya.\n"
+                . "Contoh: _ke Surabaya 1 kg_"
+            );
+
+            return true;
+        }
+
+        $parsed['origin'] = $origin;
+        $parsed['destination'] = $destination;
+
         try {
-            $sender = $this->_resolveAddress($parsed['origin']);
-            $receiver = $this->_resolveAddress($parsed['destination']);
+            $sender = $this->_resolveAddress($origin);
+            $receiver = $this->_resolveAddress($destination);
 
             if (!$sender || !$receiver) {
                 $this->_sendWhatsAppText(
@@ -1355,6 +1442,13 @@ class BotOrderController extends Controller
 
                 return true;
             }
+
+            // Ingat rute terakhir supaya pesan lanjutan cukup "ke X 2 kg".
+            Cache::put($ctxKey, [
+                'origin'      => $origin,
+                'destination' => $destination,
+                'weight'      => (int) $parsed['weight'],
+            ], now()->addHours(6));
 
             $wa = $this->_sendShippingListToWhatsApp($phone, array_slice($options, 0, 9), [
                 'asal'   => $sender['full_text'] ?? $parsed['origin'],
@@ -1428,7 +1522,21 @@ class BotOrderController extends Controller
             }
         }
 
+        // ONGKIR_CONTEXT_CONTINUE_V1: lanjutan percakapan ongkir.
+        // "dari ngawi", "ke surabaya 2 kg" -> proses, bukan smalltalk.
         if (!$isGreeting && !$isNumber && !$isService) {
+            $ctxKey = 'sck_ongkir_ctx:' . md5((string) $phone);
+            $ctx = Cache::get($ctxKey);
+
+            if (is_array($ctx) && !empty($ctx)) {
+                $looksWilayah = (bool) preg_match('/\b(dari|ke)\b/', $body)
+                    || (bool) preg_match('/\d+\s*(kg|kilogram|gram|gr)\b/', $body);
+
+                if ($looksWilayah && $this->_handleOngkirText($phone, $text)) {
+                    return 'ongkir';
+                }
+            }
+
             return '';
         }
 
