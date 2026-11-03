@@ -94,7 +94,7 @@ class BotOrderController extends Controller
             // =====================================================================
             // Cek apakah customer sudah terdaftar sebagai user berdasarkan No HP
             $sanitizedPhone = $this->_sanitizePhoneNumber($validated['sender_phone']);
-            $customer = User::where('no_hp', $sanitizedPhone)->first();
+            $customer = User::whereIn('no_wa', $this->_waPhoneVariants($sanitizedPhone))->first();
             $customerId = $customer ? $customer->id_pengguna : null;
 
             do {
@@ -1391,7 +1391,7 @@ class BotOrderController extends Controller
             }
 
             $sanitizedPhone = $this->_sanitizePhoneNumber((string) $draft->sender_phone);
-            $customer = User::where('no_hp', $sanitizedPhone)->first();
+            $customer = User::whereIn('no_wa', $this->_waPhoneVariants($sanitizedPhone))->first();
             $customerId = $customer ? $customer->id_pengguna : null;
 
             do {
@@ -1527,7 +1527,7 @@ class BotOrderController extends Controller
 
         try {
             $doku = new DokuJokulService();
-            $customer = User::where('no_hp', $this->_sanitizePhoneNumber((string) $draft->sender_phone))->first();
+            $customer = User::whereIn('no_wa', $this->_waPhoneVariants($this->_sanitizePhoneNumber((string) $draft->sender_phone)))->first();
 
             $result = $doku->createSpecificCheckoutPayment(
                 $order->nomor_invoice,
@@ -2093,6 +2093,35 @@ class BotOrderController extends Controller
             Log::error('Tripay Bot HTTP Exception: ' . $e->getMessage());
             return null;
         }
+    }
+
+    /**
+     * Varian nomor WA untuk pencarian user (tabel Pengguna memakai kolom no_wa).
+     * Menampung 08..., 628..., dan +62... agar data lama tetap terdeteksi.
+     */
+    private function _waPhoneVariants(string $phone): array
+    {
+        $digits = preg_replace('/[^0-9]/', '', $phone);
+        if ($digits === '') {
+            return [$phone];
+        }
+
+        $variants = [$digits];
+
+        if (str_starts_with($digits, '62')) {
+            $local = '0' . substr($digits, 2);
+            $variants[] = $local;
+            $variants[] = '+' . $digits;
+        } elseif (str_starts_with($digits, '0')) {
+            $variants[] = '62' . substr($digits, 1);
+            $variants[] = '+62' . substr($digits, 1);
+        } elseif (str_starts_with($digits, '8')) {
+            $variants[] = '0' . $digits;
+            $variants[] = '62' . $digits;
+            $variants[] = '+62' . $digits;
+        }
+
+        return array_values(array_unique($variants));
     }
 
     private function _sanitizePhoneNumber(string $phone): string

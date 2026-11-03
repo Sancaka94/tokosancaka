@@ -186,7 +186,7 @@ class PpobIakController extends Controller
                             'amount'         => $amount,
                             'customer_name'  => $userPayment->nama_lengkap ?? 'Member Sancaka',
                             'customer_email' => $userPayment->email ?? 'no-reply@sancaka.com',
-                            'customer_phone' => $userPayment->no_hp ?? '081234567890',
+                            'customer_phone' => $userPayment->no_wa ?? '081234567890',
                             'order_items'    => [['sku' => $product->code, 'name' => $product->description, 'price' => $amount, 'quantity' => 1]],
                             'return_url'     => route('ppob.index'),
                             'signature'      => $signature
@@ -312,7 +312,7 @@ class PpobIakController extends Controller
                     $transaction->update(['status' => 'PENDING', 'message' => 'Menunggu Pembayaran Gateway', 'payment_url' => $paymentUrl]);
                     return redirect()->away($paymentUrl);
                 } elseif ($paymentMethod === 'DANA') {
-                    $akunParams = $userPayment->no_wa ?? $userPayment->no_hp ?? $transaction->user_id;
+                    $akunParams = $userPayment->no_wa ?? $transaction->user_id;
                     $paymentUrl = url('/pembayaran?akun=' . urlencode($akunParams));
                     $transaction->update(['status' => 'PENDING', 'message' => 'Menunggu Pembayaran Gateway', 'payment_url' => $paymentUrl]);
                     return redirect()->away($paymentUrl);
@@ -332,7 +332,7 @@ class PpobIakController extends Controller
                             'amount'         => $amount,
                             'customer_name'  => $userPayment->nama_lengkap ?? 'Member Sancaka',
                             'customer_email' => $userPayment->email ?? 'no-reply@sancaka.com',
-                            'customer_phone' => $userPayment->no_hp ?? '081234567890',
+                            'customer_phone' => $userPayment->no_wa ?? '081234567890',
                             'order_items'    => [['sku' => 'TAGIHAN', 'name' => 'Tagihan ' . $transaction->product_code, 'price' => $amount, 'quantity' => 1]],
                             'return_url'     => route('ppob.index'),
                             'signature'      => $signature
