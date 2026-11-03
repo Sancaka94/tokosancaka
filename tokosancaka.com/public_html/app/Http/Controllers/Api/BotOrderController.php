@@ -30,13 +30,16 @@ class BotOrderController extends Controller
         // =====================================================================
         // 1. GATEKEEPER: Validasi Keamanan (Hanya Bot Hermes yang bisa akses)
         // =====================================================================
-        $botSecret = env('BOT_SECRET_KEY', 'sancaka-hermes-secret-2026');
-        if ($request->header('X-Bot-Secret') !== $botSecret) {
-            Log::warning('Akses API Bot ditolak (Secret Key Salah). IP: ' . $request->ip());
+        $botSecret = (string) config('services.bot_order.secret');
+        $providedSecret = (string) $request->header('X-Bot-Secret', '');
+
+        // Fail-closed: tanpa secret terkonfigurasi, endpoint selalu menolak.
+        if ($botSecret === '' || $providedSecret === '' || !hash_equals($botSecret, $providedSecret)) {
+            Log::warning('Akses API Bot ditolak (kredensial tidak valid). IP: ' . $request->ip());
             return response()->json(['status' => 'error', 'message' => 'Unauthorized Access'], 401);
         }
 
-        Log::info('Menerima payload order dari Bot Hermes:', $request->all());
+        Log::info('Menerima payload order dari Bot Hermes.', ['ip' => $request->ip(), 'fields' => array_keys($request->all())]);
 
         // =====================================================================
         // 2. VALIDASI DATA JSON DARI HERMES
@@ -173,6 +176,112 @@ class BotOrderController extends Controller
     }
 
     /**
+     * Endpoint READ-ONLY: cek ongkir KiriminAja.
+     * Tidak membuat Pesanan, tidak menyentuh database, tidak memanggil Tripay.
+     */
+    public function checkShippingCost(Request $request)
+    {
+        // 1. GATEKEEPER (identik dengan createOrder: config + hash_equals)
+        $botSecret = (string) config('services.bot_order.secret');
+        $providedSecret = (string) $request->header('X-Bot-Secret', '');
+
+        if ($botSecret === '' || $providedSecret === '' || !hash_equals($botSecret, $providedSecret)) {
+            Log::warning('Akses API Bot cek-ongkir ditolak (kredensial tidak valid). IP: ' . $request->ip());
+            return response()->json(['status' => 'error', 'message' => 'Unauthorized Access'], 401);
+        }
+
+        // 2. VALIDASI INPUT
+        $validated = $request->validate([
+            'sender_address'   => 'required|string|min:3|max:255',
+            'receiver_address' => 'required|string|min:3|max:255',
+            'weight'           => 'required|numeric|min:1|max:300000',
+            'item_value'       => 'nullable|numeric|min:0',
+            'all'              => 'nullable|boolean',
+        ]);
+
+        $weight = (int) ceil((float) $validated['weight']);
+        $itemValue = (int) ($validated['item_value'] ?? 10000);
+
+        // 3. PEMETAAN ALAMAT (KiriminAja)
+        try {
+            $senderLocation = $this->_resolveAddress($validated['sender_address']);
+            if (!$senderLocation) {
+                return response()->json([
+                    'status'  => 'error',
+                    'message' => 'Alamat asal tidak ditemukan. Sertakan nama kecamatan dan kabupaten/kota.',
+                    'address' => $validated['sender_address'],
+                ], 422);
+            }
+
+            $receiverLocation = $this->_resolveAddress($validated['receiver_address']);
+            if (!$receiverLocation) {
+                return response()->json([
+                    'status'  => 'error',
+                    'message' => 'Alamat tujuan tidak ditemukan. Sertakan nama kecamatan dan kabupaten/kota.',
+                    'address' => $validated['receiver_address'],
+                ], 422);
+            }
+        } catch (Throwable $e) {
+            Log::error('Bot cek-ongkir: pemetaan alamat gagal: ' . $e->getMessage());
+            return response()->json([
+                'status'  => 'error',
+                'message' => 'Layanan pencarian alamat sedang tidak tersedia. Coba lagi nanti.',
+            ], 502);
+        }
+
+        // 4. CEK ONGKIR TERBAIK (baca-saja, tanpa booking)
+        $wantAll = (bool) ($validated['all'] ?? $request->boolean('all'));
+        $allOptions = [];
+        try {
+            $allOptions = $this->_getShippingOptions(
+                $senderLocation['district_id'],
+                $senderLocation['subdistrict_id'],
+                $receiverLocation['district_id'],
+                $receiverLocation['subdistrict_id'],
+                $weight,
+                $itemValue
+            );
+            $shippingCost = $this->_pickCheapest($allOptions);
+        } catch (Throwable $e) {
+            Log::error('Bot cek-ongkir: query ongkir gagal: ' . $e->getMessage());
+            $shippingCost = null;
+            $allOptions = [];
+        }
+
+        if (!$shippingCost) {
+            return response()->json([
+                'status'  => 'error',
+                'message' => 'Ongkos kirim tidak tersedia untuk rute ini. Periksa kembali kecamatan asal/tujuan atau berat paket.',
+                'asal'    => $senderLocation['full_text'] ?? $validated['sender_address'],
+                'tujuan'  => $receiverLocation['full_text'] ?? $validated['receiver_address'],
+                'berat'   => $weight,
+            ], 404);
+        }
+
+        // 5. RESPON
+        $payload = [
+            'status'        => 'success',
+            'asal'          => $senderLocation['full_text'] ?? $validated['sender_address'],
+            'tujuan'        => $receiverLocation['full_text'] ?? $validated['receiver_address'],
+            'berat'         => $weight,
+            'berat_satuan'  => 'gram',
+            'kurir'         => strtoupper((string) $shippingCost['courier']),
+            'layanan'       => (string) $shippingCost['service_type'],
+            'ongkir'        => (int) $shippingCost['cost'],
+            'ongkir_format' => 'Rp ' . number_format((int) $shippingCost['cost'], 0, ',', '.'),
+            'catatan'       => 'Ongkir estimasi reguler termurah. Tidak ada pesanan yang dibuat.',
+        ];
+
+        // all=1: sertakan seluruh opsi ekspedisi (diurutkan dari termurah)
+        if ($wantAll) {
+            $payload['jumlah_ekspedisi'] = count($allOptions);
+            $payload['ekspedisi'] = $allOptions;
+        }
+
+        return response()->json($payload, 200);
+    }
+
+    /**
      * Memetakan teks alamat dari AI ke District ID menggunakan API KiriminAja
      */
     private function _resolveAddress(string $addressText): ?array
@@ -180,21 +289,104 @@ class BotOrderController extends Controller
         try {
             $results = $this->kirimaja->searchAddress($addressText);
 
-            // Ambil hasil pencarian pertama yang paling relevan
-            if (!empty($results['status']) && !empty($results['data']) && count($results['data']) > 0) {
-                $bestMatch = $results['data'][0];
-                return [
-                    'district_id'    => $bestMatch['district_id'],
-                    'subdistrict_id' => $bestMatch['subdistrict_id'],
-                    'postal_code'    => $bestMatch['zipcode'] ?? '00000',
-                    'full_text'      => $bestMatch['text']
-                ];
+            // Ambil hasil pencarian pertama yang paling relevan.
+            // Struktur respons KiriminAja: province_id, city_id, district_id,
+            // subdistrict_id, full_address (tidak ada 'text' / 'zipcode').
+            if (!empty($results['status']) && !empty($results['data']) && is_array($results['data'])) {
+                foreach ($results['data'] as $candidate) {
+                    if (!is_array($candidate)) {
+                        continue;
+                    }
+
+                    $districtId    = $candidate['district_id'] ?? null;
+                    $subdistrictId = $candidate['subdistrict_id'] ?? null;
+
+                    // district_id & subdistrict_id wajib ada dan berupa ID positif.
+                    if (!is_numeric($districtId) || !is_numeric($subdistrictId)
+                        || (int) $districtId <= 0 || (int) $subdistrictId <= 0) {
+                        continue;
+                    }
+
+                    return [
+                        'province_id'    => isset($candidate['province_id']) && is_numeric($candidate['province_id'])
+                                                ? (int) $candidate['province_id'] : null,
+                        'city_id'        => isset($candidate['city_id']) && is_numeric($candidate['city_id'])
+                                                ? (int) $candidate['city_id'] : null,
+                        'district_id'    => (int) $districtId,
+                        'subdistrict_id' => (int) $subdistrictId,
+                        // Api tidak selalu mengirim zipcode; biarkan null (kolom nullable).
+                        'postal_code'    => isset($candidate['zipcode']) && $candidate['zipcode'] !== ''
+                                                ? (string) $candidate['zipcode'] : null,
+                        'full_text'      => $candidate['full_address'] ?? null,
+                    ];
+                }
             }
             return null;
         } catch (Exception $e) {
             Log::error("Geocoding API KiriminAja Gagal: " . $e->getMessage());
             return null;
         }
+    }
+
+    /**
+     * Ambil SEMUA opsi ekspedisi KiriminAja lalu normalisasi (read-only).
+     */
+    private function _getShippingOptions($senderDist, $senderSub, $recDist, $recSub, $weight, $itemValue): array
+    {
+        $options = $this->kirimaja->getExpressPricing(
+            $senderDist, $senderSub, $recDist, $recSub,
+            $weight, 1, 1, 1, $itemValue, null, 'regular', 0
+        );
+
+        if (!is_array($options) || ($options['status'] ?? false) !== true || empty($options['results'])) {
+            return [];
+        }
+
+        $rows = [];
+        foreach ((array) $options['results'] as $opt) {
+            if (!is_array($opt)) {
+                continue;
+            }
+            $cost = (int) ($opt['cost'] ?? $opt['final_price'] ?? 0);
+            if ($cost <= 0) {
+                continue;
+            }
+            $discount = (int) ($opt['discount_amount'] ?? 0);
+
+            $rows[] = [
+                'kurir'         => strtoupper((string) ($opt['service'] ?? 'unknown')),
+                'layanan'       => (string) ($opt['service_name'] ?? $opt['service_type'] ?? ''),
+                'kode'          => (string) ($opt['service_type'] ?? ''),
+                'group'         => strtolower((string) ($opt['group'] ?? '')),
+                'ongkir'        => max($cost - $discount, 0),
+                'ongkir_normal' => $cost,
+                'diskon'        => $discount,
+                'etd'           => isset($opt['etd']) && $opt['etd'] !== '' ? (string) $opt['etd'] : null,
+                'cod'           => (bool) ($opt['cod'] ?? false),
+            ];
+        }
+
+        usort($rows, function ($a, $b) {
+            return [$a['ongkir'], $a['kurir']] <=> [$b['ongkir'], $b['kurir']];
+        });
+
+        return $rows;
+    }
+
+    /**
+     * Pilih opsi termurah dari daftar yang sudah dinormalisasi.
+     */
+    private function _pickCheapest(array $rows): ?array
+    {
+        if (empty($rows)) {
+            return null;
+        }
+
+        return [
+            'courier'      => $rows[0]['kurir'],
+            'service_type' => $rows[0]['kode'] !== '' ? $rows[0]['kode'] : $rows[0]['layanan'],
+            'cost'         => $rows[0]['ongkir'],
+        ];
     }
 
     /**
