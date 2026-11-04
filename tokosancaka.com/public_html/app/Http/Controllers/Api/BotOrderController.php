@@ -815,7 +815,7 @@ class BotOrderController extends Controller
         }
 
         $parts = explode('|', $interactiveId);
-        if (count($parts) !== 3 || !in_array($parts[0], ['sckq', 'scknext'], true)) {
+        if (count($parts) !== 3 || !in_array($parts[0], ['sckq', 'scknext', 'sckprev'], true)) {
             return response()->json(['status' => 'ignored']);
         }
 
@@ -829,7 +829,7 @@ class BotOrderController extends Controller
             ]);
         }
 
-        if ($parts[0] === 'scknext') {
+        if (in_array($parts[0], ['scknext', 'sckprev'], true)) {
             $page = max(0, (int) $value);
             $sent = $this->_sendWhatsAppShippingList(
                 $quote['phone'],
@@ -888,12 +888,15 @@ class BotOrderController extends Controller
     }
 
     /**
-     * Mengirim maksimal 9 layanan + 1 pilihan halaman berikutnya.
-     * Batas 10 row total menjaga kompatibilitas list message WhatsApp.
+     * Mengirim maksimal 8 layanan + tombol navigasi (prev/next) jika diperlukan.
+     * Batas total row WhatsApp List message adalah 10 baris.
      */
     private function _sendWhatsAppShippingList(string $phone, string $token, int $page, array $options): bool
     {
-        $perPage = 9;
+        $perPage = 8;
+        $totalOptions = count($options);
+        $totalPages = (int) ceil($totalOptions / $perPage);
+        $page = max(0, min($page, max(0, $totalPages - 1)));
         $offset = $page * $perPage;
         $pageOptions = array_slice($options, $offset, $perPage);
 
@@ -902,6 +905,16 @@ class BotOrderController extends Controller
         }
 
         $rows = [];
+
+        // Navigasi prev jika bukan halaman pertama (page > 0)
+        if ($page > 0) {
+            $rows[] = [
+                'id'          => 'sckprev|' . $token . '|' . ($page - 1),
+                'title'       => '⬅️ Halaman Sebelumnya',
+                'description' => 'Kembali ke halaman ' . $page . ' dari ' . $totalPages,
+            ];
+        }
+
         foreach ($pageOptions as $localIndex => $option) {
             $index = $offset + $localIndex;
             $title = trim($option['kurir'] . ' ' . ($option['layanan'] ?: $option['kode']));
@@ -916,19 +929,22 @@ class BotOrderController extends Controller
             }
 
             $rows[] = [
-                'id' => 'sckq|' . $token . '|' . $index,
-                'title' => $title !== '' ? $title : 'Layanan ' . ($index + 1),
+                'id'          => 'sckq|' . $token . '|' . $index,
+                'title'       => $title !== '' ? $title : 'Layanan ' . ($index + 1),
                 'description' => Str::limit($description, 72, ''),
             ];
         }
 
-        if (($offset + $perPage) < count($options)) {
+        // Navigasi next jika masih ada halaman berikutnya
+        if (($offset + $perPage) < $totalOptions) {
             $rows[] = [
-                'id' => 'scknext|' . $token . '|' . ($page + 1),
-                'title' => 'Lihat pilihan berikutnya',
-                'description' => 'Menampilkan layanan kurir selanjutnya',
+                'id'          => 'scknext|' . $token . '|' . ($page + 1),
+                'title'       => '➡️ Halaman Berikutnya',
+                'description' => 'Lihat halaman ' . ($page + 2) . ' dari ' . $totalPages,
             ];
         }
+
+        $pageIndicator = $totalPages > 1 ? ' (Hal ' . ($page + 1) . '/' . $totalPages . ')' : '';
 
         $interactive = [
             'type' => 'list',
@@ -937,7 +953,7 @@ class BotOrderController extends Controller
                 'text' => 'SANCAKA EXPRESS',
             ],
             'body' => [
-                'text' => "📦 *Pilihan layanan pengiriman*\n"
+                'text' => "📦 *Pilihan layanan pengiriman*{$pageIndicator}\n"
                     . "Asal: " . ($this->_getCachedQuoteValue($token, 'asal') ?? '-') . "\n"
                     . "Tujuan: " . ($this->_getCachedQuoteValue($token, 'tujuan') ?? '-') . "\n"
                     . "Berat: " . ($this->_getCachedQuoteValue($token, 'weight') ?? '-') . " gram\n\n"
@@ -950,7 +966,7 @@ class BotOrderController extends Controller
                 'button' => 'Pilih Kurir',
                 'sections' => [
                     [
-                        'title' => 'Layanan Pengiriman',
+                        'title' => 'Layanan Pengiriman' . $pageIndicator,
                         'rows' => $rows,
                     ],
                 ],
@@ -1185,7 +1201,7 @@ class BotOrderController extends Controller
 
         // 1. Interaktif: pilihan kurir / tombol konfirmasi
         if (is_string($interactiveId) && $interactiveId !== '') {
-            if (str_starts_with($interactiveId, 'sckq|') || str_starts_with($interactiveId, 'scknext|')) {
+            if (str_starts_with($interactiveId, 'sckq|') || str_starts_with($interactiveId, 'scknext|') || str_starts_with($interactiveId, 'sckprev|')) {
                 return $this->handleWhatsAppShippingWebhook($request);
             }
 
@@ -1246,11 +1262,21 @@ class BotOrderController extends Controller
             return response()->json(['status' => 'success', 'handled' => 'blocked']);
         }
 
-        // Sapaan / pilihan menu / permintaan layanan -> menu, bukan no_active_draft.
-        // HANDLED_LABEL_V1: label respons mencerminkan aksi yang benar-benar terjadi.
-        $handled = $this->_handleMenuIntent($phone, $text);
-        if ($handled !== '') {
-            return response()->json(['status' => 'success', 'handled' => $handled]);
+        // Sapaan / pilihan menu / permintaan layanan -> serahkan percakapan ke Hermes.
+        // Bila ada draft aktif di tengah pengisian (AWAITING_*), state machine Laravel tetap melayani.
+        $draft = BotOrderDraft::where('phone_number', $phone)->first();
+        $isDraftActive = $draft && !in_array(strtoupper((string) $draft->step), ['COMPLETED', 'CANCELLED'], true);
+
+        if (!$isDraftActive) {
+            // SINGLE HANDLER: Percakapan bebas, salam, tanya menu, dan cek ongkir
+            // sepenuhnya dikendalikan oleh Hermes Agent via WhatsApp platform adapter.
+            // Laravel webhook TIDAK mengirim pesan ongkir mandiri agar tidak terjadi duplikasi.
+            Log::info('[WA-WEBHOOK] Pesan dilewati untuk ditangani Hermes Agent', [
+                'phone' => $phone,
+                'text'  => Str::limit($text, 60, ''),
+            ]);
+
+            return response()->json(['status' => 'success', 'handled' => 'delegated_to_hermes']);
         }
 
         return $this->_handleStepInput($phone, $text);
@@ -1460,7 +1486,7 @@ class BotOrderController extends Controller
                 'weight'      => (int) $parsed['weight'],
             ], now()->addHours(6));
 
-            $wa = $this->_sendShippingListToWhatsApp($phone, array_slice($options, 0, 9), [
+            $wa = $this->_sendShippingListToWhatsApp($phone, $options, [
                 'asal'   => $sender['full_text'] ?? $parsed['origin'],
                 'tujuan' => $receiver['full_text'] ?? $parsed['destination'],
                 'weight' => (int) $parsed['weight'],
