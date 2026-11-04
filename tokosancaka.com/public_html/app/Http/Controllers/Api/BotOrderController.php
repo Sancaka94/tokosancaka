@@ -966,7 +966,7 @@ class BotOrderController extends Controller
                 'button' => 'Pilih Kurir',
                 'sections' => [
                     [
-                        'title' => 'Layanan Pengiriman' . $pageIndicator,
+                        'title' => Str::limit('Pilihan Layanan' . $pageIndicator, 24, ''),
                         'rows' => $rows,
                     ],
                 ],
