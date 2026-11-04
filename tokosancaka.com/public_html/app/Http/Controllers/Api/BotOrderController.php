@@ -1342,6 +1342,16 @@ class BotOrderController extends Controller
         $origin = trim(preg_replace('/\b(dari|ke)\b/', ' ', $origin) ?? '');
         $destination = trim(preg_replace('/\b(dari|ke)\b/', ' ', $destination) ?? '');
 
+        // PARSER_SANITY_V1: buang sisi yang jelas bukan nama wilayah
+        // ("bisa ga", "ga jadi", "halo"), supaya bot tidak menanyakan rute
+        // dari potongan kalimat.
+        if ($origin !== '' && !$this->_looksLikeRegion($origin)) {
+            $origin = '';
+        }
+        if ($destination !== '' && !$this->_looksLikeRegion($destination)) {
+            $destination = '';
+        }
+
         // PARTIAL_ONGKIR_V1: "cek ongkir ke surabaya 1kg" -> asal kosong.
         // Kirim saja yang ada; asal diisi pemanggil dari konteks nomor.
         if ($origin === '' && $destination === '') {
@@ -1524,6 +1534,17 @@ class BotOrderController extends Controller
 
         // ONGKIR_CONTEXT_CONTINUE_V1: lanjutan percakapan ongkir.
         // "dari ngawi", "ke surabaya 2 kg" -> proses, bukan smalltalk.
+        // ROUTE_INTENT_V1: "dari ngawi ke surabaya 1kg" tanpa kata "ongkir"
+        // tetap jelas maksudnya permintaan tarif.
+        if (!$isService) {
+            $hasRoute = (bool) preg_match('/\b(dari|ke)\b/', $body)
+                && (bool) preg_match('/\d+\s*(kg|kilogram|gram|gr)\b/', $body);
+
+            if ($hasRoute && $this->_handleOngkirText($phone, $text)) {
+                return 'ongkir';
+            }
+        }
+
         if (!$isGreeting && !$isNumber && !$isService) {
             $ctxKey = 'sck_ongkir_ctx:' . md5((string) $phone);
             $ctx = Cache::get($ctxKey);
@@ -1691,6 +1712,30 @@ class BotOrderController extends Controller
             $this->_sendWhatsAppText($phone, $this->_friendlyReply($text));
 
             return response()->json(['status' => 'success', 'handled' => 'smalltalk']);
+        }
+
+        // CANCEL_INTENT_V1: pesan batal JANGAN disimpan sebagai data langkah.
+        // Dulu "ga jadi kirim" tersimpan menjadi nama pengirim.
+        if ($this->_isCancelIntent($text)) {
+            $invoice = $draft->invoice_number ?? null;
+            $draft->delete();
+
+            Cache::forget('sck_ongkir_ctx:' . md5((string) $phone));
+
+            Log::info('[WA-CANCEL] Draft dibatalkan pelanggan', [
+                'phone'   => $phone,
+                'invoice' => $invoice,
+                'text'    => Str::limit($text, 60, ''),
+            ]);
+
+            $this->_sendWhatsAppText(
+                $phone,
+                "Baik kak, pesanan dibatalkan 👍\n\n"
+                . "Tidak ada data yang tersimpan.\n"
+                . "Kalau nanti mau kirim paket lagi, tinggal bilang saja ya."
+            );
+
+            return response()->json(['status' => 'success', 'handled' => 'cancelled']);
         }
 
         $text = Str::limit($text, 250, '');
@@ -2408,6 +2453,100 @@ class BotOrderController extends Controller
      * KiriminAja butuh provinsi untuk membedakan kota bernama sama.
      * Tanpa ini 'surabaya' bisa berarti desa di Lampung.
      */
+    /**
+     * CANCEL_INTENT_V1 — deteksi niat membatalkan proses.
+     * Hanya dipakai saat ada draft aktif, agar tidak salah menangkap nama.
+     */
+    private function _isCancelIntent(string $text): bool
+    {
+        $t = ' ' . strtolower(preg_replace('/[^a-z0-9 ]+/', ' ', $text) ?? '') . ' ';
+        $t = preg_replace('/\s+/', ' ', $t) ?? $t;
+
+        $phrases = [
+            'ga jadi', 'gak jadi', 'nggak jadi', 'engga jadi', 'enggak jadi',
+            'tidak jadi', 'tak jadi', 'tdk jadi', 'batal', 'batalkan', 'cancel',
+            'urung', 'urungkan', 'stop', 'berhenti', 'jangan lanjut', 'jangan teruskan',
+            'gak usah', 'ga usah', 'nggak usah', 'tidak usah', 'batalin',
+            'saya batal', 'mau batal', 'kembali', 'keluar',
+        ];
+
+        foreach ($phrases as $p) {
+            if (str_contains($t, $p)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * PARSER_SANITY_V1 — kata yang TIDAK MUNGKIN menjadi nama wilayah.
+     * Tanpa daftar ini, potongan kalimat seperti "bisa ga" atau "ga jadi"
+     * dianggap nama kota dan bot menanyakan rute dari kata sampah.
+     */
+    private const NON_REGION_WORDS = [
+        // sapaan & partikel
+        'kak', 'kakak', 'min', 'admin', 'halo', 'hai', 'hallo', 'permisi', 'mas', 'mbak',
+        'bapak', 'ibu', 'pak', 'bu', 'assalamualaikum', 'salam',
+        // kata kerja / permintaan
+        'cek', 'cekongkir', 'ongkir', 'ongkos', 'tarif', 'harga', 'biaya', 'kirim',
+        'kirimin', 'kirimkan', 'mau', 'ingin', 'pengen', 'butuh', 'perlu', 'minta',
+        'tolong', 'bantu', 'tanya', 'nanya', 'pesan', 'beli', 'bayar', 'lacak',
+        'tracking', 'resi', 'lihat', 'tampilkan', 'kasih', 'beri',
+        // tanya & sambung
+        'apa', 'apakah', 'berapa', 'bagaimana', 'gimana', 'kapan', 'dimana', 'mana',
+        'bisa', 'bisakah', 'boleh', 'bolehkah', 'ga', 'gak', 'nggak', 'tidak', 'tak',
+        'engga', 'enggak', 'tdk', 'ya', 'yah', 'dong', 'deh', 'sih', 'nih', 'kan',
+        'lah', 'kok', 'nya', 'yang', 'untuk', 'atau', 'dan', 'dengan', 'itu', 'ini',
+        'ada', 'adakah', 'sudah', 'belum', 'masih', 'lagi', 'juga', 'sekalian',
+        // batal & negasi
+        'jadi', 'batal', 'batalkan', 'cancel', 'urung', 'gagal', 'salah', 'keliru',
+        'stop', 'berhenti', 'tunggu', 'nanti', 'dulu',
+        // kata ganti
+        'saya', 'aku', 'kami', 'kita', 'gue', 'gua', 'kamu', 'anda', 'dia',
+        // terima kasih & penutup
+        'makasih', 'terima', 'kasih', 'thanks', 'thank', 'thx', 'tq', 'mksh',
+        'sip', 'oke', 'ok', 'baik', 'siap', 'mantap', 'bagus',
+        'selamat', 'pagi', 'siang', 'sore', 'malam',
+        // satuan (bukan wilayah)
+        'kg', 'kilogram', 'gram', 'gr', 'g', 'ons', 'ton', 'kilo',
+        // lain-lain
+        'kak', 'kalo', 'kalau', 'biar', 'supaya', 'sama', 'sampai', 'tujuan',
+        'asal', 'dari', 'ke', 'paket', 'barang', 'isi', 'alamat', 'nama',
+    ];
+
+    /** Apakah token plausibel sebagai nama wilayah? */
+    private function _looksLikeRegion(string $value): bool
+    {
+        $value = trim(mb_strtolower($value));
+        if ($value === '') {
+            return false;
+        }
+
+        $words = preg_split('/\s+/', $value) ?: [];
+        $meaningful = 0;
+
+        foreach ($words as $w) {
+            $w = trim($w);
+            if ($w === '') {
+                continue;
+            }
+            // Angka murni bukan nama wilayah.
+            if (ctype_digit($w)) {
+                return false;
+            }
+            if (in_array($w, self::NON_REGION_WORDS, true)) {
+                // Satu kata terlarang sudah cukup menandakan bukan wilayah.
+                return false;
+            }
+            if (mb_strlen($w) >= 3) {
+                $meaningful++;
+            }
+        }
+
+        return $meaningful >= 1;
+    }
+
     private const CITY_PROVINCE = [
         'surabaya'  => 'jawa timur',
         'malang'    => 'jawa timur',
