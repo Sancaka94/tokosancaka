@@ -1165,25 +1165,6 @@ class BotOrderController extends Controller
 
         $phone = $this->_normalizeWaPhone((string) $phone);
 
-        // CROSSPATH_DEDUPE_V1: jalur Hermes tidak mengirim message_id, sedangkan
-        // jalur API.co.id mengirim. Tanpa kunci kedua, pesan yang sama diproses
-        // dua kali -> customer menerima balasan dobel.
-        $contentForHash = trim((string) (data_get($payload, 'data.content')
-            ?? data_get($payload, 'data.text')
-            ?? data_get($payload, 'content')
-            ?? ''));
-        if ($contentForHash !== '') {
-            $crossKey = 'wa_seen_body:' . md5($phone . '|' . mb_strtolower($contentForHash));
-            if (Cache::has($crossKey)) {
-                Log::info('[WA-WEBHOOK] Dilewati: isi pesan sama dalam 90 detik', [
-                    'phone' => $phone,
-                ]);
-
-                return response()->json(['status' => 'ignored', 'reason' => 'duplicate_content']);
-            }
-            Cache::put($crossKey, 1, now()->addSeconds(90));
-        }
-
         // Abaikan pesan keluar (event message.sent) agar tidak loop.
         if (($messageDirection = data_get($payload, 'data.direction')) === 'outbound') {
             return response()->json(['status' => 'ignored', 'reason' => 'outbound']);
@@ -1199,7 +1180,8 @@ class BotOrderController extends Controller
             ?? data_get($payload, 'data.raw.button.id')
             ?? data_get($payload, 'interactive_response.id');
 
-        // 1. Interaktif: pilihan kurir / tombol konfirmasi
+        // 1. Interaktif: pilihan kurir / tombol konfirmasi / navigasi pagination
+        // Diproses terlebih dahulu sebelum deduplikasi teks (agar klik tombol 'Berikutnya' berulang tidak terblokir).
         if (is_string($interactiveId) && $interactiveId !== '') {
             if (str_starts_with($interactiveId, 'sckq|') || str_starts_with($interactiveId, 'scknext|') || str_starts_with($interactiveId, 'sckprev|')) {
                 return $this->handleWhatsAppShippingWebhook($request);
@@ -1239,6 +1221,17 @@ class BotOrderController extends Controller
 
             return response()->json(['status' => 'ignored', 'reason' => 'no_text']);
         }
+
+        // CROSSPATH_DEDUPE_V1: khusus pesan teks biasa, cegah pemrosesan ganda dalam 90 detik.
+        $crossKey = 'wa_seen_body:' . md5($phone . '|' . mb_strtolower($text));
+        if (Cache::has($crossKey)) {
+            Log::info('[WA-WEBHOOK] Dilewati: isi pesan sama dalam 90 detik', [
+                'phone' => $phone,
+            ]);
+
+            return response()->json(['status' => 'ignored', 'reason' => 'duplicate_content']);
+        }
+        Cache::put($crossKey, 1, now()->addSeconds(90));
 
         // SECURITY_GATE_V1: tolak upaya mengakses sistem/server/kredensial.
         // Lapisan ini wajib ada di Laravel karena webhook bisa dipanggil
