@@ -13,6 +13,73 @@ use Illuminate\Support\Facades\Log; // Pastikan Log dipanggil
 
 class ApiSettingsController extends Controller
 {
+    public const OWNER_PHONE = '6285745808809';
+
+    /**
+     * Kirim tombol interaktif saklar ON/OFF ke WhatsApp Owner
+     */
+    public static function sendSaklarWhatsAppPrompt(string $phone): bool
+    {
+        $normalizedPhone = preg_replace('/\D/', '', explode('@', $phone)[0]);
+        if (str_starts_with($normalizedPhone, '0')) {
+            $normalizedPhone = '62' . substr($normalizedPhone, 1);
+        }
+
+        if ($normalizedPhone !== self::OWNER_PHONE) {
+            Log::warning("[SAKLAR-WA] Akses ditolak: bukan nomor owner ({$normalizedPhone})");
+            return false;
+        }
+
+        $kaMode = Api::getValue('KIRIMINAJA_MODE', 'global', 'staging');
+        $isProduction = ($kaMode === 'production');
+        $statusCurrent = $isProduction ? '🟢 PRODUCTION (LIVE)' : '🟡 SANDBOX / DEVELOPMENT';
+
+        $body = "⚙️ *KONTROL SAKLAR API GLOBAL*\n\n"
+            . "Status saat ini:\n"
+            . "*{$statusCurrent}*\n\n"
+            . "Tekan salah satu tombol di bawah untuk mengubah seluruh sistem API secara otomatis (1x klik):";
+
+        $buttons = [
+            [
+                'id'    => 'sck_mode|prod',
+                'title' => '🟢 ON (Production)',
+            ],
+            [
+                'id'    => 'sck_mode|sandbox',
+                'title' => '🟡 OFF (Sandbox)',
+            ],
+        ];
+
+        return app(\App\Http\Controllers\Api\BotOrderController::class)->sendRawButtons($normalizedPhone, $body, $buttons);
+    }
+
+    /**
+     * Eksekusi pergantian mode seluruh API dari tombol WhatsApp Owner
+     */
+    public static function handleSaklarWhatsAppAction(string $phone, string $action): bool
+    {
+        $normalizedPhone = preg_replace('/\D/', '', explode('@', $phone)[0]);
+        if (str_starts_with($normalizedPhone, '0')) {
+            $normalizedPhone = '62' . substr($normalizedPhone, 1);
+        }
+
+        if ($normalizedPhone !== self::OWNER_PHONE) {
+            Log::warning("[SAKLAR-WA] Eksekusi ditolak: bukan nomor owner ({$normalizedPhone})");
+            return false;
+        }
+
+        $isProduction = ($action === 'prod');
+        $result = self::applyGlobalMode($isProduction);
+
+        $badge = $isProduction ? '🟢' : '🟡';
+        $message = "{$badge} *SAKLAR API BERHASIL DIUBAH!*\n\n"
+            . "Mode Global Seluruh Sistem saat ini:\n"
+            . "*{$result['label']}*\n\n"
+            . "Semua API (KiriminAja, Tripay, DOKU, Midtrans, IAK, Digiflazz, BCA, Mandiri, DANA, dll) telah dialihkan ke mode ini.";
+
+        return app(\App\Http\Controllers\Api\BotOrderController::class)->sendRawText($normalizedPhone, $message);
+    }
+
     public function index()
     {
         // 1. Ambil Mode Global yang sedang aktif
@@ -646,72 +713,80 @@ class ApiSettingsController extends Controller
         }
     }
 
+    public static function applyGlobalMode(bool $isProduction): array
+    {
+        if ($isProduction === true) {
+            $targetKA           = 'production';
+            $targetTripay       = 'production';
+            $targetDoku         = 'production';
+            $targetIAK          = 'production';
+            $targetDharmawisata = 'production';
+            $targetDana         = '1';
+            $targetMidtrans     = 'production';
+            $targetLalamove     = 'production';
+            $targetPaypal       = 'production';
+            $targetDeliveree    = 'production';
+            $targetIpaymu       = 'production';
+            $targetMandiri      = 'production';
+            $targetAutokirim    = 'production';
+            $targetDigiflazz    = 'production';
+            $targetBca          = 'production';
+            $label              = 'PRODUCTION (LIVE)';
+        } else {
+            $targetKA           = 'staging';
+            $targetTripay       = 'sandbox';
+            $targetDoku         = 'sandbox';
+            $targetIAK          = 'development';
+            $targetDharmawisata = 'development';
+            $targetDana         = '0';
+            $targetMidtrans     = 'sandbox';
+            $targetLalamove     = 'sandbox';
+            $targetPaypal       = 'sandbox';
+            $targetDeliveree    = 'sandbox';
+            $targetIpaymu       = 'sandbox';
+            $targetMandiri      = 'sandbox';
+            $targetAutokirim    = 'sandbox';
+            $targetDigiflazz    = 'development';
+            $targetBca          = 'sandbox';
+            $label              = 'SANDBOX / MAINTENANCE';
+        }
+
+        Api::setValue('KIRIMINAJA_MODE', $targetKA, 'kiriminaja', 'global');
+        Api::setValue('TRIPAY_MODE', $targetTripay, 'tripay', 'global');
+        Api::setValue('DOKU_ENV', $targetDoku, 'doku', 'global');
+        Api::setValue('IAK_MODE', $targetIAK, 'iak', 'global');
+        Api::setValue('DHARMAWISATA_MODE', $targetDharmawisata, 'dharmawisata', 'global');
+        Api::setValue('dana_production_mode', $targetDana, 'dana', 'global');
+        Api::setValue('MIDTRANS_MODE', $targetMidtrans, 'midtrans', 'global');
+        Api::setValue('DELIVEREE_MODE', $targetDeliveree, 'deliveree', 'global');
+        Api::setValue('IPAYMU_MODE', $targetIpaymu, 'ipaymu', 'global');
+        Api::setValue('MANDIRI_MODE', $targetMandiri, 'mandiri', 'global');
+        Api::setValue('LALAMOVE_MODE', $targetLalamove, 'lalamove', 'global');
+        Api::setValue('PAYPAL_MODE', $targetPaypal, 'paypal', 'global');
+        Api::setValue('AUTOKIRIM_MODE', $targetAutokirim, 'autokirim', 'global');
+        Api::setValue('DIGIFLAZZ_MODE', $targetDigiflazz, 'digiflazz', 'global');
+        Api::setValue('BCA_MODE', $targetBca, 'bca', 'global');
+
+        event(new SystemModeUpdated($targetKA));
+
+        return [
+            'mode'  => $targetKA,
+            'label' => $label,
+        ];
+    }
+
     public function toggleApi(Request $request)
     {
         try {
             $isProduction = filter_var($request->input('is_production'), FILTER_VALIDATE_BOOLEAN);
+            $result = self::applyGlobalMode($isProduction);
 
-            if ($isProduction == true) {
-                $targetKA           = 'production';
-                $targetTripay       = 'production';
-                $targetDoku         = 'production';
-                $targetIAK          = 'production';
-                $targetDharmawisata = 'production';
-                $targetDana         = '1';
-                $targetMidtrans     = 'production';
-                $targetLalamove     = 'production';
-                $targetPaypal       = 'production';
-                $targetDeliveree    = 'production';
-                $targetIpaymu       = 'production';
-                $targetMandiri      = 'production';
-                $targetAutokirim    = 'production';
-                $targetDigiflazz    = 'production';
-                $targetBca          = 'production';
-                $label              = 'PRODUCTION (LIVE)';
-            } else {
-                $targetKA           = 'staging';
-                $targetTripay       = 'sandbox';
-                $targetDoku         = 'sandbox';
-                $targetIAK          = 'development';
-                $targetDharmawisata = 'development';
-                $targetDana         = '0';
-                $targetMidtrans     = 'sandbox';
-                $targetLalamove     = 'sandbox';
-                $targetPaypal       = 'sandbox';
-                $targetDeliveree    = 'sandbox';
-                $targetIpaymu       = 'sandbox';
-                $targetMandiri      = 'sandbox';
-                $targetAutokirim    = 'sandbox';
-                $targetDigiflazz    = 'development';
-                $targetBca          = 'sandbox';
-                $label              = 'SANDBOX / MAINTENANCE';
-            }
-
-            Api::setValue('KIRIMINAJA_MODE', $targetKA, 'kiriminaja', 'global');
-            Api::setValue('TRIPAY_MODE', $targetTripay, 'tripay', 'global');
-            Api::setValue('DOKU_ENV', $targetDoku, 'doku', 'global');
-            Api::setValue('IAK_MODE', $targetIAK, 'iak', 'global');
-            Api::setValue('DHARMAWISATA_MODE', $targetDharmawisata, 'dharmawisata', 'global');
-            Api::setValue('dana_production_mode', $targetDana, 'dana', 'global');
-            Api::setValue('MIDTRANS_MODE', $targetMidtrans, 'midtrans', 'global');
-            Api::setValue('DELIVEREE_MODE', $targetDeliveree, 'deliveree', 'global');
-            Api::setValue('IPAYMU_MODE', $targetIpaymu, 'ipaymu', 'global');
-            Api::setValue('MANDIRI_MODE', $targetMandiri, 'mandiri', 'global');
-            Api::setValue('LALAMOVE_MODE', $targetLalamove, 'lalamove', 'global');
-            Api::setValue('PAYPAL_MODE', $targetPaypal, 'paypal', 'global');
-            Api::setValue('AUTOKIRIM_MODE', $targetAutokirim, 'autokirim', 'global');
-            Api::setValue('DIGIFLAZZ_MODE', $targetDigiflazz, 'digiflazz', 'global');
-            Api::setValue('BCA_MODE', $targetBca, 'bca', 'global');
-
-            // Log proses toggle via AJAX
-            Log::info("Sistem API Mode di-toggle via API ke: {$label}");
-
-            event(new SystemModeUpdated($targetKA));
+            Log::info("Sistem API Mode di-toggle via API ke: {$result['label']}");
 
             return response()->json([
                 'success' => true,
-                'message' => "Sistem berhasil diubah ke mode $label",
-                'mode'    => $targetKA
+                'message' => "Sistem berhasil diubah ke mode {$result['label']}",
+                'mode'    => $result['mode']
             ], 200);
 
         } catch (\Exception $e) {

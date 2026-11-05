@@ -72,7 +72,12 @@ Route::get('/facebook/webhook', [FacebookWebhookController::class, 'verify']);
 Route::post('/facebook/webhook', [FacebookWebhookController::class, 'handle']);
 
 // Webhook Autokirim
-Route::post('/callback/autokirim', [\App\Http\Controllers\PesananAutokirimController::class, 'handleWebhook']);
+Route::post('/callback/autokirim', [App\Http\Controllers\PesananAutokirimController::class, 'handleWebhook']);
+
+// ============================================================================================
+// ROUTE BARU: MESSAGE ROUTER (2-model: GeminiService = deepseek-coder, IntentAnalysisService = guoxuter)
+// ============================================================================================
+Route::post('/message/chat', [App\Http\Controllers\MessageRouterController::class, 'chat']);
 
 // Pastikan route ini aman dan terproteksi middleware admin jika ini fitur sensitif
 Route::prefix('mobile/settings/harga-ojek')->group(function () {

@@ -1180,9 +1180,15 @@ class BotOrderController extends Controller
             ?? data_get($payload, 'data.raw.button.id')
             ?? data_get($payload, 'interactive_response.id');
 
-        // 1. Interaktif: pilihan kurir / tombol konfirmasi / navigasi pagination
+        // 1. Interaktif: pilihan kurir / tombol konfirmasi / navigasi pagination / saklar API owner
         // Diproses terlebih dahulu sebelum deduplikasi teks (agar klik tombol 'Berikutnya' berulang tidak terblokir).
         if (is_string($interactiveId) && $interactiveId !== '') {
+            if (str_starts_with($interactiveId, 'sck_mode|')) {
+                $action = substr($interactiveId, 9);
+                $ok = \App\Http\Controllers\Admin\ApiSettingsController::handleSaklarWhatsAppAction($phone, $action);
+                return response()->json(['status' => $ok ? 'success' : 'forbidden', 'action' => $action]);
+            }
+
             if (str_starts_with($interactiveId, 'sckq|') || str_starts_with($interactiveId, 'scknext|') || str_starts_with($interactiveId, 'sckprev|')) {
                 return $this->handleWhatsAppShippingWebhook($request);
             }
@@ -1220,6 +1226,21 @@ class BotOrderController extends Controller
             ]);
 
             return response()->json(['status' => 'ignored', 'reason' => 'no_text']);
+        }
+
+        // 0. Perintah khusus Owner: /saklar
+        if (trim(strtolower($text)) === '/saklar') {
+            $isOwner = ($phone === \App\Http\Controllers\Admin\ApiSettingsController::OWNER_PHONE);
+            if ($isOwner) {
+                Log::info('[SAKLAR-WA] Perintah /saklar diterima dari nomor owner', ['phone' => $phone]);
+                $sent = \App\Http\Controllers\Admin\ApiSettingsController::sendSaklarWhatsAppPrompt($phone);
+
+                return response()->json([
+                    'status'  => 'success',
+                    'handled' => 'saklar_prompt',
+                    'sent'    => $sent,
+                ]);
+            }
         }
 
         // CROSSPATH_DEDUPE_V1: khusus pesan teks biasa, cegah pemrosesan ganda dalam 90 detik.
@@ -2204,6 +2225,19 @@ class BotOrderController extends Controller
     /**
      * Kirim pesan interaktif bertipe button.
      */
+    public function sendRawButtons(string $phone, string $body, array $buttons): bool
+    {
+        return $this->_sendWhatsAppButtons($phone, $body, $buttons);
+    }
+
+    /**
+     * Kirim pesan teks.
+     */
+    public function sendRawText(string $phone, string $message): bool
+    {
+        return $this->_sendWhatsAppText($phone, $message);
+    }
+
     private function _sendWhatsAppButtons(string $phone, string $body, array $buttons): bool
     {
         $rows = [];

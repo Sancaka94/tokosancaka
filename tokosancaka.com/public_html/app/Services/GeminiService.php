@@ -7,67 +7,48 @@ use Illuminate\Support\Facades\Log;
 
 class GeminiService
 {
-    protected $keys = [];
-    
-    protected $baseUrl = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent';
-    public function __construct()
-    {
-        $this->keys = [
-            env('GEMINI_API_KEY_1'),
-            env('GEMINI_API_KEY_2'),
-        ];
-    }
+    // ✅ DIREKSEKSI KE OLLAMA LOCAL (http://localhost:11434/v1)
+    // Ollama menyediakan OpenAI-compatible endpoint /v1/chat/completions
+    protected $baseUrl = 'http://localhost:11434/v1/chat/completions';
+
+    // General chat / PM / helpdesk
+    protected $model = 'deepseek-coder:latest';
 
     public function generateText($prompt)
     {
-        $availableKeys = array_filter($this->keys);
+        $messages = [
+            ['role' => 'user', 'content' => $prompt],
+        ];
 
-        if (empty($availableKeys)) {
-            return 'Error: Tidak ada API Key Gemini yang ditemukan di file .env';
-        }
+        $payload = [
+            'model' => $this->model,
+            'messages' => $messages,
+            'temperature' => 0.7,
+            'max_tokens' => 1024,
+        ];
 
-        $lastError = 'Unknown Error';
+        try {
+            $response = Http::timeout(120)
+                ->withHeaders(['Content-Type' => 'application/json'])
+                ->asJson()
+                ->post($this->baseUrl, $payload);
 
-        foreach ($availableKeys as $index => $apiKey) {
-            $apiKey = trim($apiKey);
-            if (empty($apiKey)) continue;
-
-            try {
-                $keyNumber = $index + 1;
-                
-                // Jeda sedikit saat pindah key
-                if ($index > 0) sleep(2);
-
-                // ✅ PERBAIKAN UTAMA: timeout(120)
-                // Kita beri waktu 120 detik (2 menit) agar tidak error "cURL timeout"
-                $response = Http::timeout(120)
-                    ->withHeaders(['Content-Type' => 'application/json'])
-                    ->post("{$this->baseUrl}?key={$apiKey}", [
-                        'contents' => [
-                            [
-                                'parts' => [['text' => $prompt]]
-                            ]
-                        ]
-                    ]);
-
-                if ($response->successful()) {
-                    $data = $response->json();
-                    return $data['candidates'][0]['content']['parts'][0]['text'] ?? 'Maaf, AI tidak memberikan respons.';
+            if ($response->successful()) {
+                $data = $response->json();
+                if (isset($data['choices'][0]['message']['content'])) {
+                    return $data['choices'][0]['message']['content'];
                 }
-
-                $errorBody = $response->json();
-                $errorMessage = $errorBody['error']['message'] ?? 'Unknown API Error';
-                $lastError = "Key-{$keyNumber}: {$errorMessage}";
-
-                Log::warning("Gemini Key ke-{$keyNumber} Gagal.", ['error' => $errorMessage]);
-
-            } catch (\Exception $e) {
-                // Menangkap error timeout
-                $lastError = "Key-{$keyNumber} Error Koneksi: " . $e->getMessage();
-                Log::error($lastError);
+                return 'Maaf, AI tidak memberikan respons.';
             }
-        }
 
-        return 'Gagal Total. Pesan Terakhir: ' . $lastError;
+            $errorBody = $response->json();
+            $errorMessage = $errorBody['error']['message'] ?? 'Unknown API Error';
+            Log::warning("Ollama Local Error: " . $errorMessage);
+            return 'Gagal: ' . $errorMessage;
+
+        } catch (\Exception $e) {
+            Log::error("Ollama Local Connection Error: " . $e->getMessage());
+            return 'Gagal Koneksi: ' . $e->getMessage();
+        }
     }
 }
