@@ -1,126 +1,126 @@
 {
-    "version": "1.0.0.6080",
-    "last_update": "10 Oct 2026 10:54",
+    "version": "1.0.0.6131",
+    "last_update": "06 Nov 2026 09:42",
     "commits": [
         {
-            "hash": "b034145f",
-            "date": "2026-10-10 10:53:59 +0700",
+            "hash": "ee3c3143",
+            "date": "2026-11-06 09:42:44 +0700",
             "author": "Server Bot",
             "message": "Update System"
         },
         {
-            "hash": "4df5ac8b",
-            "date": "2026-10-06 11:16:27 +0700",
-            "author": "Sancaka94",
-            "message": "Auto commit"
-        },
-        {
-            "hash": "2bf0b4fd",
-            "date": "2026-10-01 07:47:27 +0700",
+            "hash": "457e3207",
+            "date": "2026-11-05 15:15:29 +0700",
             "author": "Amal Ibnu Muharram",
-            "message": "Auto commit"
+            "message": "Refactor: 2-model routing (deepseek-coder + guoxuter intent analysis)"
         },
         {
-            "hash": "628ccef5",
-            "date": "2026-10-01 07:43:53 +0700",
+            "hash": "1c618f43",
+            "date": "2026-11-04 18:09:29 +0700",
             "author": "Amal Ibnu Muharram",
-            "message": "Auto commit"
+            "message": "fix(wa): proses event interaktif sebelum deduplikasi teks agar tombol navigasi tidak terblokir"
         },
         {
-            "hash": "931ba8b3",
-            "date": "2026-10-01 07:40:53 +0700",
+            "hash": "899cfe42",
+            "date": "2026-11-04 18:04:57 +0700",
             "author": "Amal Ibnu Muharram",
-            "message": "Auto commit"
+            "message": "ci: add concurrency group deploy-production with cancel-in-progress"
         },
         {
-            "hash": "003122ed",
-            "date": "2026-10-01 07:34:22 +0700",
+            "hash": "a280c99a",
+            "date": "2026-11-04 17:59:44 +0700",
             "author": "Amal Ibnu Muharram",
-            "message": "Auto commit"
+            "message": "fix(bot): limit section title <=24 chars pada interactive list WA agar tidak 400 validasi"
         },
         {
-            "hash": "193c08b4",
-            "date": "2026-10-01 07:30:58 +0700",
+            "hash": "6ce99380",
+            "date": "2026-11-04 17:40:46 +0700",
             "author": "Amal Ibnu Muharram",
-            "message": "Auto commit"
+            "message": "Fix WhatsApp shipping single handler and pagination"
         },
         {
-            "hash": "a49137cd",
-            "date": "2026-10-01 07:27:25 +0700",
+            "hash": "60b59d71",
+            "date": "2026-11-04 13:26:31 +0700",
             "author": "Amal Ibnu Muharram",
-            "message": "Auto commit"
+            "message": "fix(wa): tolak kata sampah sebagai wilayah, deteksi batal, rute tanpa kata ongkir"
         },
         {
-            "hash": "8e8aa76d",
-            "date": "2026-10-01 07:18:52 +0700",
+            "hash": "81d739b9",
+            "date": "2026-11-04 04:32:28 +0700",
             "author": "Amal Ibnu Muharram",
-            "message": "Auto commit"
+            "message": "fix(wa): dedupe lintas-jalur + parser ongkir parsial + lanjut konteks percakapan"
         },
         {
-            "hash": "b8413e67",
-            "date": "2026-10-01 07:15:47 +0700",
+            "hash": "8bf020fb",
+            "date": "2026-11-04 03:43:18 +0700",
             "author": "Amal Ibnu Muharram",
-            "message": "Auto commit"
+            "message": "fix(wa): filter event masuk, dedupe, resolver alamat berskor, balasan luwes, gate keamanan"
         },
         {
-            "hash": "9ecc7c59",
-            "date": "2026-10-01 06:55:12 +0700",
+            "hash": "2e6cc36f",
+            "date": "2026-11-04 02:57:25 +0700",
             "author": "Amal Ibnu Muharram",
-            "message": "Auto commit"
+            "message": "feat(bot): PRICE_GUARD - validasi harga quote vs real-time sebelum order"
         },
         {
-            "hash": "e6867cb5",
-            "date": "2026-10-01 06:52:39 +0700",
+            "hash": "a643771c",
+            "date": "2026-11-04 02:54:14 +0700",
             "author": "Amal Ibnu Muharram",
-            "message": "Auto commit"
+            "message": "feat(awb): cron followup AWB + endpoint pending\/simpan\/kirim + pakai harga real-time pickup"
         },
         {
-            "hash": "3d0fd3fb",
-            "date": "2026-10-01 06:48:44 +0700",
+            "hash": "b1106005",
+            "date": "2026-11-04 02:41:10 +0700",
             "author": "Amal Ibnu Muharram",
-            "message": "Auto commit"
+            "message": "feat(bot): parser ongkir teks bebas + menu intent (fix customer mentok di instruksi)"
         },
         {
-            "hash": "9e131afe",
-            "date": "2026-10-01 06:35:53 +0700",
+            "hash": "3bdc3962",
+            "date": "2026-11-04 02:23:31 +0700",
             "author": "Amal Ibnu Muharram",
-            "message": "Auto commit"
+            "message": "feat(bot): endpoint draft-status untuk guard WhatsApp (loloskan customer mid-checkout)"
         },
         {
-            "hash": "608a1907",
-            "date": "2026-09-28 05:06:55 +0700",
+            "hash": "a1df5a1f",
+            "date": "2026-11-04 01:59:23 +0700",
             "author": "Amal Ibnu Muharram",
-            "message": "Auto commit"
+            "message": "feat(tracking): endpoint bot cek-resi untuk WhatsApp + riwayat asli KiriminAja"
         },
         {
-            "hash": "ec0f5e71",
-            "date": "2026-09-24 19:55:19 +0700",
-            "author": "Server Bot",
-            "message": "Auto Bump Version"
+            "hash": "0ce1c6cf",
+            "date": "2026-11-04 01:52:48 +0700",
+            "author": "Amal Ibnu Muharram",
+            "message": "feat(doku): pickup KiriminAja + resi aktual + notifikasi admin pesanan baru"
         },
         {
-            "hash": "ea7d0f1c",
-            "date": "2026-09-24 19:55:18 +0700",
-            "author": "Server Bot",
-            "message": "Update System"
+            "hash": "8e51f714",
+            "date": "2026-11-04 01:35:54 +0700",
+            "author": "Amal Ibnu Muharram",
+            "message": "fix(bot): kolom User no_hp -> no_wa (Unknown column) + TemplateWhatsAppController"
         },
         {
-            "hash": "1ea728cd",
-            "date": "2026-09-23 09:52:41 +0700",
-            "author": "Sancaka94",
-            "message": "Auto commit"
+            "hash": "05a55bcb",
+            "date": "2026-11-04 01:22:58 +0700",
+            "author": "Amal Ibnu Muharram",
+            "message": "feat(bot): pisah input wilayah (kelurahan\/kecamatan\/kota) dan detail jalan, validasi ke KiriminAja saat itu"
         },
         {
-            "hash": "33472933",
-            "date": "2026-09-21 19:49:29 +0700",
-            "author": "Sancaka94",
-            "message": "Auto commit"
+            "hash": "2a7cfeae",
+            "date": "2026-11-04 01:18:12 +0700",
+            "author": "Amal Ibnu Muharram",
+            "message": "fix(bot): format tombol interaktif API.co.id pakai wrapper type=reply"
         },
         {
-            "hash": "2a797e82",
-            "date": "2026-09-21 19:44:38 +0700",
-            "author": "Sancaka94",
-            "message": "Auto commit"
+            "hash": "9ba2f022",
+            "date": "2026-11-04 01:10:32 +0700",
+            "author": "Amal Ibnu Muharram",
+            "message": "fix(bot): parser webhook mengikuti format API.co.id (customer_phone, content, direction)"
+        },
+        {
+            "hash": "eab0a045",
+            "date": "2026-11-04 01:05:48 +0700",
+            "author": "Amal Ibnu Muharram",
+            "message": "chore(bot): log diagnostik webhook, pilihan kurir, dan step input WA"
         }
     ]
 }
