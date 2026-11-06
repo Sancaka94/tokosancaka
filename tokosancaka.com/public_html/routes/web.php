@@ -24,6 +24,7 @@ use App\Http\Controllers\ProyekController;
 use App\Http\Controllers\Api\BotOrderController;
 use App\Http\Controllers\Api\TemplateWhatsAppController;
 use App\Http\Controllers\Api\AwbFollowupController;
+use App\Http\Controllers\WhatsappController;
 
 // =========================================================================
 // 1. IMPORT CONTROLLER (LENGKAP)
@@ -152,6 +153,48 @@ use Spatie\Honeypot\ProtectAgainstSpam;
 
 
 Route::post('/v1/bot/create-order', [BotOrderController::class, 'createOrder']);
+
+Route::post('/v1/bot/kirim-tombol-ongkir', [BotOrderController::class, 'botKirimTombolOngkir'])
+    ->middleware('throttle:15,1')
+    ->name('bot.kirim-tombol-ongkir');
+
+Route::prefix('v1/bot/templates')->group(function () {
+    Route::get('/', [TemplateWhatsAppController::class, 'index'])->name('bot.templates.index');
+    Route::post('/', [TemplateWhatsAppController::class, 'store'])->name('bot.templates.store');
+    Route::post('/create-sancaka-pembuka', [TemplateWhatsAppController::class, 'createSancakaPembuka'])->name('bot.templates.create_sancaka_pembuka');
+    Route::get('/{id}', [TemplateWhatsAppController::class, 'show'])->name('bot.templates.show');
+    Route::delete('/{id}', [TemplateWhatsAppController::class, 'destroy'])->name('bot.templates.destroy');
+});
+
+Route::post('/v1/bot/draft-status', [BotOrderController::class, 'botDraftStatus'])
+    ->middleware('throttle:60,1')
+    ->name('bot.draft-status');
+
+Route::post('/v1/bot/cek-resi', [TrackingController::class, 'botCekResi'])
+    ->middleware('throttle:20,1')
+    ->name('bot.cek-resi');
+
+Route::post('/v1/bot/tracking', [BotOrderController::class, 'botTracking'])
+    ->middleware('throttle:20,1')
+    ->name('bot.tracking');
+
+Route::post('/v1/bot/ongkir-list', [BotOrderController::class, 'botShippingList'])
+    ->middleware('throttle:20,1')
+    ->name('bot.ongkir-list');
+
+Route::post('/v1/bot/kirim-paket', [BotOrderController::class, 'botKirimPaket'])
+    ->middleware('throttle:10,1')
+    ->name('bot.kirim-paket');
+
+Route::post('/v1/bot/cek-ongkir', [BotOrderController::class, 'checkShippingCost'])
+    ->middleware('throttle:10,1')
+    ->name('bot.cek-ongkir');
+
+Route::post('/webhook/apicoid', [BotOrderController::class, 'botWhatsAppInbound'])
+    ->name('webhook.apicoid');
+
+Route::post('/webhook/whatsapp/apicoid', [BotOrderController::class, 'botWhatsAppInbound'])
+    ->name('webhook.whatsapp.apicoid');
 
 
 Route::post('/register', [CustomerRegisterController::class, 'register'])
