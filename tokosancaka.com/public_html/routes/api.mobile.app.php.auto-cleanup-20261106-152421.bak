@@ -1,0 +1,866 @@
+<?php
+
+use Illuminate\Support\Facades\Route;
+use Illuminate\Http\Request; // Pastikan ini ada di bagian atas file jika belum ada
+use App\Http\Controllers\Api\Mobile\KontakController;
+use App\Http\Controllers\Api\Mobile\ScanSpxController; // <-- Tambahkan ini untuk kerapian
+use App\Http\Controllers\Api\Mobile\OngkirController; // 1. Pastikan Import ini ada
+use App\Http\Controllers\Api\Mobile\CustomerForgotPasswordController; // <-- TAMBAHAN UNTUK FORGOT PASSWORD
+use App\Http\Controllers\Api\Mobile\ProfileController;
+use App\Http\Controllers\Api\Mobile\PpobMobileController;
+use App\Http\Controllers\Api\Mobile\KoliController;
+use App\Http\Controllers\Api\Mobile\AuthController; // 2. Pastikan Import ini ada
+use App\Http\Controllers\Api\Mobile\MarketplaceMobileController;
+use App\Http\Controllers\Api\Mobile\LaporanKeuanganMobileController;
+use App\Http\Controllers\Api\Mobile\ProdukSellerMobileController;
+use App\Http\Controllers\Api\Mobile\ChatController; // <-- Tambahkan import ini
+use App\Http\Controllers\Admin\DashboardController; // <-- Tambahkan import ini untuk Broadcast
+use App\Http\Controllers\Api\Mobile\DaftarMemberController;
+use App\Http\Controllers\Api\Mobile\PpobDigiflazController;
+use App\Http\Controllers\Api\Mobile\SettingPrivacyController;
+use App\Http\Controllers\Api\Mobile\EditPenggunaController;
+use App\Http\Controllers\Api\Mobile\PesananController;
+use App\Http\Controllers\Api\Mobile\TicketingController;
+use App\Http\Controllers\Customer\TopUpController;
+use App\Http\Controllers\CustomerOrderController;
+use App\Http\Controllers\Api\Mobile\TrainTicketingController;
+use App\Http\Controllers\Api\Mobile\BusTicketingController;
+use App\Http\Controllers\Api\Mobile\ShipTicketingController;
+use App\Http\Controllers\Api\Mobile\ShipDluTicketingController;
+use App\Http\Controllers\Api\Mobile\PpobDarmawisataController;
+use App\Http\Controllers\Api\Mobile\PpobDarmaTopupController;
+use App\Http\Controllers\Api\Mobile\CargoDarmaController;
+use App\Http\Controllers\Api\Mobile\ApiMapboxController;
+use App\Http\Controllers\Api\Mobile\AdminDriverController;
+use App\Http\Controllers\Api\Mobile\PesananAutokirimMobileController; // <-- TAMBAHKAN INI
+use App\Http\Controllers\Api\Mobile\KomisiMobileController;
+use App\Http\Controllers\Api\Mobile\PenggunaController;
+use App\Http\Controllers\Api\Mobile\PosApiController;
+use App\Http\Controllers\Api\Mobile\UserUpgradeController;
+
+Route::post('/log-frontend', [ApiMapboxController::class, 'log_frontend']);
+
+Route::prefix('mapbox')->group(function () {
+    Route::post('/cek-tarif', [ApiMapboxController::class, 'cek_tarif']);
+    Route::post('/create-order', [ApiMapboxController::class, 'create_order']);
+});
+
+Route::post('/driver/register', [ApiMapboxController::class, 'register_driver']);
+
+Route::post('/save-fcm-token', [ApiMapboxController::class, 'saveFcmToken']);
+
+Route::middleware('auth:sanctum')->group(function () {
+
+    Route::get('/driver/cek-koordinator', [\App\Http\Controllers\Api\Mobile\ApiMapboxController::class, 'cek_koordinator']);
+    Route::post('/driver/validate-orders', [\App\Http\Controllers\Api\Mobile\ApiMapboxController::class, 'validate_incoming_orders']);
+    Route::get('/driver/my-status', [ApiMapboxController::class, 'myStatus']);
+    Route::post('/driver/update', [ApiMapboxController::class, 'updateDriver']);
+    Route::post('/driver/toggle-map', [ApiMapboxController::class, 'toggleMap']);
+    Route::post('/driver/update-location', [ApiMapboxController::class, 'updateLocation']);
+    Route::post('/order/notify-driver', [ApiMapboxController::class, 'notify_driver']);
+    Route::post('/order/driver-accept', [ApiMapboxController::class, 'accept_order']);
+    Route::post('/driver/accept-order', [ApiMapboxController::class, 'accept_order']);
+    Route::get('/order/track-driver/{driver_id}', [ApiMapboxController::class, 'track_driver']);
+    // Rute untuk resi (Sancaka Express)
+    Route::get('/order/resi/{order_id}', [ApiMapboxController::class, 'get_order_resi_detail']);
+
+    // 🔥 TAMBAHKAN RUTE INI (Untuk Ojek Online / S-RIDE)
+    Route::get('/order/detail/{order_id}', [ApiMapboxController::class, 'get_order_resi_detail']);
+    Route::post('/order/update-status', [ApiMapboxController::class, 'update_status_order']);
+    Route::get('/order/history', [ApiMapboxController::class, 'get_history']);
+
+    // Kode untuk telp driver dengan penumpang cloudflare
+    Route::post('/order/{order_id}/call/session/new', [ApiMapboxController::class, 'create_call_session']);
+    Route::post('/order/{order_id}/call/session/{sessionId}/tracks/new', [ApiMapboxController::class, 'create_call_tracks']);
+    Route::put('/order/{order_id}/call/session/{sessionId}/renegotiate', [ApiMapboxController::class, 'call_renegotiate']);
+
+    Route::post('/call/helpdesk', [ApiMapboxController::class, 'call_helpdesk']);
+
+    Route::post('/call/reject', [ApiMapboxController::class, 'reject_call_helpdesk']);
+    // ==========================================
+    // MODULE: POS / KASIR OFFLINE
+    // ==========================================
+    Route::prefix('pos')->group(function () {
+        Route::get('/products', [PosApiController::class, 'getProducts']);
+        Route::post('/checkout', [PosApiController::class, 'processTransaction']);
+        Route::get('/history', [PosApiController::class, 'getHistory']);
+
+        Route::get('/report', [PosApiController::class, 'getReport']);
+
+        // --- TAMBAHAN ROUTE CRUD STOK PRODUK POS ---
+        Route::post('/products', [PosApiController::class, 'storeProduct']); // Tambah
+        Route::put('/products/{id}', [PosApiController::class, 'updateProduct']); // Edit
+        Route::delete('/products/{id}', [PosApiController::class, 'destroyProduct']); // Hapus Satuan
+        Route::post('/products/bulk-delete', [PosApiController::class, 'bulkDestroyProducts']); // Hapus Massal
+
+        Route::get('/karyawan-shifts', [PosApiController::class, 'getKaryawanShifts']);
+        Route::get('/shift/status', [PosApiController::class, 'getShiftStatus']);
+        Route::post('/shift/open', [PosApiController::class, 'openShift']);
+        Route::post('/shift/close', [PosApiController::class, 'closeShift']);
+        Route::post('/shift/cash-flow', [PosApiController::class, 'cashFlowShift']);
+    });
+
+});
+
+/*
+| API ROUTES KHUSUS APLIKASI MOBILE SANCAKA EXPRESS (EXPO)
+|--------------------------------------------------------------------------
+| Catatan Penting:
+| Semua rute di bawah ini akan otomatis memiliki prefix '/api/mobile/'
+| Pastikan Controller yang dipanggil me-return response()->json(), bukan view()
+*/
+
+Route::post('auth/dharmawisata/login', [TicketingController::class, 'handleDharmawisataLogin']);
+
+
+// =========================================================================
+// 1. PUBLIC ROUTES (TIDAK BUTUH LOGIN / TOKEN)
+// =========================================================================
+
+// ==========================================
+// A. ROUTE MARKETPLACE PUBLIK (TIDAK BUTUH LOGIN)
+// ==========================================
+Route::prefix('marketplace')->group(function () {
+    Route::get('/home', [MarketplaceMobileController::class, 'home']);
+    Route::get('/category/{id}', [MarketplaceMobileController::class, 'showCategory']);
+    Route::get('/product/{id}', [MarketplaceMobileController::class, 'showProduct']);
+    Route::get('/store/{slug}', [MarketplaceMobileController::class, 'showStore']);
+});
+
+Route::post('/login', [\App\Http\Controllers\Api\Mobile\AuthController::class, 'login']);
+Route::post('/login-pin', [\App\Http\Controllers\Api\Mobile\AuthController::class, 'loginPin']); // <--- TARUH DI SINI
+Route::post('/register', [\App\Http\Controllers\Api\Mobile\AuthController::class, 'register']);
+Route::post('/forgot-password', [CustomerForgotPasswordController::class, 'sendResetLinkApi']);
+
+Route::post('/verify-token', [\App\Http\Controllers\Api\Mobile\AuthController::class, 'verifyToken']);
+Route::post('/resend-token', [\App\Http\Controllers\Api\Mobile\AuthController::class, 'resendToken']);
+
+Route::get('/verifikasi-email', [App\Http\Controllers\Api\Mobile\AuthController::class, 'verifyEmailFromLink']);
+
+Route::get('/system-status', [\App\Http\Controllers\Admin\DashboardController::class, 'getSystemMode']);
+
+Route::get('/payment-channels', [\App\Http\Controllers\CustomerOrderController::class, 'getTripayChannels']);
+
+
+
+
+// =========================================================================
+// ROUTE WEBHOOK & CALLBACK DANA GATEWAY (TIDAK BUTUH LOGIN)
+// =========================================================================
+Route::post('/dana/notify', [\App\Http\Controllers\DanaWebhookController::class, 'handleNotify'])->name('dana.notify');
+Route::get('/dana/return', [\App\Http\Controllers\DanaWebhookController::class, 'returnPage'])->name('dana.return');
+Route::get('/dana/callback', [\App\Http\Controllers\Api\Mobile\DanaGatewayMobileController::class, 'handleCallback'])->name('dana.callback');
+
+
+// --- ENDPOINT UPDATE APLIKASI (GOOGLE PLAY STORE) ---
+Route::get('/check-update', function(Request $request) {
+    // 1. Tentukan versi rilis terbaru di server
+    $latestVersion = '1.1.15'; // Ubah ini setiap kali ada rilis versi baru di Play Store
+
+    // 2. Tangkap versi aplikasi yang sedang dipakai user dari parameter URL
+    $appVersion = $request->query('app_version');
+
+    // 3. Logika perbandingan versi
+    $needsUpdate = false;
+    if ($appVersion) {
+        $needsUpdate = version_compare($appVersion, $latestVersion, '<');
+    } else {
+        $needsUpdate = true;
+    }
+
+    return response()->json([
+        'success'        => true,
+        'received_version' => $appVersion,
+        'needs_update'   => $needsUpdate,
+        'latest_version' => $latestVersion,
+        'download_url'   => 'https://play.google.com/store/apps/details?id=com.sancaka.express.app',
+        'force_update'   => true,
+        'notes'          => 'Kirim Paket Sehari Sampai Dengan Sancaka Express dan Tambahan fitur Ojek Online!'
+    ]);
+
+});
+
+// Rute untuk mengeksekusi Auto-Offline Driver (Trigger by Cron Job)
+Route::get('/cron/auto-offline', [\App\Http\Controllers\Api\Mobile\ApiMapboxController::class, 'cronAutoOffline']);
+
+Route::prefix('public')->group(function () {
+    // Tracking & Ekspedisi
+    Route::get('/tracking/{resi}', [\App\Http\Controllers\Api\Mobile\TrackingController::class, 'track']);
+    Route::post('/cek-ongkir', [\App\Http\Controllers\Api\Mobile\OngkirController::class, 'checkCost']);
+
+    // --- TAMBAHKAN RUTE INI ---
+    // Sekarang aplikasi mobile bisa memanggil URL: /api/mobile/public/cek-ongkir-terpadu
+    Route::post('/cek-ongkir-terpadu', [CustomerOrderController::class, 'cek_ongkir_api']);
+    // --------------------------
+
+    // --- UBAH/PASTIKAN DUA BARIS INI MENGARAH KE ONGKIRCONTROLLER ---
+    Route::post('/cek-ongkir', [OngkirController::class, 'checkCost']);
+    Route::get('/search-address', [OngkirController::class, 'searchAddress']);
+    // ----------------------------------------------------------------
+
+    // KiriminAja & Helper Alamat
+    Route::get('/search-address', [\App\Http\Controllers\Api\Mobile\AddressController::class, 'search']);
+
+    // Marketplace & PPOB Publik (Katalog)
+    Route::get('/etalase', [\App\Http\Controllers\Api\Mobile\MarketplaceController::class, 'katalog']);
+    Route::get('/ppob/pricelist', [\App\Http\Controllers\Api\Mobile\PpobController::class, 'pricelist']);
+
+    Route::get('/blog/posts', [\App\Http\Controllers\Api\Mobile\ApiBlogController::class, 'getPosts']);
+    // Tambahkan di bawah rute getPosts yang sudah ada
+    Route::get('/blog/posts/{slug}', [\App\Http\Controllers\Api\Mobile\ApiBlogController::class, 'getPostDetail']);
+});
+
+// -------------------------------------------------------------------------
+// ROUTE DOWNLOAD PDF SURAT JALAN
+// (Ditaruh di luar auth agar bisa dibuka oleh Chrome/Safari di HP)
+// -------------------------------------------------------------------------
+Route::get('/suratjalan/download/{kode_surat_jalan}', [ScanSpxController::class, 'downloadSuratJalan'])->name('api.suratjalan.download');
+
+Route::get('/pos/download-qris/{invoice}', [PosApiController::class, 'downloadQris']);
+
+// =========================================================================
+// 2. PROTECTED ROUTES (WAJIB BAWA TOKEN DARI HP - SANCTUM)
+// =========================================================================
+Route::middleware('auth:sanctum')->group(function () {
+
+Route::get('/customer/dana/balance', [\App\Http\Controllers\Api\Mobile\DanaGatewayMobileController::class, 'checkMyDanaBalance']);
+
+Route::get('/seller/dashboard', [\App\Http\Controllers\Api\Mobile\DashboardSellerController::class, 'index']);
+
+
+Route::prefix('seller')->group(function () {
+
+// CRUD Produk Seller Mobile
+        Route::get('/produk', [\App\Http\Controllers\Api\Mobile\ProdukSellerMobileController::class, 'index']);
+        Route::get('/produk/categories', [\App\Http\Controllers\Api\Mobile\ProdukSellerMobileController::class, 'getCategories']); // Untuk dropdown form
+        Route::post('/produk', [\App\Http\Controllers\Api\Mobile\ProdukSellerMobileController::class, 'store']);
+        Route::get('/produk/{slug}', [\App\Http\Controllers\Api\Mobile\ProdukSellerMobileController::class, 'show']);
+        Route::post('/produk/{slug}/update', [\App\Http\Controllers\Api\Mobile\ProdukSellerMobileController::class, 'update']); // Pakai POST karena bawa file gambar (multipart/form-data)
+        Route::delete('/produk/{slug}', [\App\Http\Controllers\Api\Mobile\ProdukSellerMobileController::class, 'destroy']);
+    });
+
+
+
+/// ========================================== RUTE MOBILE UNTUK PELANGGAN (CUSTOMER) ==========================================
+
+    // BUNGKUS KHUSUS UNTUK PPOB
+    Route::prefix('ppob')->group(function () {
+        // INI DIA TERSANGKANYA! Pastikan rute ini tertulis BENAR.
+        Route::get('/get_products', [PpobMobileController::class, 'getProductsPra']);
+
+        Route::get('/pasca-pricelist', [PpobMobileController::class, 'getPricelistPasca']);
+        Route::post('/pay-pasca', [PpobMobileController::class, 'payPostpaid']);
+
+        Route::post('/inquiry_pln', [PpobMobileController::class, 'inquiryPln']);
+        Route::post('/inquiry_ovo', [PpobMobileController::class, 'inquiryOvo']);
+        Route::post('/gamelist', [PpobMobileController::class, 'getGameList']);
+        Route::post('/inquiry_game_format', [PpobMobileController::class, 'inquiryGameFormat']);
+        Route::post('/inquiry_game_server', [PpobMobileController::class, 'inquiryGameServer']);
+
+        Route::post('/store', [PpobMobileController::class, 'store']);
+
+        // Rute History
+        Route::get('/history', [PpobMobileController::class, 'history']);
+    });
+
+// AKHIR DARI RUTE MOBILE UNTUK PELANGGAN (CUSTOMER)
+
+    // ==========================================
+    // MODULE: MANAJEMEN PESANAN & KOLI
+    // ==========================================
+    Route::prefix('pesanan')->group(function () {
+
+        // 1. Endpoint untuk Cek Ongkir (Meneruskan ke KiriminAja)
+        Route::post('/koli/cek-ongkir', [KoliController::class, 'cek_Ongkir']);
+
+        // 2. Endpoint untuk Simpan Pesanan Satuan
+        // (Dipanggil ketika user klik tombol "SIMPAN & BAYAR PAKET #1" di React Native)
+        Route::post('/store-single', [KoliController::class, 'storeSingle']);
+
+        // 3. Endpoint untuk Simpan Pesanan Massal
+        // (Dipanggil ketika user klik tombol "Buat Pesanan" di akhir step jika ingin menyimpan semuanya sekaligus)
+        Route::post('/store-multi', [KoliController::class, 'store']);
+
+    });
+
+    Route::get('/profile', [ProfileController::class, 'show']);
+    Route::post('/profile/update', [ProfileController::class, 'update']);
+
+    Route::post('/karyawan/register', [ProfileController::class, 'registerKaryawan']);
+
+    Route::get('/karyawan/list', [\App\Http\Controllers\Api\Mobile\ProfileController::class, 'listKaryawan']);
+    Route::post('/karyawan/toggle-akses', [\App\Http\Controllers\Api\Mobile\ProfileController::class, 'toggleAksesKasir']);
+
+
+    Route::post('/karyawan/update-akses', [\App\Http\Controllers\Api\Mobile\ProfileController::class, 'updateAksesKaryawan']);
+
+    Route::post('/karyawan/update/{id}', [\App\Http\Controllers\Api\Mobile\ProfileController::class, 'updateKaryawan']);
+
+    Route::delete('/karyawan/{id}', [\App\Http\Controllers\Api\Mobile\ProfileController::class, 'destroyKaryawan']);
+    Route::post('/karyawan/bulk-delete', [\App\Http\Controllers\Api\Mobile\ProfileController::class, 'bulkDestroyKaryawan']);
+
+
+    Route::get('/customer/pesanan/riwayat', [\App\Http\Controllers\Api\Mobile\PesananController::class, 'riwayat']);
+
+    // --- A. GENERAL AUTH & USER ---
+    Route::get('/user/profile', [\App\Http\Controllers\Api\Mobile\AuthController::class, 'user']);
+    Route::post('/user/profile/update', [\App\Http\Controllers\Api\Mobile\ProfileController::class, 'update']);
+    Route::post('/auth/logout', [\App\Http\Controllers\Api\Mobile\AuthController::class, 'logout']);
+
+    Route::post('/user/verify-pin', [\App\Http\Controllers\Api\Mobile\ApiTopUpController::class, 'verifyPin']);
+
+    // ==========================================
+    // MODULE: PUSAT BISNIS & UPGRADE AKUN
+    // ==========================================
+
+    // 1. Cek status akun saat ini (Tampil di halaman Upgrade Pengguna)
+    Route::get('/user/upgrade-status', [\App\Http\Controllers\Api\Mobile\UserUpgradeController::class, 'getStatus']);
+
+    // 2. Daftar Agen Resmi Sancaka
+    Route::post('/user/upgrade-agent', [\App\Http\Controllers\Api\Mobile\UserUpgradeController::class, 'registerAgent']);
+
+    // 3. Buka Toko / Seller
+    Route::post('/user/register-store', [\App\Http\Controllers\Api\Mobile\UserUpgradeController::class, 'registerStore']);
+
+    // 4. Integrasi / Daftar Merchant DANA Bisnis
+    Route::post('/user/register-dana', [\App\Http\Controllers\Api\Mobile\UserUpgradeController::class, 'registerDana']);
+
+    // 5. Aktivasi Dompet Sancaka (DOKU SAC ID)
+    Route::post('/user/activate-doku', [\App\Http\Controllers\Api\Mobile\UserUpgradeController::class, 'activateDoku']);
+
+
+    // --- B. DASHBOARD (Otomatis menyesuaikan Role) ---
+    Route::get('/dashboard', [\App\Http\Controllers\Api\Mobile\DashboardController::class, 'index']);
+
+    Route::post('/save-push-token', [\App\Http\Controllers\Api\Mobile\ChatController::class, 'savePushToken']);
+
+
+    // --- C. CUSTOMER ROUTES (PELANGGAN) ---
+    Route::prefix('customer')->group(function () {
+
+        Route::get('/driver/nearby', [\App\Http\Controllers\Api\Mobile\ApiMapboxController::class, 'getNearbyDrivers']);
+
+        // ==========================================
+        // BUKU ALAMAT / KONTAK (SUDAH LENGKAP & SINKRON)
+        // ==========================================
+        Route::get('/kontak', [\App\Http\Controllers\Api\Mobile\KontakController::class, 'index']);
+        Route::post('/kontak', [\App\Http\Controllers\Api\Mobile\KontakController::class, 'store']);
+        Route::put('/kontak/{id}', [\App\Http\Controllers\Api\Mobile\KontakController::class, 'update']); // <--- INI PENTING UNTUK EDIT
+        Route::delete('/kontak/{id}', [\App\Http\Controllers\Api\Mobile\KontakController::class, 'destroy']);
+        Route::get('/kontak/{id}/history', [\App\Http\Controllers\Api\Mobile\KontakController::class, 'history']);
+
+        // ==========================================
+        // SCAN SPX & SURAT JALAN (FITUR BARU)
+        // ==========================================
+        Route::get('/scan-spx/init', [ScanSpxController::class, 'initMobile']);
+        Route::get('/scan-spx/history', [ScanSpxController::class, 'index']); // Paginasi data riwayat
+        Route::get('/scan-spx/filter', [ScanSpxController::class, 'getHistory']); // Filter by periode
+        Route::post('/scan-spx/store', [ScanSpxController::class, 'storeSpxScan']); // Proses scan & potong saldo
+        Route::put('/scan-spx/{resi}', [ScanSpxController::class, 'update']); // Edit status
+        Route::delete('/scan-spx/{resi}', [ScanSpxController::class, 'destroy']); // Hapus resi
+
+        Route::post('/suratjalan/create', [ScanSpxController::class, 'createSuratJalan']); // Cetak SJ
+
+        Route::get('/suratjalan/history', [ScanSpxController::class, 'historySuratJalan']);
+
+        Route::get('/laporan-keuangan', [LaporanKeuanganMobileController::class, 'index']);
+
+        // ==========================================
+
+        // Manajemen Pengiriman (Kirim Satuan & Massal/Koli)
+        Route::post('/pesanan/store-single', [\App\Http\Controllers\Api\Mobile\PesananController::class, 'storeSingle']);
+        Route::post('/pesanan/store-multi', [\App\Http\Controllers\Api\Mobile\PesananController::class, 'storeMulti']);
+
+        // Buku Alamat / Kontak
+        Route::post('/kontak', [KontakController::class, 'store']);
+
+        // Top Up & Saldo
+        Route::get('/wallet/balance', [\App\Http\Controllers\Api\Mobile\WalletController::class, 'balance']);
+        Route::post('/wallet/topup', [\App\Http\Controllers\Api\Mobile\WalletController::class, 'topup']);
+
+        Route::get('/topup/methods', [\App\Http\Controllers\Api\Mobile\ApiTopUpController::class, 'getMethods']);
+
+        Route::post('/topup/request', [\App\Http\Controllers\Api\Mobile\TopUpController::class, 'store']);
+
+        Route::get('/topup/history', [\App\Http\Controllers\Api\Mobile\TopUpController::class, 'history']);
+
+        Route::post('/topup/cancel/{orderId}', [\App\Http\Controllers\Api\Mobile\TopUpController::class, 'cancelDanaPayment']);
+        Route::post('/topup/refund/{orderId}', [\App\Http\Controllers\Api\Mobile\TopUpController::class, 'refundDanaPayment']);
+
+        Route::post('/topup/status/{orderId}', [\App\Http\Controllers\Api\Mobile\TopUpController::class, 'apiCheckDanaPaymentStatus']);
+
+        // --------------------------------------------------
+
+        // ==========================================
+        // MANAJEMEN PIN KEAMANAN & OTP WHATSAPP
+        // ==========================================
+        Route::post('/pin/register', [\App\Http\Controllers\Api\Mobile\ApiTopUpController::class, 'registerPin']);
+        Route::post('/pin/edit', [\App\Http\Controllers\Api\Mobile\ApiTopUpController::class, 'editPin']);
+        Route::post('/pin/verify', [\App\Http\Controllers\Api\Mobile\ApiTopUpController::class, 'verifyPin']);
+
+        // Lupa PIN via OTP Fonnte
+        Route::post('/pin/forgot/request-otp', [\App\Http\Controllers\Api\Mobile\ApiTopUpController::class, 'requestOtpResetPin']);
+        Route::post('/pin/forgot/reset', [\App\Http\Controllers\Api\Mobile\ApiTopUpController::class, 'resetPinWithOtp']);
+        // ==========================================
+
+        // PPOB & Pembayaran Digital
+        Route::post('/ppob/inquiry', [\App\Http\Controllers\Api\Mobile\PpobController::class, 'inquiry']); // Cek Tagihan
+        Route::post('/ppob/pay', [\App\Http\Controllers\Api\Mobile\PpobController::class, 'pay']); // Bayar
+        Route::get('/ppob/history', [\App\Http\Controllers\Api\Mobile\PpobController::class, 'history']);
+        // --------------------------------------------------
+
+
+        // Marketplace Cart & Checkout
+        Route::get('/cart', [\App\Http\Controllers\Api\Mobile\CartController::class, 'index']);
+        Route::post('/cart/add', [\App\Http\Controllers\Api\Mobile\CartController::class, 'add']);
+        Route::post('/checkout', [\App\Http\Controllers\Api\Mobile\CheckoutController::class, 'process']);
+
+        // Chat CS
+        Route::get('/chat/messages', [\App\Http\Controllers\Api\Mobile\ChatController::class, 'fetchMessages']);
+        Route::post('/chat/send', [\App\Http\Controllers\Api\Mobile\ChatController::class, 'sendMessage']);
+
+        Route::get('/chat/search-users', [\App\Http\Controllers\Api\Mobile\ChatController::class, 'searchUsers']);
+
+        // Notifikasi
+        Route::get('/notifications', [\App\Http\Controllers\Api\Mobile\NotificationController::class, 'index']);
+        Route::post('/notifications/read-all', [\App\Http\Controllers\Api\Mobile\NotificationController::class, 'markAllRead']);
+
+        // Rute untuk List Chat & Badge Count
+        Route::get('/chat/conversations', [\App\Http\Controllers\Api\Mobile\ChatController::class, 'getConversations']);
+        Route::get('/chat/unread-count', [\App\Http\Controllers\Api\Mobile\ChatController::class, 'getUnreadCount']);
+
+        //Delete Chat
+        Route::post('/chat/delete', [\App\Http\Controllers\Api\Mobile\ChatController::class, 'deleteChat']);
+
+        Route::post('/chat/delete-messages', [\App\Http\Controllers\Api\Mobile\ChatController::class, 'deleteSelectedMessages']);
+    });
+
+    // --- D. SELLER ROUTES (TOKO) ---
+    Route::prefix('seller')->group(function () {
+
+        // (Kalau ada rute /toko/info atau /pesanan-masuk, biarkan saja)
+
+        // 👇 INI RUTE PRODUK YANG BENAR 👇
+        Route::get('/produk', [\App\Http\Controllers\Api\Mobile\ProdukSellerMobileController::class, 'index']);
+        Route::get('/produk/categories', [\App\Http\Controllers\Api\Mobile\ProdukSellerMobileController::class, 'getCategories']);
+        Route::post('/produk', [\App\Http\Controllers\Api\Mobile\ProdukSellerMobileController::class, 'store']);
+        Route::get('/produk/{slug}', [\App\Http\Controllers\Api\Mobile\ProdukSellerMobileController::class, 'show']);
+        Route::post('/produk/{slug}/update', [\App\Http\Controllers\Api\Mobile\ProdukSellerMobileController::class, 'update']);
+        Route::delete('/produk/{slug}', [\App\Http\Controllers\Api\Mobile\ProdukSellerMobileController::class, 'destroy']);
+        Route::get('/produk/attributes/{categoryId}', [\App\Http\Controllers\Api\Mobile\ProdukSellerMobileController::class, 'getAttributes']);
+        // 👆 ---------------------------- 👆
+
+    });
+
+    // --- E. ADMIN ROUTES (KHUSUS ADMIN) ---
+    Route::prefix('admin')->group(function () {
+
+        Route::get('/ojek/history', [AdminDriverController::class, 'historyOjek']);
+        Route::delete('/ojek/history/{id}', [AdminDriverController::class, 'destroyOjek']);
+        Route::post('/ojek/history/bulk-delete', [AdminDriverController::class, 'bulkDestroyOjek']);
+        Route::get('/drivers/map-data', [\App\Http\Controllers\Api\Mobile\ApiMapboxController::class, 'getMapDataDrivers']);
+
+       // ---> RUTE MANAJEMEN DRIVER (KHUSUS ADMIN) <---
+        Route::get('/drivers', [AdminDriverController::class, 'index']);
+
+        // Rute Bulk Delete (Harus di atas {id})
+        Route::post('/drivers/bulk-destroy', [AdminDriverController::class, 'bulkDestroy']);
+
+        // Rute Status, Detail, dan Update Data
+        Route::post('/drivers/{id}/status', [AdminDriverController::class, 'updateStatus']);
+        Route::get('/drivers/{id}', [AdminDriverController::class, 'show']);
+        Route::post('/drivers/{id}/update', [AdminDriverController::class, 'update']);
+
+        // Laporan Keuangan Mobile
+        Route::get('/laporan/ringkasan', [\App\Http\Controllers\Api\Mobile\AdminFinanceController::class, 'summary']);
+
+        // Operasional & Scan SPX
+        Route::post('/scan-spx', [\App\Http\Controllers\Api\Mobile\AdminScanController::class, 'scan']);
+        Route::get('/scan-spx/monitor', [\App\Http\Controllers\Api\Mobile\AdminScanController::class, 'monitor']);
+
+        // Manajemen Pengguna
+        Route::get('/users', [\App\Http\Controllers\Api\Mobile\AdminUserController::class, 'index']);
+
+        // Pencairan Dana / Escrow
+        Route::get('/escrow/pending', [\App\Http\Controllers\Api\Mobile\AdminEscrowController::class, 'pending']);
+        Route::post('/escrow/{id}/cairkan', [\App\Http\Controllers\Api\Mobile\AdminEscrowController::class, 'cairkan']);
+
+        Route::post('/broadcast/send', [DashboardController::class, 'sendBroadcast']);
+        Route::get('/broadcast/replies', [DashboardController::class, 'getBroadcastReplies']); // <--- TARUH DI SINI
+
+        Route::get('/get-system-mode', [DashboardController::class, 'getSystemMode']);
+        Route::post('/toggle-system-mode', [DashboardController::class, 'toggleSystemMode']);
+    });
+
+
+});
+
+
+// ==========================================
+// B. ROUTE MARKETPLACE PROTECTED (WAJIB LOGIN)
+// ==========================================
+Route::middleware('auth:sanctum')->prefix('marketplace')->group(function () {
+
+    // --- Keranjang (Cart) ---
+    Route::get('/cart', [MarketplaceMobileController::class, 'getCart']);
+    Route::post('/cart/add', [MarketplaceMobileController::class, 'addToCart']);
+    Route::post('/cart/update', [MarketplaceMobileController::class, 'updateCart']);
+    Route::post('/cart/remove', [MarketplaceMobileController::class, 'removeFromCart']);
+    Route::post('/cart/clear', [MarketplaceMobileController::class, 'clearCart']);
+
+    // --- Checkout (Sistem Baru Database) ---
+    Route::post('/checkout/init', [MarketplaceMobileController::class, 'initCheckout']);
+    Route::get('/checkout/data', [MarketplaceMobileController::class, 'getCheckoutData']);
+    Route::post('/checkout/process', [MarketplaceMobileController::class, 'processCheckout']);
+
+    // --- Lain-lain ---
+    Route::get('/orders', [MarketplaceMobileController::class, 'myOrders']);
+    Route::post('/orders/{invoice}/cancel', [MarketplaceMobileController::class, 'cancelOrder']);
+    Route::get('/store/{id}', [MarketplaceMobileController::class, 'showStore']);
+
+});
+
+Route::post('/customer/pesanan/cancel', [App\Http\Controllers\Api\Mobile\PesananController::class, 'cancelOrder']);
+
+// Rute untuk mendapatkan semua notifikasi milik user di HP
+    Route::get('/notifications', [ChatController::class, 'getUnreadCount']); // Sesuaikan jika ada method list
+
+    // Rute untuk menandai notifikasi sebagai sudah dibaca (Centang 2)
+    Route::post('/notifications/mark-read', [ChatController::class, 'deleteSelectedMessages']);
+
+
+    // Pastikan ini berada di dalam group middleware auth (login required)
+Route::middleware('auth:sanctum')->group(function () {
+
+    Route::post('/universal/cancel/{orderId}', [\App\Http\Controllers\Api\Mobile\UniversalPaymentController::class, 'universalCancel']);
+    Route::post('/universal/refund/{orderId}', [\App\Http\Controllers\Api\Mobile\UniversalPaymentController::class, 'universalRefund']);
+
+    Route::get('/customer/member/status', [DaftarMemberController::class, 'getStatus']);
+    Route::post('/customer/member/register-agent', [DaftarMemberController::class, 'registerAgent']);
+});
+
+// Pastikan semua dibungkus di dalam auth:sanctum agar $request->user() terbaca
+Route::middleware('auth:sanctum')->group(function () {
+
+    // ==========================================
+    // PPOB & Produk Digital Mobile API
+    // ==========================================
+    Route::prefix('ppob')->group(function () {
+        // Mengambil daftar produk berdasarkan kategori (pulsa, data, pln, dll)
+        Route::get('/products/{category}', [PpobDigiflazController::class, 'getProductsByCategory']);
+
+        // Pengecekan (Inquiry)
+        Route::post('/inquiry/pasca', [PpobDigiflazController::class, 'checkBill']);
+        Route::post('/inquiry/pln', [PpobDigiflazController::class, 'checkPlnPrabayar']);
+
+        // Transaksi / Pembayaran
+        Route::post('/transaction', [PpobDigiflazController::class, 'processTransaction']);
+
+        Route::get('/history-digi', [PpobDigiflazController::class, 'getHistory']);
+    });
+
+    // ==========================================
+    // KHUSUS ADMIN
+    // ==========================================
+    // Route ini sekarang aman di dalam pelukan Sanctum
+    Route::get('/admin/ppob/cek-saldo', [PpobDigiflazController::class, 'cekSaldo']);
+
+});
+
+Route::middleware(['auth:sanctum'])->group(function () {
+    // Route Pengaturan Privasi & Keamanan (Sancaka)
+    Route::post('/user/update-email', [SettingPrivacyController::class, 'updateEmail']);
+    Route::post('/user/update-password', [SettingPrivacyController::class, 'updatePassword']);
+    Route::post('/user/update-pin', [SettingPrivacyController::class, 'updatePin']);
+
+    // --- KHUSUS ADMIN (ID 4) ---
+    // (Bawaan lama untuk edit data satuan)
+    Route::get('/admin/pengguna/detail/{id}', [EditPenggunaController::class, 'show']);
+    Route::put('/admin/pengguna/{id}', [EditPenggunaController::class, 'update']);
+
+    // (Rute Baru untuk Halaman Menejemen User)
+    Route::get('/admin/pengguna', [PenggunaController::class, 'index']); // Ambil semua & fitur search
+    Route::post('/admin/pengguna/{id}/approve', [PenggunaController::class, 'approve']); // Tombol Setujui
+    Route::post('/admin/pengguna/{id}/reject', [PenggunaController::class, 'reject']); // Tombol Tolak
+    Route::post('/admin/pengguna/{id}/freeze', [PenggunaController::class, 'freeze']);
+    Route::post('/admin/pengguna/{id}/unfreeze', [PenggunaController::class, 'unfreeze']);
+
+    Route::post('/admin/pengguna/{id}/set-koordinator', [PenggunaController::class, 'setKoordinator']); // Tombol Jadikan Koordinator
+
+    Route::delete('/admin/pengguna/{id}', [PenggunaController::class, 'destroy']); // Tombol Hapus
+
+
+    Route::get('/customer/pesanan/detail/{resi}', [\App\Http\Controllers\Api\Mobile\PesananController::class, 'getDetailPesanan']);
+
+    Route::get('/dashboard/dana-balance', [\App\Http\Controllers\Customer\TopUpController::class, 'checkMyDanaBalance']);
+    // ==========================================
+    // MODULE: TICKETING / DARMAWISATA
+    // ==========================================
+    Route::prefix('ticketing')->group(function () {
+
+        // Session & Agent (Asumsi fungsi ini sudah Anda buat sebelumnya)
+        Route::post('/session/login', [TicketingController::class, 'sessionLogin']);
+        Route::post('/agent/balance', [TicketingController::class, 'agentBalance']);
+        Route::post('/init-session', [TicketingController::class, 'generateNewToken']);
+
+        // ==========================================
+        // MODULE: AIRLINE (TIKET PESAWAT)
+        // ==========================================
+        Route::prefix('airline')->group(function () {
+
+            // Pencarian Utama (Schedule All Airline)
+            Route::post('/search', [TicketingController::class, 'airlineSearch']);
+
+            // Data Master / Referensi
+            Route::post('/list', [TicketingController::class, 'airlineList']);
+            Route::post('/route', [TicketingController::class, 'airlineRoute']);
+            Route::post('/nationality', [TicketingController::class, 'airlineNationality']);
+            Route::post('/lowfare-route', [TicketingController::class, 'airlineLowFareRoute']);
+            Route::post('/city', [TicketingController::class, 'airlineCity']);
+
+            // Flow Pencarian Spesifik (Single Airline) & Low Fare
+            Route::post('/schedule', [TicketingController::class, 'airlineScheduleSingle']); // Diperbaiki
+            Route::post('/lowfare-schedule', [TicketingController::class, 'airlineLowFareSchedule']);
+
+            // Flow Harga
+            Route::post('/price', [TicketingController::class, 'airlinePriceSingle']); // Diperbaiki
+            Route::post('/price-all', [TicketingController::class, 'airlinePriceAllAirline']); // Dirapikan (Hapus yang duplikat)
+
+            // Flow Addons
+            Route::post('/baggageAndMeal', [TicketingController::class, 'baggageAndMeal']);
+            Route::post('/seat', [TicketingController::class, 'airlineSeat']);
+
+            // Rute untuk simpan data ke database
+            Route::post('/save-db', [TicketingController::class, 'saveToDatabase']);
+            Route::get('/local-orders', [TicketingController::class, 'getLocalOrders']);
+
+            Route::post('/local-orders/delete', [TicketingController::class, 'deleteLocalOrders']);
+
+            // Rute untuk eksekusi booking ke Darmawisata
+            Route::post('/process-booking', [TicketingController::class, 'processBooking']);
+
+            // Flow Transaksi & Manajemen
+            Route::post('/booking', [TicketingController::class, 'airlineBooking']);
+            Route::post('/booking-list', [TicketingController::class, 'airlineBookingList']);
+            Route::post('/booking-detail', [TicketingController::class, 'airlineBookingDetail']);
+            Route::post('/issued', [TicketingController::class, 'airlineIssued']);
+            Route::post('/local-detail', [TicketingController::class, 'getLocalBookingDetail']);
+
+            // Flow Sistem Khusus
+            Route::post('/timer-elapsed', [TicketingController::class, 'airlineTimerElapsed']);
+        });
+
+
+        // ==========================================
+        // MODULE: TRAIN (TIKET KERETA API) -> PINDAHKAN KE SINI!
+        // ==========================================
+        Route::prefix('train')->group(function () {
+            // Endpoint List & Pencarian Jadwal
+            Route::post('/list', [TrainTicketingController::class, 'trainList']);
+            Route::post('/route', [TrainTicketingController::class, 'trainRoute']);
+            Route::post('/schedule', [TrainTicketingController::class, 'trainSchedule']);
+
+            // Endpoint Flow Transaksi
+            Route::post('/booking', [TrainTicketingController::class, 'trainBooking']);
+            Route::post('/seatmap', [TrainTicketingController::class, 'trainSeatMap']);
+            Route::post('/takeseat', [TrainTicketingController::class, 'trainTakeSeat']);
+            Route::post('/issued', [TrainTicketingController::class, 'trainIssued']);
+
+            // Endpoint Riwayat & Manajemen Tiket
+            Route::post('/booking-list', [TrainTicketingController::class, 'trainBookingList']);
+            Route::post('/booking-detail', [TrainTicketingController::class, 'trainBookingDetail']);
+            Route::post('/cancel', [TrainTicketingController::class, 'trainCancel']);
+
+            Route::get('/history', [TrainTicketingController::class, 'trainHistory']);
+
+        });
+
+		 // ==========================================
+        // MODULE: BUS (TIKET BUS API)
+        // ==========================================
+        Route::prefix('bus')->group(function () {
+            // Endpoint List & Data Master
+            Route::post('/list',            [BusTicketingController::class, 'busList']);
+            Route::post('/route',           [BusTicketingController::class, 'busRoute']);
+            Route::post('/terminal',        [BusTicketingController::class, 'busTerminal']);
+            Route::post('/terminal-search', [BusTicketingController::class, 'busTerminalSearch']);
+
+            // Endpoint Jadwal & Seat
+            Route::post('/schedule',        [BusTicketingController::class, 'busSchedule']);
+            Route::post('/seatmap',         [BusTicketingController::class, 'busSeatMap']);
+
+            // Endpoint Flow Transaksi
+            Route::post('/booking',         [BusTicketingController::class, 'busBooking']);
+            Route::post('/issued',          [BusTicketingController::class, 'busIssued']);
+
+            // Endpoint Riwayat & Manajemen Tiket
+            Route::post('/booking-list',    [BusTicketingController::class, 'busBookingList']);
+            Route::post('/booking-detail',  [BusTicketingController::class, 'busBookingDetail']);
+
+            // Endpoint History Lokal (dari Database)
+            Route::get('/history',          [BusTicketingController::class, 'busHistory']);
+
+            Route::delete('/history/{id}',  [BusTicketingController::class, 'destroy']);
+            Route::post('/history/bulk',    [BusTicketingController::class, 'bulkDestroy']);
+
+        });
+
+          // ==========================================
+        // MODULE: SHIP (TIKET KAPAL)
+        // ==========================================
+        Route::prefix('ship')->group(function () {
+            Route::post('/route',          [ShipTicketingController::class, 'shipRoute']);
+            Route::post('/schedule',       [ShipTicketingController::class, 'shipSchedule']);
+            Route::post('/availability',   [ShipTicketingController::class, 'shipAvailability']);
+            Route::post('/getroom',        [ShipTicketingController::class, 'shipGetRoom']);
+
+            // Flow Transaksi
+            Route::post('/booking',        [ShipTicketingController::class, 'shipBooking']);
+            Route::post('/issued',         [ShipTicketingController::class, 'shipIssued']);
+
+            // Riwayat & Manajemen
+            Route::post('/booking-list',   [ShipTicketingController::class, 'shipBookingList']);
+            Route::post('/booking-detail', [ShipTicketingController::class, 'shipBookingDetail']);
+            Route::get('/history',         [ShipTicketingController::class, 'shipHistory']);
+
+            Route::delete('/history/{id}', [ShipTicketingController::class, 'destroyHistory']);
+            Route::post('/history/bulk',   [ShipTicketingController::class, 'bulkDestroyHistory']);
+        });
+
+
+        // ==========================================
+        // MODULE: SHIP DLU (TIKET KAPAL DLU)
+        // ==========================================
+        Route::prefix('ship-dlu')->group(function () {
+            Route::post('/route',             [ShipDluTicketingController::class, 'shipDluRoute']);
+            Route::post('/schedule',          [ShipDluTicketingController::class, 'shipDluSchedule']);
+            Route::post('/select-schedule',   [ShipDluTicketingController::class, 'shipDluSelectSchedule']);
+            Route::post('/price',             [ShipDluTicketingController::class, 'shipDluPrice']);
+            Route::post('/get-eticket',       [ShipDluTicketingController::class, 'shipDluGetEticket']);
+            Route::post('/issued',            [ShipDluTicketingController::class, 'shipDluIssued']);
+
+            // Master / Helpers
+            Route::post('/class-types',       [ShipDluTicketingController::class, 'shipDluClassTypes']);
+            Route::post('/vehicle-types',     [ShipDluTicketingController::class, 'shipDlueVehicleTypes']);
+            Route::post('/ticket-types',      [ShipDluTicketingController::class, 'shipDluTicketTypes']);
+            Route::post('/room-classes',      [ShipDluTicketingController::class, 'shipDluRoomClasses']);
+
+            // Riwayat Lokal
+            Route::get('/history',            [ShipDluTicketingController::class, 'shipDluHistory']);
+
+            Route::delete('/history/{id}',    [ShipDluTicketingController::class, 'destroyHistory']);
+            Route::post('/history/bulk',      [ShipDluTicketingController::class, 'bulkDestroyHistory']);
+        });
+
+            // Hotel
+            Route::prefix('hotel')->group(function () {
+                Route::post('/search', [TicketingController::class, 'hotelSearch']);
+                Route::post('/available-rooms', [TicketingController::class, 'hotelAvailableRooms']);
+                Route::post('/booking', [TicketingController::class, 'hotelBooking']);
+            });
+
+            // PPOB & TopUp
+            Route::prefix('ppob')->group(function () {
+                Route::post('/inquiry', [TicketingController::class, 'ppobInquiry']);
+                Route::post('/payment', [TicketingController::class, 'ppobPayment']);
+            });
+
+            Route::prefix('topup')->group(function () {
+                Route::post('/product', [TicketingController::class, 'topupProduct']);
+                Route::post('/order', [TicketingController::class, 'topupOrder']);
+            });
+
+        }); // END MODULE TICKETING
+
+        Route::middleware(['auth:sanctum'])->group(function () {
+
+            // ==========================================
+            // MODULE: PPOB DARMAWISATA
+            // ==========================================
+            Route::prefix('darmawisata/ppob')->group(function () {
+                Route::post('/product-group', [PpobDarmawisataController::class, 'ppobProductGroup']);
+                Route::post('/product-list', [PpobDarmawisataController::class, 'ppobProductList']);
+                Route::post('/inquiry', [PpobDarmawisataController::class, 'ppobInquiry']);
+                Route::post('/payment', [PpobDarmawisataController::class, 'ppobPayment']);
+                Route::post('/open-payment', [PpobDarmawisataController::class, 'ppobOpenPayment']);
+                Route::get('/history', [PpobDarmawisataController::class, 'ppobHistory']);
+                Route::post('/transaction-detail', [PpobDarmawisataController::class, 'ppobTransactionDetail']);
+                Route::post('/sync-status', [PpobDarmawisataController::class, 'syncPendingTransaction']);
+                Route::post('/history/bulk-delete', [PpobDarmawisataController::class, 'bulkDestroyHistory']);
+            });
+
+            Route::prefix('darmawisata/cargo')->group(function () {
+
+            // Master Data & References
+                Route::post('/supplier', [\App\Http\Controllers\Api\Mobile\CargoDarmaController::class, 'supplierList']);
+                Route::post('/pickup-location', [\App\Http\Controllers\Api\Mobile\CargoDarmaController::class, 'pickupLocation']);
+                Route::post('/destination-area', [\App\Http\Controllers\Api\Mobile\CargoDarmaController::class, 'destinationArea']);
+                Route::post('/additional-cost', [\App\Http\Controllers\Api\Mobile\CargoDarmaController::class, 'additionalCost']);
+                Route::post('/reference', [\App\Http\Controllers\Api\Mobile\CargoDarmaController::class, 'reference']);
+                Route::post('/content', [\App\Http\Controllers\Api\Mobile\CargoDarmaController::class, 'content']);
+                Route::post('/handling', [\App\Http\Controllers\Api\Mobile\CargoDarmaController::class, 'handling']);
+                Route::post('/goods', [\App\Http\Controllers\Api\Mobile\CargoDarmaController::class, 'goods']);
+                Route::post('/handling-surcharge', [\App\Http\Controllers\Api\Mobile\CargoDarmaController::class, 'handlingSurcharge']);
+
+                // Transaksi & Tarif
+                Route::post('/tariff', [\App\Http\Controllers\Api\Mobile\CargoDarmaController::class, 'tariff']);
+                Route::post('/price-detail', [\App\Http\Controllers\Api\Mobile\CargoDarmaController::class, 'priceDetail']);
+                Route::post('/booking', [\App\Http\Controllers\Api\Mobile\CargoDarmaController::class, 'booking']);
+                Route::post('/booking-list', [\App\Http\Controllers\Api\Mobile\CargoDarmaController::class, 'bookingList']);
+                Route::post('/booking-detail', [\App\Http\Controllers\Api\Mobile\CargoDarmaController::class, 'bookingDetail']);
+
+                // Tracking & History
+                Route::post('/tracking', [\App\Http\Controllers\Api\Mobile\CargoDarmaController::class, 'tracking']);
+                Route::get('/history', [\App\Http\Controllers\Api\Mobile\CargoDarmaController::class, 'history']);
+                Route::post('/history/bulk-delete', [\App\Http\Controllers\Api\Mobile\CargoDarmaController::class, 'bulkDestroyHistory']);
+
+             });
+
+            Route::prefix('darmawisata/topup')->group(function () {
+                Route::post('/product-type', [PpobDarmaTopupController::class, 'productTypeList']);
+                Route::post('/provider', [PpobDarmaTopupController::class, 'providerList']);
+                Route::post('/product', [PpobDarmaTopupController::class, 'productList']);
+                Route::post('/order', [PpobDarmaTopupController::class, 'topupOrder']);
+                Route::get('/history', [PpobDarmaTopupController::class, 'topupHistory']);
+                Route::post('/transaction-list', [PpobDarmaTopupController::class, 'transactionList']);
+                Route::post('/transaction-detail', [PpobDarmaTopupController::class, 'transactionDetail']);
+                Route::delete('/history/{id}', [PpobDarmaTopupController::class, 'destroy']);
+                Route::post('/history/bulk', [PpobDarmaTopupController::class, 'bulkDestroy']);
+                Route::post('/history/delete-selected', [PpobDarmaTopupController::class, 'deleteSelected']);
+            });
+
+        });
+
+    });
+
+// CONTOH YANG BENAR:
+Route::middleware('auth:sanctum')->group(function () {
+    // Pastikan route ini ada DI DALAM kurung kurawal middleware ini!
+    Route::get('/order/komisi-fee', [ApiMapboxController::class, 'getKomisiFee']);
+    Route::post('/order/komisi-fee/bulk-delete', [ApiMapboxController::class, 'bulkDeleteKomisiFee']);
+});
+
+// ==========================================
+// MODULE: AUTOKIRIM (KIRIM PAKET KHUSUS AGENT/CUSTOMER)
+// ==========================================
+Route::middleware('auth:sanctum')->prefix('autokirim')->group(function () {
+    Route::get('/metode-pembayaran', [\App\Http\Controllers\Api\Mobile\PesananAutokirimMobileController::class, 'getPaymentMethods']);
+    Route::get('/search-address', [\App\Http\Controllers\Api\Mobile\PesananAutokirimMobileController::class, 'searchAddressAjax']);
+    Route::post('/cek-ongkir', [\App\Http\Controllers\Api\Mobile\PesananAutokirimMobileController::class, 'cekOngkirAjax']);
+    Route::post('/store-order', [\App\Http\Controllers\Api\Mobile\PesananAutokirimMobileController::class, 'storeOrderMobile']);
+    Route::get('/riwayat-autokirim', [\App\Http\Controllers\Api\Mobile\PesananAutokirimMobileController::class, 'indexRiwayatMobile']);
+
+    // --- Rute untuk CUSTOMER / AGENT ---
+    Route::get('/riwayat-pencairan', [KomisiMobileController::class, 'riwayatAgent']);
+    Route::post('/tarik-komisi', [KomisiMobileController::class, 'tarikKomisiMandiri']);
+
+    // --- Rute KHUSUS ADMIN (User ID 4) ---
+    Route::get('/admin/list-agen', [KomisiMobileController::class, 'listAgenAdmin']);
+    Route::post('/admin/agen/update-fee', [KomisiMobileController::class, 'updateFee']);
+    Route::post('/admin/agen/delete', [KomisiMobileController::class, 'destroyAgen']);
+    Route::post('/admin/agen/cairkan', [KomisiMobileController::class, 'cairkanKomisiAdmin']);
+
+    Route::get('/detail/{identifier}', [App\Http\Controllers\Api\Mobile\PesananAutokirimMobileController::class, 'showDetail']);
+
+
+    });

@@ -13,7 +13,6 @@ use App\Http\Controllers\Auth\ForgotPasswordController;
 use App\Http\Controllers\Auth\ResetPasswordController;
 use App\Http\Controllers\Admin\ActivityLogController;
 use App\Http\Controllers\Admin\CategoryController;
-use App\Http\Controllers\Admin\DatabaseCheckController;
 use App\Http\Controllers\Admin\EmailController;
 use App\Http\Controllers\Admin\EtalaseController;
 use App\Http\Controllers\Admin\LaporanKeuanganController;
@@ -34,7 +33,6 @@ use App\Http\Controllers\Customer\TopUpController;
 use App\Http\Controllers\CustomerOrderController;
 use App\Http\Controllers\EkspedisiController;
 use App\Http\Controllers\KirimAjaController;
-use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\PesananController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\ProfileController;
@@ -51,7 +49,6 @@ use App\Http\Controllers\Api\ScraperController;
 use App\Http\Controllers\PpobIakController;
 use App\Http\Controllers\Admin\ApiSettingsController;
 use App\Http\Controllers\Api\MidtransNotificationController;
-use App\Http\Controllers\PaymentRedirectController;
 use App\Http\Controllers\Webhook\PayPalWebhookController;
 use App\Http\Controllers\Api\DelivereeWebhookController;
 use App\Http\Controllers\LalamoveApiController;
@@ -132,14 +129,11 @@ Route::prefix('midtrans')->group(function () {
 });
 
 // Halaman yang dilihat pelanggan setelah pembayaran berhasil selesai
-Route::get('/payment/finish', [PaymentRedirectController::class, 'finish'])
-     ->name('payment.finish');
 
 
 Route::post('/ppob/webhook', [PpobIakController::class, 'webhook']);
 
 // Website fontend WA Integration
-use App\Http\Controllers\WhatsappController;
 
 Route::middleware(['auth:sanctum'])->group(function () {
     Route::post('/admin/toggle-system-mode', [ApiSettingsController::class, 'toggleApi']);
@@ -150,7 +144,6 @@ Route::middleware(['auth:sanctum'])->group(function () {
 // Route::post('/doku/notify', [TopUpController::class, 'dokuNotify'])->name('doku.notify');
 // Route::post('/doku/notify', [DokuWebhookController::class, 'handle'])->name('doku.notify');
 // --- WhatsApp Webhook ---
-Route::post('/whatsapp/webhook', [WhatsappController::class, 'webhook']);
 
 Route::get('/cek-koneksi', function() {
     return "Rute API Aktif!";
@@ -219,7 +212,6 @@ Route::any('/webhook/doku-jokul', [DokuWebhookController::class, 'handle'])
 // --- RUTE WEBHOOK & CALLBACK (PUBLIK) ---
 Route::get('/kiriminaja/set-callback', [KirimAjaController::class, 'setCallback']);
 Route::post('/webhook/kiriminaja', [KirimAjaController::class, 'handle'])->name('api.callback.kirimaja');
-Route::post('/callback/tripay', [CheckoutController::class, 'TripayCallback'])->name('api.callback.tripay');
 
 
 // URL lengkapnya akan menjadi: https://tokosancaka.com/api/payment/callback
@@ -282,13 +274,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/profile/search-address', [\App\Http\Controllers\Customer\ProfileController::class, 'searchAutokirimAddress'])->name('customer.autokirim.address_search');
 
 
-    Route::post('/checkout', [CheckoutController::class, 'process']);
 
     // Keranjang Belanja (Cart)
-    Route::get('/cart', [CartController::class, 'index']);
-    Route::post('/cart/add', [CartController::class, 'store']);
-    Route::put('/cart/update/{cartId}', [CartController::class, 'update']);
-    Route::delete('/cart/remove/{cartId}', [CartController::class, 'destroy']);
 
 
     Route::post('/topup', [TopUpController::class, 'store']);
@@ -297,8 +284,6 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/lacak-pesanan/{orderId}', [LacakController::class, 'trackOrder']);
 
     // Notifikasi & Scan
-    Route::get('/notifications', [NotificationController::class, 'index']);
-    Route::post('/notifications/mark-as-read', [NotificationController::class, 'markAsRead']);
     Route::post('/scan', [ScanController::class, 'processScan']);
 
     // Kontak
@@ -306,7 +291,6 @@ Route::middleware('auth:sanctum')->group(function () {
    // --- RUTE KHUSUS ADMIN ---
     Route::prefix('admin')->name('api.admin.')->middleware('role:admin')->group(function () {
 
-        Route::get('/database-check', [DatabaseCheckController::class, 'check']);
 
         // Rute Email Admin
         Route::get('/email', [EmailController::class, 'fetch'])->name('email.fetch'); // 1. DIPERBAIKI (fetchEmails -> fetch)

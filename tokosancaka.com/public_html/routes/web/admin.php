@@ -16,7 +16,6 @@ use App\Http\Controllers\Admin\RegistrationController as AdminRegistrationContro
 
 use App\Http\Controllers\Admin\CustomerController;
 
-use App\Http\Controllers\Admin\EkspedisiController;
 
 use App\Http\Controllers\Admin\PesananController as AdminPesananController;
 

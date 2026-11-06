@@ -199,11 +199,8 @@ Route::prefix('public')->group(function () {
     // ----------------------------------------------------------------
 
     // KiriminAja & Helper Alamat
-    Route::get('/search-address', [\App\Http\Controllers\Api\Mobile\AddressController::class, 'search']);
 
     // Marketplace & PPOB Publik (Katalog)
-    Route::get('/etalase', [\App\Http\Controllers\Api\Mobile\MarketplaceController::class, 'katalog']);
-    Route::get('/ppob/pricelist', [\App\Http\Controllers\Api\Mobile\PpobController::class, 'pricelist']);
 
     Route::get('/blog/posts', [\App\Http\Controllers\Api\Mobile\ApiBlogController::class, 'getPosts']);
     // Tambahkan di bawah rute getPosts yang sudah ada
@@ -375,8 +372,6 @@ Route::prefix('seller')->group(function () {
         Route::post('/kontak', [KontakController::class, 'store']);
 
         // Top Up & Saldo
-        Route::get('/wallet/balance', [\App\Http\Controllers\Api\Mobile\WalletController::class, 'balance']);
-        Route::post('/wallet/topup', [\App\Http\Controllers\Api\Mobile\WalletController::class, 'topup']);
 
         Route::get('/topup/methods', [\App\Http\Controllers\Api\Mobile\ApiTopUpController::class, 'getMethods']);
 
@@ -404,16 +399,10 @@ Route::prefix('seller')->group(function () {
         // ==========================================
 
         // PPOB & Pembayaran Digital
-        Route::post('/ppob/inquiry', [\App\Http\Controllers\Api\Mobile\PpobController::class, 'inquiry']); // Cek Tagihan
-        Route::post('/ppob/pay', [\App\Http\Controllers\Api\Mobile\PpobController::class, 'pay']); // Bayar
-        Route::get('/ppob/history', [\App\Http\Controllers\Api\Mobile\PpobController::class, 'history']);
         // --------------------------------------------------
 
 
         // Marketplace Cart & Checkout
-        Route::get('/cart', [\App\Http\Controllers\Api\Mobile\CartController::class, 'index']);
-        Route::post('/cart/add', [\App\Http\Controllers\Api\Mobile\CartController::class, 'add']);
-        Route::post('/checkout', [\App\Http\Controllers\Api\Mobile\CheckoutController::class, 'process']);
 
         // Chat CS
         Route::get('/chat/messages', [\App\Http\Controllers\Api\Mobile\ChatController::class, 'fetchMessages']);
@@ -422,8 +411,6 @@ Route::prefix('seller')->group(function () {
         Route::get('/chat/search-users', [\App\Http\Controllers\Api\Mobile\ChatController::class, 'searchUsers']);
 
         // Notifikasi
-        Route::get('/notifications', [\App\Http\Controllers\Api\Mobile\NotificationController::class, 'index']);
-        Route::post('/notifications/read-all', [\App\Http\Controllers\Api\Mobile\NotificationController::class, 'markAllRead']);
 
         // Rute untuk List Chat & Badge Count
         Route::get('/chat/conversations', [\App\Http\Controllers\Api\Mobile\ChatController::class, 'getConversations']);
@@ -472,18 +459,12 @@ Route::prefix('seller')->group(function () {
         Route::post('/drivers/{id}/update', [AdminDriverController::class, 'update']);
 
         // Laporan Keuangan Mobile
-        Route::get('/laporan/ringkasan', [\App\Http\Controllers\Api\Mobile\AdminFinanceController::class, 'summary']);
 
         // Operasional & Scan SPX
-        Route::post('/scan-spx', [\App\Http\Controllers\Api\Mobile\AdminScanController::class, 'scan']);
-        Route::get('/scan-spx/monitor', [\App\Http\Controllers\Api\Mobile\AdminScanController::class, 'monitor']);
 
         // Manajemen Pengguna
-        Route::get('/users', [\App\Http\Controllers\Api\Mobile\AdminUserController::class, 'index']);
 
         // Pencairan Dana / Escrow
-        Route::get('/escrow/pending', [\App\Http\Controllers\Api\Mobile\AdminEscrowController::class, 'pending']);
-        Route::post('/escrow/{id}/cairkan', [\App\Http\Controllers\Api\Mobile\AdminEscrowController::class, 'cairkan']);
 
         Route::post('/broadcast/send', [DashboardController::class, 'sendBroadcast']);
         Route::get('/broadcast/replies', [DashboardController::class, 'getBroadcastReplies']); // <--- TARUH DI SINI

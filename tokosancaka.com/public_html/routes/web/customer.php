@@ -204,15 +204,9 @@ Route::middleware([EnsureProfileIsSetup::class])->group(function () {
 
 
 
-    Route::get('/customer/seller/register', [SellerRegisterController::class, 'create'])
-
-        ->name('customer.seller.register.form');
 
 
 
-    Route::post('/customer/seller/register', [SellerRegisterController::class, 'store'])
-
-        ->name('customer.seller.register.submit');
 
 
 
