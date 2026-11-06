@@ -179,14 +179,7 @@ class BotOrderController extends Controller
         }
     }
 
-    /**
-     * 
-    }
 
-    /**
-     * Endpoint customer: buat pesanan baru dengan pembayaran Doku (VA + QRIS).
-     * Endpoint ini BUKAN untuk bot, melainkan untuk customer langsung.
-     */
     public function createCustomerOrder(Request $request)
     {
         $validated = $request->validate([
