@@ -1479,14 +1479,26 @@ Endpoint READ-ONLY: cek ongkir KiriminAja.
         $isDraftActive = $draft && !in_array(strtoupper((string) $draft->step), ['COMPLETED', 'CANCELLED'], true);
 
         if (!$isDraftActive) {
-            // SINGLE HANDLER: Percakapan bebas, salam, tanya menu, dan cek ongkir
-            // sepenuhnya dikendalikan oleh Hermes Agent via WhatsApp platform adapter.
-            // Laravel webhook TIDAK mengirim pesan ongkir mandiri agar tidak terjadi duplikasi.
+            // DETEKSI NIAT: Biarkan Laravel mencegat teks untuk melihat apakah ini
+            // permintaan cek ongkir, lacak resi, atau menu.
+            $intent = $this->_handleMenuIntent($phone, $text);
+
+            if ($intent === 'ongkir' || $intent === 'menu' || $intent === 'tracking') {
+                // Laravel sudah menangani dan mengirim balasan (Tombol/Teks).
+                // Hentikan proses, berikan respons agar Hermes Agent DIBAWAH tidak ikut menjawab.
+                return response()->json([
+                    'status' => 'success',
+                    'handled' => 'by_laravel_state_machine',
+                    'intent' => $intent
+                ]);
+            }
+
+            // Jika bukan ongkir/menu/tracking (misal: "halo bot", "kamu bisa apa?"),
+            // baru delegasikan ke AI Hermes untuk obrolan luwes.
             Log::info('[WA-WEBHOOK] Pesan dilewati untuk ditangani Hermes Agent', [
                 'phone' => $phone,
                 'text'  => Str::limit($text, 60, ''),
             ]);
-
             return response()->json(['status' => 'success', 'handled' => 'delegated_to_hermes']);
         }
 
