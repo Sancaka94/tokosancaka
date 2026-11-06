@@ -1,0 +1,12 @@
+<!DOCTYPE html>
+<html>
+<head><title>Uji Session</title></head>
+<body>
+    <h3>Session Test</h3>
+    <p>Driver : <b>{{ $driver }}</b></p>
+    <p>Path   : {{ $path }}</p>
+    <p>ID     : {{ $sessionId }}</p>
+    <p>Ditulis: {{ $storedAt }}</p>
+    <p>Refresh halaman → ID harus tetap sama (persisten).</p>
+</body>
+</html>

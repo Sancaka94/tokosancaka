@@ -180,7 +180,211 @@ class BotOrderController extends Controller
     }
 
     /**
-     * Endpoint READ-ONLY: cek ongkir KiriminAja.
+     * 
+    }
+
+    /**
+     * Endpoint customer: buat pesanan baru dengan pembayaran Doku (VA + QRIS).
+     * Endpoint ini BUKAN untuk bot, melainkan untuk customer langsung.
+     */
+    public function createCustomerOrder(Request $request)
+    {
+        $validated = $request->validate([
+            'phone'              => 'required|string|max:20',
+            'sender_name'        => 'required|string|max:100',
+            'sender_phone'       => 'required|string|max:20',
+            'sender_address'     => 'required|string|min:10|max:255',
+            'receiver_name'      => 'required|string|max:100',
+            'receiver_phone'     => 'required|string|max:20',
+            'receiver_address'   => 'required|string|min:10|max:255',
+            'weight'             => 'required|numeric|min:1|max:300000',
+            'item_value'         => 'nullable|numeric|min:0',
+            'item_description'   => 'nullable|string|max:255',
+            'kurir'              => 'nullable|string|max:50',
+        ]);
+
+        $phone = preg_replace('/[^0-9]/', '', $validated['phone']);
+        if (str_starts_with($phone, '8')) {
+            $phone = '62' . $phone;
+        } elseif (str_starts_with($phone, '0')) {
+            $phone = '62' . substr($phone, 1);
+        }
+
+        $senderPhone = preg_replace('/[^0-9]/', '', $validated['sender_phone']);
+        if (str_starts_with($senderPhone, '8')) {
+            $senderPhone = '62' . $senderPhone;
+        } elseif (str_starts_with($senderPhone, '0')) {
+            $senderPhone = '62' . substr($senderPhone, 1);
+        }
+
+        DB::beginTransaction();
+        try {
+            $senderLocation = $this->_resolveAddress($validated['sender_address']);
+            $receiverLocation = $this->_resolveAddress($validated['receiver_address']);
+
+            if (!$senderLocation || !$receiverLocation) {
+                throw new Exception("Gagal memetakan alamat.");
+            }
+
+            $weight = (int) ceil((float) $validated['weight']);
+            $itemValue = (int) ($validated['item_value'] ?? 10000);
+
+            $shippingCost = $this->_getBestShippingCost(
+                $senderLocation['district_id'],
+                $senderLocation['subdistrict_id'],
+                $receiverLocation['district_id'],
+                $receiverLocation['subdistrict_id'],
+                $weight,
+                $itemValue
+            );
+
+            if (!$shippingCost) {
+                throw new Exception("Tidak ada layanan ekspedisi untuk rute ini.");
+            }
+
+            $customer = User::whereIn('no_wa', $this->_waPhoneVariants($phone))->first();
+            $customerId = $customer ? $customer->id_pengguna : null;
+
+            $nomorInvoice = 'SCK-CUST-' . date('Ymd') . '-' . strtoupper(Str::random(6));
+            while (Pesanan::where('nomor_invoice', $nomorInvoice)->exists()) {
+                $nomorInvoice = 'SCK-CUST-' . date('Ymd') . '-' . strtoupper(Str::random(6));
+            }
+
+            $order = Pesanan::create([
+                'nomor_invoice'           => $nomorInvoice,
+                'id_pengguna_pembeli'     => $customerId,
+                'customer_id'             => $customerId,
+                'status'                  => 'Menunggu Pembayaran',
+                'status_pesanan'          => 'Menunggu Pembayaran',
+                'tanggal_pesanan'         => now(),
+                'ip_address'              => $request->ip(),
+                'user_agent'              => $request->userAgent(),
+                'sender_name'             => $validated['sender_name'],
+                'sender_phone'            => $senderPhone,
+                'sender_address'          => $validated['sender_address'],
+                'sender_district_id'      => $senderLocation['district_id'],
+                'sender_subdistrict_id'   => $senderLocation['subdistrict_id'],
+                'sender_postal_code'      => $senderLocation['postal_code'],
+                'receiver_name'           => $validated['receiver_name'],
+                'receiver_phone'          => $this->_sanitizePhoneNumber($validated['receiver_phone']),
+                'receiver_address'        => $validated['receiver_address'],
+                'receiver_district_id'    => $receiverLocation['district_id'],
+                'receiver_subdistrict_id' => $receiverLocation['subdistrict_id'],
+                'receiver_postal_code'    => $receiverLocation['postal_code'],
+                'item_description'        => $validated['item_description'] ?? 'Barang',
+                'item_value'              => $itemValue,
+                'weight'                  => $weight,
+                'service_type'            => $shippingCost['service_type'],
+                'courier'                 => $shippingCost['courier'],
+                'payment_method'          => 'DOKU',
+                'shipping_cost'           => $shippingCost['cost'],
+                'price'                   => $shippingCost['cost'],
+                'ansuransi'               => 'tidak',
+                'insurance_cost'          => 0,
+                'cod_fee'                 => 0,
+                'item_type'               => 1,
+            ]);
+
+            $dokuService = new DokuJokulService();
+            $paymentUrl = $dokuService->createPayment(
+                $order->nomor_invoice,
+                $order->price,
+                [
+                    'name'  => $validated['sender_name'],
+                    'phone' => $senderPhone,
+                ],
+                [],
+                [],
+                null
+            );
+
+            if (!$paymentUrl) {
+                throw new Exception("Gagal membuat tautan pembayaran Doku.");
+            }
+
+            $order->payment_url = $paymentUrl;
+            $order->save();
+
+            DB::commit();
+
+            $this->_sendPaymentWhatsApp($phone, $order, $paymentUrl);
+
+            Log::info("Customer order sukses dibuat. Invoice: {$nomorInvoice}", [
+                'phone' => $phone,
+                'invoice' => $nomorInvoice,
+                'price' => $order->price,
+            ]);
+
+            return response()->json([
+                'status'       => 'success',
+                'invoice'      => $order->nomor_invoice,
+                'customer'     => [
+                    'phone'  => $phone,
+                    'name'   => $validated['sender_name'],
+                ],
+                'sender'       => [
+                    'name'  => $validated['sender_name'],
+                    'phone' => $senderPhone,
+                    'address' => $validated['sender_address'],
+                ],
+                'receiver'     => [
+                    'name'  => $validated['receiver_name'],
+                    'phone' => $validated['receiver_phone'],
+                    'address' => $validated['receiver_address'],
+                ],
+                'weight'       => $weight,
+                'item_value'   => $itemValue,
+                'shipping_cost' => $shippingCost['cost'],
+                'total_cost'   => $shippingCost['cost'],
+                'payment'      => [
+                    'method'  => 'DOKU',
+                    'url'     => $paymentUrl,
+                    'message' => 'Silakan transfer melalui Virtual Account atau QRIS. Batas waktu 60 menit.',
+                ],
+                'message'      => 'Pesanan berhasil dibuat. Silakan lakukan pembayaran melalui VA atau QRIS.',
+            ], 200);
+
+        } catch (Exception $e) {
+            DB::rollBack();
+            Log::error('CustomerOrder Error: ' . $e->getMessage());
+            return response()->json([
+                'status'  => 'error',
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Kirim detail pembayaran (VA + QRIS) ke WhatsApp customer.
+     */
+    private function _sendPaymentWhatsApp(string $phone, Pesanan $order, string $paymentUrl): bool
+    {
+        $message = "Pembayaran SCK
+";
+        $message .= "Invoice: {$order->nomor_invoice}
+";
+        $message .= "Nama: {$order->sender_name}
+";
+        $message .= "Total Bayar: Rp " . number_format($order->price, 0, ',', '.') . "
+";
+        $message .= "Metode: DOKU (Virtual Account / QRIS)
+";
+        $message .= "Batas Waktu: 60 menit
+
+";
+        $message .= "Silakan transfer melalui VA atau QRIS berikut:
+";
+        $message .= "Link: {$paymentUrl}
+
+";
+        $message .= "Balas *{$order->nomor_invoice}* jika sudah lunas.";
+
+        $response = FonnteService::sendMessage($phone, $message);
+        return $response->successful();
+    }
+
+    /**</span>
+Endpoint READ-ONLY: cek ongkir KiriminAja.
      * Tidak membuat Pesanan, tidak menyentuh database, tidak memanggil Tripay.
      */
     public function checkShippingCost(Request $request)

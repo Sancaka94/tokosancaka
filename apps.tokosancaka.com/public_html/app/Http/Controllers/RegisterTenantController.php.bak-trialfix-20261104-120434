@@ -1,0 +1,532 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Models\Tenant;
+use App\Models\User;
+use App\Models\License; // [TAMBAHAN: Import Model License]
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Http;
+use Carbon\Carbon;
+use Illuminate\Support\Str; // [TAMBAHAN: Import Str untuk generate kode]
+use App\Services\DokuJokulService;
+use Illuminate\Support\Facades\Mail;
+
+class RegisterTenantController extends Controller
+{
+    public function showForm()
+    {
+        return view('daftar-pos');
+    }
+
+    /**
+     * Menangani pendaftaran Tenant Baru (SaaS POS)
+     */
+    public function register(Request $request, DokuJokulService $dokuService)
+    {
+        Log::info("================ START REGISTER SYSTEM ================");
+
+        try {
+            $validatedData = $request->validate([
+                'owner_name'    => 'required|string|max:255',
+                'email'         => 'required|email|max:255',
+                'whatsapp'      => 'required|string|min:9|max:15',
+                'business_name' => 'required|string|max:255',
+                'subdomain'     => 'required|alpha_dash|unique:tenants,subdomain',
+                'package'       => 'required|in:trial,monthly,yearly',
+                'password'      => 'required|min:8',
+            ]);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            // Jika request dari API / HTML Luar, kembalikan JSON
+            if ($request->wantsJson() || $request->is('api/*')) {
+                return response()->json(['success' => false, 'errors' => $e->errors()], 422);
+            }
+            return back()->withErrors($e->errors())->withInput();
+        } catch (\Exception $e) {
+            // Jika request dari API / HTML Luar, kembalikan JSON
+            if ($request->wantsJson() || $request->is('api/*')) {
+                return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+            }
+            return back()->with('error', $e->getMessage());
+        }
+
+        // 2. SETUP DATA AWAL
+        $now = Carbon::now('Asia/Jakarta');
+        $adminPhone = '085745808809';
+        $userWa = $this->_normalizeWa($request->whatsapp);
+
+        $prices = [
+            'trial'   => 0,
+            'monthly' => 100000,
+            'yearly'  => 1000000
+        ];
+        $amount = $prices[$request->package];
+
+        DB::beginTransaction();
+
+        try {
+            // 3. KALKULASI MASA AKTIF
+            $status = ($request->package == 'trial') ? 'active' : 'inactive';
+            $days = ($request->package == 'yearly') ? 365 : ($request->package == 'monthly' ? 30 : 14);
+            $expiredAt = $now->copy()->addDays($days);
+
+            // Beri masa tenggang 1 hari saja buat trial biar subdomain bisa dibuka dulu
+            // Kalau bukan trial, tetap pakai jatah aslinya ($days)
+            $tenantExpiredAt = ($request->package == 'trial') ? $now->copy()->addDay() : $now->copy()->addDays($days);
+
+            // 4. SIMPAN TENANT
+            $tenant = Tenant::create([
+                'name'       => $request->business_name,
+                'subdomain'  => strtolower($request->subdomain),
+                'whatsapp'   => $request->whatsapp,
+                'package'    => $request->package,
+                'status'     => $status,
+                'expired_at' => $tenantExpiredAt,
+                'created_at' => $now,
+            ]);
+
+            // 5. SIMPAN USER
+            $user = User::create([
+                'tenant_id' => $tenant->id,
+                'name'      => $request->owner_name,
+                'email'     => $request->email,
+                'phone'     => $userWa,
+                'password'  => Hash::make($request->password),
+                'role'      => 'admin',
+                'permissions' => ['dashboard', 'pos', 'products', 'reports', 'settings', 'finance'],
+            ]);
+
+            // [TAMBAHAN: Buat Lisensi Pertama Jika Trial]
+            $licenseCode = 'TRIAL-' . strtoupper(Str::random(8));
+            if ($request->package == 'trial') {
+
+                // KITA MATIKAN SEMENTARA MODEL-NYA
+                // License::create([ ... ]);
+
+                // KITA TEMBAK LANGSUNG KE DATABASE
+                \Illuminate\Support\Facades\DB::table('licenses')->insert([
+                    'license_code'  => $licenseCode,
+                    'tenant_id'     => $tenant->id,
+                    'package_type'  => 'trial',
+                    'max_devices'   => 1,
+                    'max_ips'       => 1,
+                    'duration_days' => $days,
+                    'status'        => 'available', // <-- Kita paksa available
+                    'used_at'       => null,
+                    'expires_at'    => $expiredAt,
+                    'created_at'    => $now,
+                    'updated_at'    => $now,
+                ]);
+            }
+
+            DB::commit();
+
+            // 6. NOTIFIKASI WA UNTUK ADMIN (SERVER)
+            // [PERBAIKAN] Gunakan Domain Utama untuk notifikasi admin agar bisa dicek manual
+            $msgAdmin = "🔔 *ADA PENDAFTAR BARU!*\n\n";
+            $msgAdmin .= "👤 Nama: {$request->owner_name}\n";
+            $msgAdmin .= "🏪 Toko: {$request->business_name}\n";
+            $msgAdmin .= "🌐 Subdomain: {$tenant->subdomain}.tokosancaka.com\n"; // URL ini akan ditangkap Cloudflare Worker nanti
+            if ($request->package == 'trial') {
+                $msgAdmin .= "🔑 Kode Aktivasi: {$licenseCode}\n";
+            }
+
+
+            $this->_sendFonnte($adminPhone, $msgAdmin);
+
+            // 7. PROSES PEMBAYARAN DOKU (Jika bukan trial)
+            if ($amount > 0) {
+                $invoiceNumber = 'SEWA-' . strtoupper($tenant->subdomain) . '-' . $now->format('ymdHis');
+                $dokuData = [
+                    'name'  => $request->owner_name,
+                    'email' => $request->email,
+                    'phone' => $userWa
+                ];
+
+                $paymentUrl = $dokuService->createPayment($invoiceNumber, $amount, $dokuData);
+
+                // Kirim WA Tagihan...
+                $msgUser = "Halo Kak *{$request->owner_name}* 👋,\n\n";
+                $msgUser .= "Link Pembayaran: \n" . $paymentUrl . "\n";
+                $this->_sendFonnte($userWa, $msgUser);
+
+                // [PERBAIKAN] Cek jika request API, kirim JSON. Jika bukan, redirect langsung
+                if ($request->wantsJson() || $request->is('api/*')) {
+                    return response()->json(['success' => true, 'redirect_url' => $paymentUrl]);
+                }
+                return redirect()->away($paymentUrl);
+            }
+
+            // 8. FINISH (TRIAL)
+            if ($request->package == 'trial') {
+                $targetUrl = 'https://' . $tenant->subdomain . '.tokosancaka.com/login';
+
+                $msgTrial = "Selamat Ya Kak *{$request->owner_name}*! 🎉\n\n";
+                $msgTrial .= "Akun Trial 14 hari Anda sudah aktif.\n";
+                $msgTrial .= "----------------------------------\n";
+                $msgTrial .= "🔑 *KODE AKTIVASI:* `{$licenseCode}`\n"; // Menampilkan kode ke user
+                $msgTrial .= "🌐 *LINK LOGIN:* {$targetUrl}\n";
+                $msgTrial .= "----------------------------------\n\n";
+                $msgTrial .= "Gunakan kode di atas jika aplikasi meminta aktivasi saat pertama kali login.";
+
+                $this->_sendFonnte($userWa, $msgTrial);
+
+               // Kirim Email Berisi Kode Aktivasi Trial (Desain Modern)
+                $emailTrialHtml = '
+                <div style="font-family: \'Segoe UI\', Tahoma, Geneva, Verdana, sans-serif; background-color: #f3f4f6; padding: 40px 20px; margin: 0;">
+                    <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.05);">
+
+                        <!-- Header -->
+                        <div style="background-color: #dc2626; padding: 25px; text-align: center;">
+                            <h1 style="color: #ffffff; margin: 0; font-size: 26px; font-weight: 800; letter-spacing: 1px;">Sancaka<span style="font-weight: 300;">POS</span></h1>
+                        </div>
+
+                        <!-- Body -->
+                        <div style="padding: 40px 30px;">
+                            <h2 style="margin-top: 0; color: #1e293b; font-size: 22px;">Halo, '.$request->owner_name.'! 🎉</h2>
+                            <p style="color: #475569; font-size: 16px; line-height: 1.6; margin-bottom: 30px;">
+                                Selamat! Akun <b>Trial 14 Hari</b> Anda telah berhasil diaktifkan. Silakan gunakan kode aktivasi di bawah ini saat pertama kali masuk ke aplikasi kasir Anda.
+                            </p>
+
+                            <!-- Kode Aktivasi Box -->
+                            <div style="background-color: #f8fafc; border: 2px dashed #cbd5e1; border-radius: 8px; padding: 25px; text-align: center; margin-bottom: 35px;">
+                                <p style="margin: 0 0 10px 0; color: #64748b; font-size: 13px; text-transform: uppercase; font-weight: bold; letter-spacing: 1px;">KODE AKTIVASI ANDA</p>
+                                <p style="margin: 0; color: #dc2626; font-size: 32px; font-weight: 900; letter-spacing: 4px;">'.$licenseCode.'</p>
+                            </div>
+
+                            <!-- Link Login -->
+                            <div style="text-align: center;">
+                                <a href="'.$targetUrl.'" style="display: inline-block; background-color: #2563eb; color: #ffffff; text-decoration: none; font-size: 16px; font-weight: bold; padding: 16px 35px; border-radius: 8px;">
+                                    Masuk ke Dashboard
+                                </a>
+                            </div>
+                        </div>
+
+                        <!-- Footer -->
+                        <div style="background-color: #f8fafc; padding: 20px; text-align: center; border-top: 1px solid #e2e8f0;">
+                            <p style="color: #94a3b8; font-size: 13px; margin: 0;">
+                                Butuh bantuan? Silakan hubungi tim support kami melalui WhatsApp.
+                                <br><br>
+                                &copy; '.date('Y').' Sancaka POS. All rights reserved.
+                            </p>
+                        </div>
+
+                    </div>
+                </div>';
+
+                $this->_sendEmail($request->email, "Kode Aktivasi Akun POS Sancaka", $emailTrialHtml);
+
+                Log::info("LOG LOG: Trial sukses mengirim kode {$licenseCode} ke {$userWa}");
+
+                // [PERBAIKAN] Cek jika request API, kirim JSON. Jika bukan, redirect langsung
+                if ($request->wantsJson() || $request->is('api/*')) {
+                    return response()->json(['success' => true, 'redirect_url' => $targetUrl]);
+                }
+                return redirect()->away($targetUrl);
+            }
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error("LOG LOG: FAILED REGISTER: " . $e->getMessage());
+
+            if ($request->wantsJson() || $request->is('api/*')) {
+                return response()->json(['success' => false, 'message' => 'Gagal mendaftar: ' . $e->getMessage()], 500);
+            }
+            return back()->with('error', 'Gagal mendaftar: ' . $e->getMessage());
+        }
+    }
+
+   /**
+     * Webhook DOKU
+     */
+    public function handleDokuWebhook(Request $request)
+    {
+        // Logika Webhook sudah aman karena tidak bergantung URL, tapi bergantung Invoice Number
+        // Bagian ini tidak perlu diubah, hanya pastikan URL di WA User menggunakan HTTPS
+
+        $content = $request->getContent();
+        $data = json_decode($content, true);
+        $invoice = $data['order']['invoice_number'] ?? null;
+        $status = $data['transaction']['status'] ?? null;
+
+        if ($invoice && str_contains($invoice, 'SEWA-')) {
+            if (strtoupper($status) === 'SUCCESS') {
+                $parts = explode('-', $invoice);
+                $subdomain = strtolower($parts[1]);
+
+                $tenant = Tenant::where('subdomain', $subdomain)->first();
+
+                if ($tenant && $tenant->status !== 'active') {
+
+                    // [TAMBAHAN: Kalkulasi expired berdasarkan paket untuk Lisensi Baru]
+                    $now = Carbon::now('Asia/Jakarta');
+                    $days = ($tenant->package == 'yearly') ? 365 : 30;
+                    $newExpiredAt = $now->copy()->addDays($days);
+
+                    $tenant->update([
+                        'status' => 'active',
+                        'expired_at' => $newExpiredAt // [TAMBAHAN: Update masa aktif tenant]
+                    ]);
+
+                   // Simpan kode lisensi ke variabel dulu agar bisa dikirim
+                    $proLicenseCode = 'PRO-' . strtoupper(Str::random(10));
+
+                    License::create([
+                        'license_code'  => $proLicenseCode,
+                        'tenant_id'     => $tenant->id,
+                        'package_type'  => 'pro',
+                        'max_devices'   => 1,
+                        'max_ips'       => 1,
+                        'duration_days' => $days,
+                        'status'        => 'available',
+                        'used_at'       => null,
+                        'expires_at'    => $newExpiredAt,
+                    ]);
+
+                    $userPhone = $this->_normalizeWa($tenant->whatsapp);
+                    $targetUrl = "https://{$subdomain}.tokosancaka.com/login";
+
+                    // Kirim WA Kode Aktivasi
+                    $msgUser = "💰 *PEMBAYARAN BERHASIL*\n\n" .
+                               "Status: *ACTIVE* ✅\n" .
+                               "🔑 Kode Aktivasi: *{$proLicenseCode}*\n" .
+                               "Link Login: {$targetUrl}\n\n";
+
+                    if (!empty($userPhone)) {
+                        $this->_sendFonnte($userPhone, $msgUser);
+                    }
+
+                    // Kirim Email Kode Aktivasi
+                    $user = User::where('tenant_id', $tenant->id)->first();
+                    if ($user && $user->email) {
+                        $emailProHtml = '
+                        <div style="font-family: \'Segoe UI\', Tahoma, Geneva, Verdana, sans-serif; background-color: #f3f4f6; padding: 40px 20px; margin: 0;">
+                            <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.05);">
+
+                                <div style="background-color: #16a34a; padding: 25px; text-align: center;">
+                                    <h1 style="color: #ffffff; margin: 0; font-size: 24px; font-weight: bold;">Pembayaran Berhasil! ✅</h1>
+                                </div>
+
+                                <div style="padding: 40px 30px;">
+                                    <h2 style="margin-top: 0; color: #1e293b; font-size: 22px;">Halo, '.$user->name.'!</h2>
+                                    <p style="color: #475569; font-size: 16px; line-height: 1.6; margin-bottom: 30px;">
+                                        Terima kasih! Pembayaran Anda telah kami terima dan akun POS Anda kini sudah berstatus <b>ACTIVE</b>.
+                                    </p>
+
+                                    <div style="background-color: #f0fdf4; border: 2px dashed #86efac; border-radius: 8px; padding: 25px; text-align: center; margin-bottom: 35px;">
+                                        <p style="margin: 0 0 10px 0; color: #166534; font-size: 13px; text-transform: uppercase; font-weight: bold; letter-spacing: 1px;">KODE AKTIVASI PRO ANDA</p>
+                                        <p style="margin: 0; color: #15803d; font-size: 32px; font-weight: 900; letter-spacing: 4px;">'.$proLicenseCode.'</p>
+                                    </div>
+
+                                    <div style="text-align: center;">
+                                        <a href="'.$targetUrl.'" style="display: inline-block; background-color: #2563eb; color: #ffffff; text-decoration: none; font-size: 16px; font-weight: bold; padding: 16px 35px; border-radius: 8px;">
+                                            Masuk ke Dashboard
+                                        </a>
+                                    </div>
+                                </div>
+
+                                <div style="background-color: #f8fafc; padding: 20px; text-align: center; border-top: 1px solid #e2e8f0;">
+                                    <p style="color: #94a3b8; font-size: 13px; margin: 0;">
+                                        &copy; '.date('Y').' Sancaka POS. All rights reserved.
+                                    </p>
+                                </div>
+
+                            </div>
+                        </div>';
+
+                        $this->_sendEmail($user->email, "Pembayaran Berhasil - Kode Aktivasi POS", $emailProHtml);
+                    }
+                }
+            }
+        }
+        return response()->json(['responseCode' => '2005600', 'responseMessage' => 'Success']);
+    }
+
+    /**
+     * Helper: Kirim Pesan via Fonnte
+     */
+    private function _sendFonnte($target, $message)
+    {
+        $token = env('FONNTE_API_KEY') ?? env('FONNTE_KEY');
+        if (!$token) {
+            Log::warning("LOG LOG: Fonnte Token Kosong!");
+            return;
+        }
+
+        try {
+            // Gunakan nomor yang sudah dinormalisasi
+            $response = \Illuminate\Support\Facades\Http::withHeaders(['Authorization' => $token])
+                ->post('https://api.fonnte.com/send', [
+                    'target' => $target,
+                    'message' => $message,
+                ]);
+            Log::info("LOG LOG: Fonnte Sent to {$target}. Respon: " . $response->body());
+        } catch (\Exception $e) {
+            Log::error("LOG LOG: Fonnte Error: " . $e->getMessage());
+        }
+    }
+
+    /**
+     * Helper: Normalisasi nomor ke format 08 (Sesuai spek Fonnte Bapak)
+     */
+    private function _normalizeWa($phone)
+    {
+        if (!$phone) return null;
+
+        // 1. Hapus semua karakter yang bukan angka
+        $phone = preg_replace('/[^0-9]/', '', $phone);
+
+        // 2. Jika diawali '62', ubah menjadi '0'
+        if (str_starts_with($phone, '62')) {
+            $phone = '0' . substr($phone, 2);
+        }
+        // 3. Jika diawali '8' (langsung angka 8), tambahkan '0' di depan
+        elseif (str_starts_with($phone, '8')) {
+            $phone = '0' . $phone;
+        }
+
+        // Pastikan hasil akhirnya diawali dengan '08'
+        return $phone;
+    }
+
+    public function listTenants(Request $request)
+    {
+        // 1. HAPUS 'with('domains')'. Cukup Tenant::query()
+        $query = Tenant::query();
+
+        // 2. Fitur Pencarian
+        if ($request->has('search') && $request->search != '') {
+            $search = $request->search;
+
+            $query->where(function($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")       // Nama Toko
+                  ->orWhere('subdomain', 'like', "%{$search}%") // Subdomain (Kolom biasa)
+                  ->orWhere('whatsapp', 'like', "%{$search}%")  // WA
+                  ->orWhere('package', 'like', "%{$search}%");  // Paket
+            });
+        }
+
+        // 3. Ambil data dengan Pagination
+        $tenants = $query->latest()->paginate(10);
+
+        // 4. Return ke View
+        return view('admin.tenant-list', [
+            'tenants' => $tenants,
+            'total_tenants' => Tenant::count()
+        ]);
+    }
+
+    // ==============================================================================
+    // FUNGSI MANAJEMEN TENANT (UNTUK ADMIN PUSAT)
+    // ==============================================================================
+
+    /**
+     * Menampilkan detail lengkap satu tenant
+     */
+    public function show($id)
+    {
+        $tenant = Tenant::findOrFail($id);
+
+        // Asumsi Anda juga ingin melihat daftar user dari tenant ini
+        $users = User::where('tenant_id', $tenant->id)->get();
+
+        // Asumsi Anda ingin melihat riwayat lisensi tenant ini
+        $licenses = License::where('tenant_id', $tenant->id)->get();
+
+        return view('admin.tenant-show', compact('tenant', 'users', 'licenses'));
+    }
+
+    /**
+     * Menampilkan form edit tenant
+     */
+    public function edit($id)
+    {
+        $tenant = Tenant::findOrFail($id);
+
+        return view('admin.tenant-edit', compact('tenant'));
+    }
+
+    /**
+     * Memproses update data tenant
+     */
+    public function update(Request $request, $id)
+    {
+        $tenant = Tenant::findOrFail($id);
+
+        // Validasi input
+        $request->validate([
+            'name'       => 'required|string|max:255',
+            'whatsapp'   => 'required|string|max:20',
+            'package'    => 'required|in:trial,monthly,yearly',
+            'status'     => 'required|in:active,inactive,suspended',
+            'expired_at' => 'required|date',
+        ]);
+
+        try {
+            // Update data tenant
+            $tenant->update([
+                'name'       => $request->name,
+                'whatsapp'   => $request->whatsapp,
+                'package'    => $request->package,
+                'status'     => $request->status,
+                'expired_at' => $request->expired_at,
+            ]);
+
+            Log::info("LOG LOG: Tenant {$tenant->name} diupdate oleh Admin Pusat.");
+
+            return redirect()->route('tenants.index')->with('success', 'Data tenant berhasil diperbarui!');
+
+        } catch (\Exception $e) {
+            Log::error("LOG LOG: Gagal update tenant: " . $e->getMessage());
+            return back()->with('error', 'Gagal memperbarui data: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Menghapus tenant beserta data terkait
+     */
+    public function destroy($id)
+    {
+        DB::beginTransaction();
+
+        try {
+            $tenant = Tenant::findOrFail($id);
+            $tenantName = $tenant->name;
+
+            // Hapus semua User yang terkait dengan tenant ini
+            User::where('tenant_id', $tenant->id)->delete();
+
+            // Hapus semua Lisensi yang terkait
+            License::where('tenant_id', $tenant->id)->delete();
+
+            // Hapus data tenant utama
+            $tenant->delete();
+
+            DB::commit();
+
+            Log::info("LOG LOG: Tenant {$tenantName} dan semua datanya berhasil dihapus permanen oleh Admin.");
+
+            return redirect()->route('tenants.index')->with('success', "Tenant {$tenantName} berhasil dihapus permanen!");
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error("LOG LOG: Gagal menghapus tenant: " . $e->getMessage());
+            return back()->with('error', 'Terjadi kesalahan saat menghapus data: ' . $e->getMessage());
+        }
+    }
+
+    private function _sendEmail($to, $subject, $htmlMessage)
+    {
+        try {
+            Mail::html($htmlMessage, function ($message) use ($to, $subject) {
+                $message->to($to)->subject($subject);
+            });
+        } catch (\Exception $e) {
+            Log::error("Email Error ke {$to}: " . $e->getMessage());
+        }
+    }
+
+}

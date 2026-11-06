@@ -1,0 +1,22 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use Illuminate\Http\Request;
+
+class UjicobaController extends Controller
+{
+    public function index(Request $request)
+    {
+        // tulis ke session
+        $request->session()->put('uji_session_id', session()->getId());
+        $request->session()->put('uji_time', now()->toDateTimeString());
+
+        return view('uji.index', [
+            'sessionId' => session()->getId(),
+            'storedAt'  => session('uji_time'),
+            'driver'    => config('session.driver'),
+            'path'      => config('session.files'),
+        ]);
+    }
+}

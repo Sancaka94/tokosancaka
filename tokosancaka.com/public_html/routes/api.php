@@ -77,6 +77,7 @@ Route::post('/callback/autokirim', [App\Http\Controllers\PesananAutokirimControl
 // ============================================================================================
 // ROUTE BARU: MESSAGE ROUTER (2-model: GeminiService = deepseek-coder, IntentAnalysisService = guoxuter)
 // ============================================================================================
+Route::post('/customer/order', [App\Http\Controllers\Api\BotOrderController::class, 'createCustomerOrder']);
 Route::post('/message/chat', [App\Http\Controllers\MessageRouterController::class, 'chat']);
 
 // Pastikan route ini aman dan terproteksi middleware admin jika ini fitur sensitif
@@ -138,7 +139,7 @@ Route::get('/payment/finish', [PaymentRedirectController::class, 'finish'])
 Route::post('/ppob/webhook', [PpobIakController::class, 'webhook']);
 
 // Website fontend WA Integration
-//use App\Http\Controllers\WhatsappController;
+use App\Http\Controllers\WhatsappController;
 
 Route::middleware(['auth:sanctum'])->group(function () {
     Route::post('/admin/toggle-system-mode', [ApiSettingsController::class, 'toggleApi']);
@@ -148,6 +149,8 @@ Route::middleware(['auth:sanctum'])->group(function () {
 // Endpoint untuk DOKU Notification
 // Route::post('/doku/notify', [TopUpController::class, 'dokuNotify'])->name('doku.notify');
 // Route::post('/doku/notify', [DokuWebhookController::class, 'handle'])->name('doku.notify');
+// --- WhatsApp Webhook ---
+Route::post('/whatsapp/webhook', [WhatsappController::class, 'webhook']);
 
 Route::get('/cek-koneksi', function() {
     return "Rute API Aktif!";

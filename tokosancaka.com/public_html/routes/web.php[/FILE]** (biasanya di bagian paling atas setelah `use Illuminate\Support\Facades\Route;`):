@@ -1,0 +1,12 @@
+<?php
+
+use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\UjicobaController;
+
+// ===================================================
+// ROUTE UJI COBA
+// ===================================================
+Route::get('/uji', [UjicobaController::class, 'index'])->name('uji.index');
+Route::get('/uji/health', [UjicobaController::class, 'health'])->name('uji.health');
+
+// ... route lainnya tetap ada di bawah ...

@@ -1,0 +1,92 @@
+<?php
+
+
+
+namespace App\Http\Middleware;
+
+
+
+use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken as Middleware;
+
+
+
+class VerifyCsrfToken extends Middleware
+
+{
+
+    protected function inExceptArray($request)
+
+    {
+
+        \Log::info('CSRF check: '.$request->path());
+
+        return parent::inExceptArray($request);
+
+    }
+
+
+
+    /**
+
+     * The URIs that should be excluded from CSRF verification.
+
+     *
+
+     * @var array<int, string>
+
+     */
+
+        protected $except = [
+
+            '/xendit/webhook*',
+
+            '/payment/notify*',
+
+            '/callback/tripay',
+
+            '/webhook/kiriminaja*',
+
+            '/webhook/fonnte', // Masukkan URL route Anda di sini
+
+            '/telegram-webhook',
+
+            '/api/webhook/kiriminaja',
+
+            '/api/webhook/doku-jokul', // <--- PASTIIN INI ADA
+
+            '/ppob/webhook',
+
+            '/api/midtrans/*',
+
+            '/api/webhook/paypal',
+
+            '/api/callback/autokirim',
+
+            '/api/bca/*',
+
+            '/facebook/webhook',
+            '/api/facebook/webhook',
+
+            '/api/mobile/dana/notify',
+            '/api/mobile/dana/callback',
+            '/api/mobile/dana/*',
+            '/dana/*',
+            '/dana/notify',
+            '/api/dana/notify',
+            '/dana/callback',
+            '/api/topup-dana',
+            '/api/topup-dana/*',
+            '/webhook/lalamove', // Kecualikan route webhook Lalamove
+            '/destination/inquiry',
+            '/order/create',
+            '/order/detail',
+            '/product',
+            '/auth/google/callback',
+            '/auth/google/register/callback',
+            '/api/webhook/ipaymu',  // Jika route ada di api.php
+            '/webhook/ipaymu',      // Jika route ada di web.php
+
+        ];
+
+}
+
