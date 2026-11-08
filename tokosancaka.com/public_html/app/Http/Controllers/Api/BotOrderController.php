@@ -347,39 +347,28 @@ class BotOrderController extends Controller
         }
     }
 
-    /**
-     * Kirim detail pembayaran (VA + QRIS) ke WhatsApp customer.
-     */
     private function _sendPaymentWhatsApp(string $phone, Pesanan $order, string $paymentUrl): bool
     {
-        $message = "Pembayaran SCK
-";
-        $message .= "Invoice: {$order->nomor_invoice}
-";
-        $message .= "Nama: {$order->sender_name}
-";
-        $message .= "Total Bayar: Rp " . number_format($order->price, 0, ',', '.') . "
-";
-        $message .= "Metode: DOKU (Virtual Account / QRIS)
-";
-        $message .= "Batas Waktu: 60 menit
-
-";
-        $message .= "Silakan transfer melalui VA atau QRIS berikut:
-";
-        $message .= "Link: {$paymentUrl}
-
-";
+        $message = "Pembayaran SCK\n";
+        $message .= "Invoice: {$order->nomor_invoice}\n";
+        $message .= "Nama: {$order->sender_name}\n";
+        $message .= "Total Bayar: Rp " . number_format($order->price, 0, ',', '.') . "\n";
+        $message .= "Metode: DOKU (Virtual Account / QRIS)\n";
+        $message .= "Batas Waktu: 60 menit\n\n";
+        $message .= "Silakan transfer melalui VA atau QRIS berikut:\n";
+        $message .= "Link: {$paymentUrl}\n\n";
         $message .= "Balas *{$order->nomor_invoice}* jika sudah lunas.";
 
-        $response = FonnteService::sendMessage($phone, $message);
-        return $response->successful();
+        // Ubah dari FonnteService menjadi fungsi internal API.co.id
+        return $this->_sendWhatsAppText($phone, $message);
     }
 
-    /**</span>
-Endpoint READ-ONLY: cek ongkir KiriminAja.
+    /**
+     * Endpoint READ-ONLY: cek ongkir KiriminAja.
      * Tidak membuat Pesanan, tidak menyentuh database, tidak memanggil Tripay.
      */
+
+
     public function checkShippingCost(Request $request)
     {
         // 1. GATEKEEPER (identik dengan createOrder: config + hash_equals)
@@ -2319,7 +2308,7 @@ Endpoint READ-ONLY: cek ongkir KiriminAja.
                 'payment_method'          => 'DOKU',
                 'shipping_cost'           => $finalCost,
                 'price'                   => $finalCost,
-                'ansuransi'               => 'tidak',
+                'asuransi'                => 'tidak',
                 'insurance_cost'          => 0,
                 'cod_fee'                 => 0,
                 'item_type'               => 1,
