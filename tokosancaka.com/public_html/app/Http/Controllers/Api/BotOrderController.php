@@ -98,7 +98,7 @@ class BotOrderController extends Controller
             $customerId = $customer ? $customer->id_pengguna : null;
 
             do {
-                $nomorInvoice = 'SCK-BOT-' . date('Ymd') . '-' . strtoupper(Str::random(5));
+                $nomorInvoice = 'SCK-BOT-' . strtoupper(Str::random(13));
             } while (Pesanan::where('nomor_invoice', $nomorInvoice)->exists());
 
             $order = Pesanan::create([
@@ -2250,7 +2250,7 @@ class BotOrderController extends Controller
             $customerId = $customer ? $customer->id_pengguna : null;
 
             do {
-                $nomorInvoice = 'SCK-BOT-' . date('Ymd') . '-' . strtoupper(Str::random(13));
+                $nomorInvoice = 'SCK-BOT-' . strtoupper(Str::random(13));
             } while (Pesanan::where('nomor_invoice', $nomorInvoice)->exists());
 
             $itemValue = (int) $draft->item_value;
