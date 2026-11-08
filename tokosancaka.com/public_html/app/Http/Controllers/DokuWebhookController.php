@@ -105,7 +105,7 @@ class DokuWebhookController extends Controller
                 $this->sendExpoPaymentNotification($orderId);
 
                 // -------------------------------------------------------------
-                // A.0 NOTIFIKASI WHATSAPP UNTUK PESANAN DARI BOT WA (SCK-BOT-)
+                // A.0 NOTIFIKASI WHATSAPP UNTUK PESANAN DARI BOT WA (SCK-)
                 // -------------------------------------------------------------
                 if (Str::startsWith($orderId, 'SCK-BOT-')) {
                     $this->_notifyWhatsAppBotOrder($orderId, $data);
