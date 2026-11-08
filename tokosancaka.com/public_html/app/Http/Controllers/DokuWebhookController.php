@@ -107,7 +107,10 @@ class DokuWebhookController extends Controller
                 // -------------------------------------------------------------
                 // A.0 NOTIFIKASI WHATSAPP UNTUK PESANAN DARI BOT WA (SCK-)
                 // -------------------------------------------------------------
-                if (Str::startsWith($orderId, 'SCK-BOT-')) {
+                // -------------------------------------------------------------
+                // A.0 NOTIFIKASI WHATSAPP UNTUK PESANAN DARI BOT WA (SCK-)
+                // -------------------------------------------------------------
+                if (Str::startsWith($orderId, 'SCK-BOT-') || Str::startsWith($orderId, 'SCK-CUST-')) {
                     $this->_notifyWhatsAppBotOrder($orderId, $data);
                 }
 
@@ -1334,4 +1337,38 @@ class DokuWebhookController extends Controller
 
         return $digits;
     }
+
+    /**
+     * Kirim notifikasi WA lunas ke pemesan Bot/Customer Sancaka Express
+     * dan reset state BotOrderDraft agar pelanggan bisa order lagi.
+     */
+    private function _notifyWhatsAppBotOrder(string $orderId, array $data)
+    {
+        try {
+            $pesanan = \App\Models\Pesanan::where('nomor_invoice', $orderId)->first();
+
+            if ($pesanan && $pesanan->sender_phone) {
+                // 1. Reset step draft ke PAID agar sesi selesai
+                \App\Models\BotOrderDraft::where('invoice_number', $orderId)
+                    ->update(['step' => 'PAID']);
+
+                // 2. Format pesan WA
+                $amount = $data['order']['amount'] ?? $data['transaction']['amount'] ?? $pesanan->price;
+                $msg = "🎉 *Pembayaran Berhasil Diterima*\n\n"
+                     . "🧾 Invoice: *{$orderId}*\n"
+                     . "💰 Nominal: *Rp " . number_format((int)$amount, 0, ',', '.') . "*\n"
+                     . "✅ Status: *LUNAS*\n\n"
+                     . "Pesanan Anda (Pengirim: *{$pesanan->sender_name}*) segera kami proses. Terima kasih telah menggunakan Sancaka Express! 🚚📦";
+
+                // 3. Panggil method public dari BotOrderController untuk kirim WA
+                $botController = app(\App\Http\Controllers\Api\BotOrderController::class);
+                $botController->sendWhatsAppTextPublic($pesanan->sender_phone, $msg);
+
+                Log::info("✅ Notifikasi WA Lunas berhasil dikirim untuk $orderId");
+            }
+        } catch (\Exception $e) {
+            Log::error("❌ Gagal mengirim notif WA lunas untuk Bot Order {$orderId}: " . $e->getMessage());
+        }
+    }
+
 }
