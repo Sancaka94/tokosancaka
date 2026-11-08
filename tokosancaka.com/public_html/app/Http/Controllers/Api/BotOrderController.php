@@ -1977,7 +1977,7 @@ class BotOrderController extends Controller
         return "💳 *Bayar Tagihan*\n\nSebutkan jenis tagihan Anda, contoh:\n_bayar tagihan listrik_";
     }
 
-   /**
+    /**
      * Handler teks bertahap: satu langkah per pesan dengan dukungan Mode Edit (Skip/Sama).
      */
     private function _handleStepInput(string $phone, string $text)
@@ -2008,6 +2008,13 @@ class BotOrderController extends Controller
             );
 
             return response()->json(['status' => 'success', 'handled' => 'cancelled']);
+        }
+
+        // =========================================================================
+        // EDIT_INTENT_V1: Jika customer mengetik edit/rubah/ganti, reset step ke awal
+        // =========================================================================
+        if ($this->_isEditIntent($text)) {
+            return $this->_handleEditRequest($phone);
         }
 
         $text = Str::limit($text, 250, '');
@@ -2155,6 +2162,54 @@ class BotOrderController extends Controller
     }
 
     /**
+     * Memproses permintaan mode edit.
+     * Mereset invoice_number agar bisa ganti metode pembayaran.
+     */
+    private function _handleEditRequest(string $phone)
+    {
+        $draft = BotOrderDraft::where('phone_number', $phone)->first();
+
+        if (!$draft) {
+            return response()->json(['status' => 'ignored', 'reason' => 'no_active_draft']);
+        }
+
+        // Hapus invoice dan link bayar sebelumnya (agar dibuat pesanan & tagihan DOKU baru jika metode diganti)
+        $draft->invoice_number = null;
+        $draft->payment_url = null;
+
+        // HANYA kembalikan step ke awal. Jangan NULL-kan data yang sudah ada.
+        $draft->step = 'AWAITING_SENDER_NAME';
+        $draft->save();
+
+        $this->_sendWhatsAppText($phone, "✏️ *Mode Edit Data*\n\nAnda bisa memperbaiki data atau mengganti metode pembayaran. Jika data lama sudah benar, cukup balas dengan ketik *sama* atau *0* di setiap langkah.\n\n👤 *Langkah 1/10: Nama Pengirim*\n(Saat ini: *{$draft->sender_name}*)\n\nKetik nama baru, atau ketik *sama*:");
+
+        return response()->json(['status' => 'success', 'step' => $draft->step]);
+    }
+
+    /**
+     * EDIT_INTENT — deteksi niat mengubah data dari pesan teks.
+     */
+    private function _isEditIntent(string $text): bool
+    {
+        $t = ' ' . strtolower(preg_replace('/[^a-z0-9 ]+/', ' ', $text) ?? '') . ' ';
+        $t = preg_replace('/\s+/', ' ', $t) ?? $t;
+
+        $phrases = [
+            ' edit ', ' rubah ', ' ganti ', ' ubah ', ' revisi ',
+            'edit data', 'ubah data', 'ganti data', 'rubah data',
+            'ganti metode', 'ubah metode', 'ganti pembayaran'
+        ];
+
+        foreach ($phrases as $p) {
+            if (str_contains($t, $p)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
      * Kirim ringkasan lengkap + tombol konfirmasi.
      */
     private function _sendSummaryConfirmation(BotOrderDraft $draft)
@@ -2191,22 +2246,7 @@ class BotOrderController extends Controller
         return response()->json(['status' => $sent ? 'success' : 'error', 'step' => 'AWAITING_CONFIRMATION']);
     }
 
-    private function _handleEditRequest(string $phone)
-{
-    $draft = BotOrderDraft::where('phone_number', $phone)->first();
 
-    if (!$draft) {
-        return response()->json(['status' => 'ignored', 'reason' => 'no_active_draft']);
-    }
-
-    // HANYA kembalikan step ke awal. Jangan NULL-kan data yang sudah ada.
-    $draft->step = 'AWAITING_SENDER_NAME';
-    $draft->save();
-
-    $this->_sendWhatsAppText($phone, "✏️ *Mode Edit Data*\n\nAnda bisa memperbaiki data yang salah. Jika data lama sudah benar, cukup balas dengan ketik *sama* atau *0*.\n\n👤 *Langkah 1/10: Nama Pengirim*\n(Saat ini: *{$draft->sender_name}*)\n\nKetik nama baru, atau ketik *sama*:");
-
-    return response()->json(['status' => 'success', 'step' => $draft->step]);
-}
 
     /**
      * Tombol "Ya, Lanjutkan": buat invoice, lalu kirim menu pilihan pembayaran.
@@ -3364,4 +3404,6 @@ class BotOrderController extends Controller
         }
         return $phone;
     }
+
+
 }
