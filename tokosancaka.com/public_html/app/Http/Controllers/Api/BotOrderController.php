@@ -1405,10 +1405,13 @@ class BotOrderController extends Controller
 
         $phone = $this->_normalizeWaPhone((string) $phone);
 
-        $interactiveId = data_get($payload, 'data.interactive_response.id')
-            ?? data_get($payload, 'data.interactive.button_reply.id')
-            ?? data_get($payload, 'data.interactive.list_reply.id')
-            ?? data_get($payload, 'interactive_response.id');
+        // Di dalam method botWhatsAppInbound()
+            $interactiveId = data_get($payload, 'data.interactive_response.id')
+                ?? data_get($payload, 'data.interactive.button_reply.id')
+                ?? data_get($payload, 'data.interactive.list_reply.id')
+                ?? data_get($payload, 'data.raw.interactive.button_reply.id') // <-- TAMBAHKAN INI
+                ?? data_get($payload, 'data.raw.interactive.list_reply.id')   // <-- TAMBAHKAN INI
+                ?? data_get($payload, 'interactive_response.id');
 
         // 1. TANGANI INTERACTIVE BUTTON & LIST
         if (is_string($interactiveId) && $interactiveId !== '') {
