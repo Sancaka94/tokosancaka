@@ -136,7 +136,7 @@ class BotOrderController extends Controller
                 'payment_method'          => strtoupper($validated['payment_method'] ?? 'TRIPAY'),
                 'shipping_cost'           => $shippingCost['cost'],
                 'price'                   => $shippingCost['cost'], // Total yang dibayar (Ongkir saja)
-                'ansuransi'               => 'tidak',
+                'asuransi'               => 'tidak',
                 'insurance_cost'          => 0,
                 'cod_fee'                 => 0,
                 'item_type'               => 1 // Default Paket Umum
@@ -272,7 +272,7 @@ class BotOrderController extends Controller
                 'payment_method'          => 'DOKU',
                 'shipping_cost'           => $shippingCost['cost'],
                 'price'                   => $shippingCost['cost'],
-                'ansuransi'               => 'tidak',
+                'asuransi'               => 'tidak',
                 'insurance_cost'          => 0,
                 'cod_fee'                 => 0,
                 'item_type'               => 1,
