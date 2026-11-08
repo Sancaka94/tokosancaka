@@ -625,7 +625,6 @@ class DokuJokulService
         try {
             Log::info('DOKU OVO Request', ['url' => $url, 'body' => $body]);
             Log::info('DEBUG DOKU OVO: Menggunakan Client ID -> ' . $this->clientId);
-            Log::info('DEBUG DOKU OVO: Menggunakan Secret Key (Prefix) -> ' . substr($this->secretKey, 0, 5) . '...');
 
             // Timeout diperpanjang hingga 75s karena DOKU menginstruksikan tunggu 70s untuk OVO
             $response = Http::timeout(75)
@@ -715,13 +714,21 @@ class DokuJokulService
 
         // 1. Mapping dari value frontend Blade ke "payment_method_types" DOKU Checkout
         $methodMapping = [
+            'DOKU_BCA'        => ['VIRTUAL_ACCOUNT_BCA'],
             'DOKU_BCA_VA'     => ['VIRTUAL_ACCOUNT_BCA'],
+            'DOKU_MANDIRI'    => ['VIRTUAL_ACCOUNT_BANK_MANDIRI'],
             'DOKU_MANDIRI_VA' => ['VIRTUAL_ACCOUNT_BANK_MANDIRI'],
+            'DOKU_BSI'        => ['VIRTUAL_ACCOUNT_BANK_SYARIAH_MANDIRI'],
             'DOKU_BSI_VA'     => ['VIRTUAL_ACCOUNT_BANK_SYARIAH_MANDIRI'],
+            'DOKU_BRI'        => ['VIRTUAL_ACCOUNT_BRI'],
             'DOKU_BRI_VA'     => ['VIRTUAL_ACCOUNT_BRI'],
+            'DOKU_BNI'        => ['VIRTUAL_ACCOUNT_BNI'],
             'DOKU_BNI_VA'     => ['VIRTUAL_ACCOUNT_BNI'],
+            'DOKU_PERMATA'    => ['VIRTUAL_ACCOUNT_BANK_PERMATA'],
             'DOKU_PERMATA_VA' => ['VIRTUAL_ACCOUNT_BANK_PERMATA'],
+            'DOKU_CIMB'       => ['VIRTUAL_ACCOUNT_BANK_CIMB'],
             'DOKU_CIMB_VA'    => ['VIRTUAL_ACCOUNT_BANK_CIMB'],
+            'DOKU_DANAMON'    => ['VIRTUAL_ACCOUNT_BANK_DANAMON'],
             'DOKU_DANAMON_VA' => ['VIRTUAL_ACCOUNT_BANK_DANAMON'],
             'DOKU_DOKU_VA'    => ['VIRTUAL_ACCOUNT_DOKU'],
             'DOKU_QRIS'       => ['QRIS'],

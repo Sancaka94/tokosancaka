@@ -985,6 +985,71 @@ Endpoint READ-ONLY: cek ongkir KiriminAja.
     }
 
     /**
+     * Fallback terautentikasi untuk list/button reply WhatsApp yang diteruskan Hermes.
+     * API.co.id webhook tetap didukung; handler inbound yang sama memproses keduanya.
+     */
+    public function botWhatsAppInteractive(Request $request)
+    {
+        if (!$this->_botAuthorized($request)) {
+            return response()->json(['status' => 'error', 'message' => 'Unauthorized Access'], 401);
+        }
+
+        $validated = $request->validate([
+            'interactive_id' => 'required|string|max:128',
+        ]);
+
+        $interactiveId = $validated['interactive_id'];
+        $parts = explode('|', $interactiveId);
+        $kind = $parts[0] ?? '';
+        $token = $parts[1] ?? '';
+
+        if (!preg_match('/^[a-z0-9]{12}$/', $token)) {
+            return response()->json(['status' => 'invalid_interactive_id'], 422);
+        }
+
+        if (in_array($kind, ['sckq', 'scknext', 'sckprev'], true) && count($parts) === 3) {
+            if (!ctype_digit($parts[2])) {
+                return response()->json(['status' => 'invalid_interactive_id'], 422);
+            }
+            $quote = Cache::get('sck_wa_shipping_quote:' . $token);
+            $phone = $quote['phone'] ?? null;
+        } elseif (in_array($kind, ['sckgo', 'sckedit'], true) && count($parts) === 2) {
+            $draft = BotOrderDraft::where('session_token', $token)->first();
+            $phone = $draft->phone_number ?? null;
+        } elseif ($kind === 'sckpay' && count($parts) === 3) {
+            if (!preg_match('/^[A-Za-z0-9_-]{1,32}$/', $parts[2])) {
+                return response()->json(['status' => 'invalid_interactive_id'], 422);
+            }
+            $draft = BotOrderDraft::where('session_token', $token)->first();
+            $phone = $draft->phone_number ?? null;
+        } else {
+            return response()->json(['status' => 'invalid_interactive_id'], 422);
+        }
+
+        if (!$phone) {
+            return response()->json(['status' => 'expired_or_missing_session'], 410);
+        }
+
+        $internalRequest = Request::create('/webhook/apicoid', 'POST', [
+            'event_type' => 'message.received',
+            'data' => [
+                'customer_phone' => $phone,
+                'direction'      => 'inbound',
+                'message_id'     => 'hermes-interactive-' . md5($phone . '|' . $interactiveId),
+                'message_type'   => 'interactive',
+                'interactive_response' => ['id' => $interactiveId],
+            ],
+        ]);
+
+        $webhookSecret = (string) config('services.apicoid.webhook_secret');
+        if ($webhookSecret !== '') {
+            $internalRequest->headers->set('X-WhatsApp-Webhook-Secret', $webhookSecret);
+        }
+
+        return $this->botWhatsAppInbound($internalRequest);
+    }
+
+    /**
      * Endpoint tambahan: menerima callback pilihan list dari webhook API.co.id.
      * ID pilihan: sckq|TOKEN|INDEX atau scknext|TOKEN|PAGE.
      */
@@ -1041,6 +1106,16 @@ Endpoint READ-ONLY: cek ongkir KiriminAja.
         $index = (int) $value;
         if (!array_key_exists($index, $quote['options'])) {
             return response()->json(['status' => 'invalid_selection'], 422);
+        }
+
+        $existingDraft = BotOrderDraft::where('phone_number', $quote['phone'])
+            ->where('session_token', $token)
+            ->first();
+        if ($existingDraft) {
+            return response()->json([
+                'status' => 'already_selected',
+                'step'   => $existingDraft->step,
+            ]);
         }
 
         $selected = $quote['options'][$index];
@@ -1293,7 +1368,6 @@ Endpoint READ-ONLY: cek ongkir KiriminAja.
         Log::info('[WA-WEBHOOK] Inbound diterima', [
             'ip'      => $request->ip(),
             'method'  => $request->method(),
-            'headers' => array_keys($request->headers->all()),
             'payload' => $request->all(),
         ]);
 
@@ -1303,45 +1377,30 @@ Endpoint READ-ONLY: cek ongkir KiriminAja.
         if ($webhookSecret !== '' &&
             ($providedSecret === '' || !hash_equals($webhookSecret, $providedSecret))) {
             Log::warning('Webhook inbound WhatsApp ditolak: secret tidak valid.');
-
             return response()->json(['status' => 'error', 'message' => 'Unauthorized'], 401);
         }
 
         $payload = $request->all();
-
-        // Format API.co.id: {event_type, data:{customer_phone, message_type, content, raw:{...}}}
         $eventType = (string) (data_get($payload, 'event_type') ?? '');
-
-        // WA_EVENT_FILTER_V1 — HANYA pesan MASUK customer yang boleh diproses.
-        // message.sent / message.read / message.delivered adalah notifikasi
-        // tentang pesan KELUAR kita sendiri. Memprosesnya membuat bot membalas
-        // pesannya sendiri (balasan dobel, isi sama) dan merusak state checkout.
         $inboundEvents = ['message.received', 'message.inbound', 'message', 'incoming_message'];
 
         if ($eventType !== '' && !in_array(strtolower($eventType), $inboundEvents, true)) {
-            Log::info('[WA-WEBHOOK] Dilewati: bukan pesan masuk', ['event_type' => $eventType]);
-
             return response()->json(['status' => 'ignored', 'reason' => 'not_inbound', 'event_type' => $eventType]);
         }
 
-        // Abaikan pesan yang arahnya keluar (dikirim oleh nomor toko sendiri).
         $direction = strtolower((string) (data_get($payload, 'data.direction') ?? ''));
         if ($direction === 'outbound' || $direction === 'out') {
-            Log::info('[WA-WEBHOOK] Dilewati: pesan keluar', ['event_type' => $eventType]);
-
             return response()->json(['status' => 'ignored', 'reason' => 'outbound']);
         }
 
-        // Idempoten: webhook bisa dikirim ulang dengan message_id sama.
         $messageId = (string) (data_get($payload, 'data.message_id')
             ?? data_get($payload, 'data.id')
             ?? data_get($payload, 'message_id')
             ?? '');
+
         if ($messageId !== '') {
             $dedupeKey = 'wa_seen:' . md5($messageId);
             if (Cache::has($dedupeKey)) {
-                Log::info('[WA-WEBHOOK] Dilewati: duplikat', ['message_id' => $messageId]);
-
                 return response()->json(['status' => 'ignored', 'reason' => 'duplicate']);
             }
             Cache::put($dedupeKey, 1, now()->addHours(6));
@@ -1349,160 +1408,138 @@ Endpoint READ-ONLY: cek ongkir KiriminAja.
 
         $phone = data_get($payload, 'data.customer_phone')
             ?? data_get($payload, 'data.from')
-            ?? data_get($payload, 'data.phone_number')
-            ?? data_get($payload, 'data.raw.from')
-            ?? data_get($payload, 'from')
-            ?? data_get($payload, 'phone_number');
+            ?? data_get($payload, 'data.phone_number');
 
         if (!$phone) {
-            Log::info('[WA-WEBHOOK] Dilewati: tanpa nomor pengirim', ['event_type' => $eventType]);
-
             return response()->json(['status' => 'ignored', 'reason' => 'no_phone']);
         }
 
         $phone = $this->_normalizeWaPhone((string) $phone);
 
-        // Abaikan pesan keluar (event message.sent) agar tidak loop.
-        if (($messageDirection = data_get($payload, 'data.direction')) === 'outbound') {
-            return response()->json(['status' => 'ignored', 'reason' => 'outbound']);
-        }
-
         $interactiveId = data_get($payload, 'data.interactive_response.id')
             ?? data_get($payload, 'data.interactive.button_reply.id')
             ?? data_get($payload, 'data.interactive.list_reply.id')
-            ?? data_get($payload, 'data.message.interactive.button_reply.id')
-            ?? data_get($payload, 'data.message.interactive.list_reply.id')
-            ?? data_get($payload, 'data.raw.interactive.list_reply.id')
-            ?? data_get($payload, 'data.raw.interactive.button_reply.id')
-            ?? data_get($payload, 'data.raw.button.id')
             ?? data_get($payload, 'interactive_response.id');
 
-        // 1. Interaktif: pilihan kurir / tombol konfirmasi / navigasi pagination / saklar API owner
-        // Diproses terlebih dahulu sebelum deduplikasi teks (agar klik tombol 'Berikutnya' berulang tidak terblokir).
+        // 1. TANGANI INTERACTIVE BUTTON & LIST
         if (is_string($interactiveId) && $interactiveId !== '') {
             if (str_starts_with($interactiveId, 'sck_mode|')) {
                 $action = substr($interactiveId, 9);
                 $ok = \App\Http\Controllers\Admin\ApiSettingsController::handleSaklarWhatsAppAction($phone, $action);
                 return response()->json(['status' => $ok ? 'success' : 'forbidden', 'action' => $action]);
             }
-
             if (str_starts_with($interactiveId, 'sckq|') || str_starts_with($interactiveId, 'scknext|') || str_starts_with($interactiveId, 'sckprev|')) {
                 return $this->handleWhatsAppShippingWebhook($request);
             }
-
             if (str_starts_with($interactiveId, 'sckgo|')) {
                 return $this->_handleConfirmSelection($phone, substr($interactiveId, 6));
             }
-
             if (str_starts_with($interactiveId, 'sckedit|')) {
                 return $this->_handleEditRequest($phone);
             }
-
             if (str_starts_with($interactiveId, 'sckpay|')) {
                 return $this->_handlePaySelection($phone, substr($interactiveId, 7));
             }
-
             return response()->json(['status' => 'ignored', 'reason' => 'unknown_interactive_id']);
         }
 
-        // 2. Teks biasa: input bertahap
+        // 2. TANGANI TEKS
         $text = trim((string) (
             data_get($payload, 'data.content')
             ?? data_get($payload, 'data.raw.text.body')
             ?? data_get($payload, 'data.message.text.body')
-            ?? data_get($payload, 'data.text.body')
-            ?? data_get($payload, 'data.text')
-            ?? data_get($payload, 'text')
             ?? ''
         ));
 
         if ($text === '') {
-            Log::info('[WA-WEBHOOK] Dilewati: tanpa teks', [
-                'event_type' => $eventType,
-                'type'       => data_get($payload, 'data.message_type'),
-            ]);
-
             return response()->json(['status' => 'ignored', 'reason' => 'no_text']);
         }
 
-        // 0. Perintah khusus Owner: /saklar
         if (trim(strtolower($text)) === '/saklar') {
             $isOwner = ($phone === \App\Http\Controllers\Admin\ApiSettingsController::OWNER_PHONE);
             if ($isOwner) {
-                Log::info('[SAKLAR-WA] Perintah /saklar diterima dari nomor owner', ['phone' => $phone]);
                 $sent = \App\Http\Controllers\Admin\ApiSettingsController::sendSaklarWhatsAppPrompt($phone);
-
-                return response()->json([
-                    'status'  => 'success',
-                    'handled' => 'saklar_prompt',
-                    'sent'    => $sent,
-                ]);
+                return response()->json(['status' => 'success', 'handled' => 'saklar_prompt']);
             }
         }
 
-        // CROSSPATH_DEDUPE_V1: khusus pesan teks biasa, cegah pemrosesan ganda dalam 90 detik.
         $crossKey = 'wa_seen_body:' . md5($phone . '|' . mb_strtolower($text));
         if (Cache::has($crossKey)) {
-            Log::info('[WA-WEBHOOK] Dilewati: isi pesan sama dalam 90 detik', [
-                'phone' => $phone,
-            ]);
-
             return response()->json(['status' => 'ignored', 'reason' => 'duplicate_content']);
         }
         Cache::put($crossKey, 1, now()->addSeconds(90));
 
-        // SECURITY_GATE_V1: tolak upaya mengakses sistem/server/kredensial.
-        // Lapisan ini wajib ada di Laravel karena webhook bisa dipanggil
-        // langsung tanpa melewati adapter Hermes.
         if ($this->_looksLikeAttack($text)) {
-            Log::warning('[WA-SECURITY] Pesan terindikasi upaya akses sistem', [
-                'phone' => $phone,
-                'text'  => Str::limit($text, 120, ''),
-            ]);
-
-            $this->_sendWhatsAppText($phone,
-                "Maaf kak, pesan itu tidak bisa saya proses 🙏\n\n"
-                . "Saya hanya melayani:\n"
-                . "• Cek ongkir\n"
-                . "• Lacak resi\n"
-                . "• Kirim paket\n"
-                . "• Bayar tagihan\n\n"
-                . "Silakan tulis kebutuhan pengirimannya ya."
-            );
-
+            $this->_sendWhatsAppText($phone, "Maaf kak, pesan itu tidak bisa saya proses 🙏\n\nSilakan tulis kebutuhan pengirimannya ya.");
             return response()->json(['status' => 'success', 'handled' => 'blocked']);
         }
 
-        // Sapaan / pilihan menu / permintaan layanan -> serahkan percakapan ke Hermes.
-        // Bila ada draft aktif di tengah pengisian (AWAITING_*), state machine Laravel tetap melayani.
+        // 3. LOGIKA GATEWAY UTAMA (STATE MACHINE vs AI)
         $draft = BotOrderDraft::where('phone_number', $phone)->first();
         $isDraftActive = $draft && !in_array(strtoupper((string) $draft->step), ['COMPLETED', 'CANCELLED'], true);
 
-        if (!$isDraftActive) {
-            // DETEKSI NIAT: Biarkan Laravel mencegat teks untuk melihat apakah ini
-            // permintaan cek ongkir, lacak resi, atau menu.
-            $intent = $this->_handleMenuIntent($phone, $text);
+        // Jika ADA draft aktif, tahan di Laravel sebagai State Machine 10 Langkah
+        if ($isDraftActive) {
+            return $this->_handleStepInput($phone, $text);
+        }
 
-            if ($intent === 'ongkir' || $intent === 'menu' || $intent === 'tracking') {
-                // Laravel sudah menangani dan mengirim balasan (Tombol/Teks).
-                // Hentikan proses, berikan respons agar Hermes Agent DIBAWAH tidak ikut menjawab.
+        // Jika TIDAK ADA draft aktif, deteksi Intent utama
+        $intent = $this->_handleMenuIntent($phone, $text);
+
+        if ($intent === 'ongkir' || $intent === 'menu' || $intent === 'tracking') {
+            // Laravel memproses spesifik & sudah membalas WA (di dalam _handleMenuIntent)
+            return response()->json([
+                'status' => 'success',
+                'handled' => 'by_laravel_state_machine',
+                'intent' => $intent
+            ]);
+        }
+
+        // 4. JIKA BUKAN INTENT CORE, LEMPAR KE HERMES AI
+        return $this->_forwardToHermesAgent($phone, $text);
+    }
+
+    /**
+     * Meneruskan teks ke API Hermes Agent lokal, lalu membalas WhatsApp dengan jawaban AI.
+     */
+    private function _forwardToHermesAgent(string $phone, string $text)
+    {
+        Log::info('[WA-HERMES] Pesan dilempar ke AI Hermes', ['phone' => $phone, 'text' => $text]);
+
+        try {
+            // Arahkan ke endpoint Hermes lokal di Proxmox (via IP LAN atau Tailscale)
+            $hermesEndpoint = config('services.hermes.endpoint', 'http://192.168.100.50:5000/api/chat');
+
+            $response = Http::timeout(15)->post($hermesEndpoint, [
+                'session_id' => $phone,
+                'message'    => $text,
+                'context'    => 'Customer Sancaka Express bertanya di luar konteks order/ongkir.'
+            ]);
+
+            if ($response->successful() && $response->json('reply')) {
+                $aiReply = $response->json('reply');
+                $this->_sendWhatsAppText($phone, $aiReply);
+
                 return response()->json([
                     'status' => 'success',
-                    'handled' => 'by_laravel_state_machine',
-                    'intent' => $intent
+                    'handled' => 'delegated_to_hermes',
+                    'reply' => 'sent'
                 ]);
             }
 
-            // Jika bukan ongkir/menu/tracking (misal: "halo bot", "kamu bisa apa?"),
-            // baru delegasikan ke AI Hermes untuk obrolan luwes.
-            Log::info('[WA-WEBHOOK] Pesan dilewati untuk ditangani Hermes Agent', [
-                'phone' => $phone,
-                'text'  => Str::limit($text, 60, ''),
-            ]);
-            return response()->json(['status' => 'success', 'handled' => 'delegated_to_hermes']);
+            Log::error('[WA-HERMES] Hermes merespons invalid format', ['response' => $response->body()]);
+        } catch (\Throwable $e) {
+            Log::error('[WA-HERMES] Gagal memanggil API Hermes: ' . $e->getMessage());
         }
 
-        return $this->_handleStepInput($phone, $text);
+        // Fallback jika container AI mati atau node Proxmox timeout
+        $fallbackMessage = "Maaf kak, asisten AI sedang sibuk 🤖\n\nUntuk sementara ketik *Menu* untuk layanan utama pengiriman, atau sampaikan kendalanya agar dibantu manual oleh Mas Amal Ibnu Muharram nanti.";
+        $this->_sendWhatsAppText($phone, $fallbackMessage);
+
+        return response()->json([
+            'status' => 'success',
+            'handled' => 'fallback_smalltalk'
+        ]);
     }
 
     /**
@@ -2243,6 +2280,11 @@ Endpoint READ-ONLY: cek ongkir KiriminAja.
                     . "• Tarif berlaku: *Rp " . number_format($realtime, 0, ',', '.') . "*\n\n"
                     . "Mohon konfirmasi ulang pada ringkasan berikut."
                 );
+
+                $draft->step = 'AWAITING_CONFIRMATION';
+                $draft->save();
+
+                return $this->_sendSummaryConfirmation($draft);
             }
 
             $order = Pesanan::create([

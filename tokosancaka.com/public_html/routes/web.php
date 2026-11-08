@@ -158,6 +158,14 @@ Route::post('/v1/bot/kirim-tombol-ongkir', [BotOrderController::class, 'botKirim
     ->middleware('throttle:15,1')
     ->name('bot.kirim-tombol-ongkir');
 
+Route::post('/v1/bot/whatsapp-interactive', [BotOrderController::class, 'botWhatsAppInteractive'])
+    ->middleware('throttle:30,1')
+    ->name('bot.whatsapp-interactive');
+
+Route::post('/v1/bot/whatsapp-interactive', [BotOrderController::class, 'botWhatsAppInteractive'])
+    ->middleware('throttle:30,1')
+    ->name('bot.whatsapp-interactive');
+
 Route::prefix('v1/bot/templates')->group(function () {
     Route::get('/', [TemplateWhatsAppController::class, 'index'])->name('bot.templates.index');
     Route::post('/', [TemplateWhatsAppController::class, 'store'])->name('bot.templates.store');
@@ -327,6 +335,9 @@ Route::get('/apps', function () {
 Route::get('/about', function () {
     return view('about');
 })->name('about');
+
+Route::view('/doc/api/drive/sancaka/v1', 'docs.api-drive-sancaka-v1')
+    ->name('docs.api.drive.sancaka.v1');
 
 
 // ROUTE UTAMA CETAK THERMAL (Top Level)
