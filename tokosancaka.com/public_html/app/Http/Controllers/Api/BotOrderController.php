@@ -3555,42 +3555,29 @@ class BotOrderController extends Controller
     // Tabel Monitor View Blade Untuk Data Riwayat Chat BotWaSancaka
 
    public function monitorIndex(\Illuminate\Http\Request $request)
-    {
-        $search = $request->input('search');
-        $date = $request->input('date');
+{
+    $search = $request->input('search');
+    $date = $request->input('date');
 
-        // Kita gunakan query dari BotOrderDraft, jika kosong, admin tetap bisa melihat data log/interaksi
-        $query = \App\Models\BotOrderDraft::query()
-            ->leftJoin('pesanan', 'bot_order_drafts.invoice_number', '=', 'pesanan.nomor_invoice')
-            ->select(
-                'bot_order_drafts.*',
-                'pesanan.resi as resi_awb',
-                'pesanan.status as status_pembayaran',
-                'pesanan.payment_method'
-            );
+    // Gunakan query langsung ke model BotOrderDraft tanpa join ke kolom pesanan.resi yang tidak ada
+    $query = \App\Models\BotOrderDraft::query();
 
-        if ($search) {
-            $query->where(function ($q) use ($search) {
-                $q->where('bot_order_drafts.phone_number', 'like', "%{$search}%")
-                  ->orWhere('bot_order_drafts.sender_name', 'like', "%{$search}%")
-                  ->orWhere('bot_order_drafts.invoice_number', 'like', "%{$search}%");
-            });
-        }
-
-        if ($date) {
-            $query->whereDate('bot_order_drafts.updated_at', $date);
-        }
-
-        $drafts = $query->orderBy('bot_order_drafts.updated_at', 'desc')->paginate(10);
-
-        // TIPS: Jika Anda ingin memunculkan data dummy/tes instan ke tabel saat kosong untuk testing UI:
-        if ($drafts->isEmpty() && !$search && !$date) {
-            // Buat baris tiruan sementara di tampilan jika tabel benar-benar kosong
-            // Atau Anda bisa langsung tes ketik angka "3" di WhatsApp bot Anda sekarang!
-        }
-
-        return view('admin.wa-monitor.index', compact('drafts', 'search', 'date'));
+    if ($search) {
+        $query->where(function ($q) use ($search) {
+            $q->where('phone_number', 'like', "%{$search}%")
+              ->orWhere('sender_name', 'like', "%{$search}%")
+              ->orWhere('invoice_number', 'like', "%{$search}%");
+        });
     }
+
+    if ($date) {
+        $query->whereDate('updated_at', $date);
+    }
+
+    $drafts = $query->orderBy('updated_at', 'desc')->paginate(10);
+
+    return view('admin.wa-monitor.index', compact('drafts', 'search', 'date'));
+}
 
     public function monitorDestroy($id)
     {
