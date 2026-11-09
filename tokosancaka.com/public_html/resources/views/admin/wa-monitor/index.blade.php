@@ -2,23 +2,23 @@
 
 @section('content')
 <div x-data="waMonitor()" class="p-6 bg-gray-50 min-h-screen font-sans text-gray-800">
-    
+
     <!-- Header & Actions -->
     <div class="mb-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
             <h1 class="text-2xl font-bold text-gray-900 tracking-tight">Monitoring WA Bot</h1>
             <p class="text-sm text-gray-500 mt-1">Evaluasi draft percakapan, resi, dan status DOKU pelanggan Sancaka.</p>
         </div>
-        
+
         <!-- Filter & Search Form -->
         <form method="GET" action="{{ route('admin.wa-monitor.index') }}" class="flex flex-wrap gap-3">
             <input type="date" name="date" value="{{ request('date') }}" class="border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-gray-900 focus:border-gray-900 shadow-sm">
-            
+
             <div class="relative">
                 <input type="text" name="search" value="{{ request('search') }}" placeholder="Cari Nama / No WA / Invoice..." class="border border-gray-300 rounded-md pl-9 pr-3 py-2 text-sm focus:ring-gray-900 focus:border-gray-900 shadow-sm w-64">
                 <svg class="w-4 h-4 text-gray-400 absolute left-3 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
             </div>
-            
+
             <button type="submit" class="bg-gray-800 hover:bg-gray-900 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors shadow-sm">
                 Filter
             </button>
@@ -98,7 +98,7 @@
                         <button type="button" @click="openModal({{ json_encode($draft) }})" class="p-1.5 text-gray-400 hover:text-gray-900 hover:bg-gray-100 rounded transition-colors" title="Lihat Chat">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
                         </button>
-                        
+
                         <!-- Btn Destroy -->
                         <form action="{{ route('admin.wa-monitor.destroy', $draft->id) }}" method="POST" onsubmit="return confirm('Hapus percakapan ini?');" class="inline">
                             @csrf
@@ -126,7 +126,7 @@
     <!-- MODAL WA CHAT (Clean UI) -->
     <div x-show="modalOpen" class="fixed inset-0 z-50 flex items-center justify-center bg-gray-900 bg-opacity-50 backdrop-blur-sm" x-cloak>
         <div @click.away="closeModal" class="bg-[#efeae2] w-full max-w-md h-[32rem] rounded-xl shadow-2xl flex flex-col overflow-hidden relative border border-gray-300">
-            
+
             <!-- WA Header -->
             <div class="bg-gray-50 border-b border-gray-200 px-4 py-3 flex items-center gap-3">
                 <div class="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center text-gray-500">
@@ -143,7 +143,7 @@
 
             <!-- WA Chat Body Pattern -->
             <div class="flex-1 overflow-y-auto p-4 space-y-4" style="background-image: url('data:image/svg+xml,%3Csvg width=\'20\' height=\'20\' viewBox=\'0 0 20 20\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cg fill=\'%23d1d5db\' fill-opacity=\'0.2\' fill-rule=\'evenodd\'%3E%3Ccircle cx=\'3\' cy=\'3\' r=\'3\'/%3E%3Ccircle cx=\'13\' cy=\'13\' r=\'3\'/%3E%3C/g%3E%3C/svg%3E');">
-                
+
                 <!-- Tanggal Dummy -->
                 <div class="flex justify-center">
                     <span class="bg-white/80 border border-gray-200 text-gray-500 text-[11px] font-medium px-3 py-1 rounded-lg backdrop-blur shadow-sm">
@@ -171,7 +171,7 @@
                 </div>
 
             </div>
-            
+
             <!-- WA Footer Fake -->
             <div class="bg-gray-50 border-t border-gray-200 px-4 py-3 flex items-center">
                 <div class="bg-white border border-gray-300 w-full rounded-full px-4 py-2 text-sm text-gray-400">
@@ -216,3 +216,4 @@ document.addEventListener('alpine:init', () => {
 })
 </script>
 @endsection
+
