@@ -828,6 +828,7 @@
             </div>
         </div>
     </div>
+
 @empty
     <div class="col-span-full py-10 text-center text-gray-400 bg-white rounded">
         <p>Belum ada produk.</p>
