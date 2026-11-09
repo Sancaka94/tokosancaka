@@ -3554,16 +3554,12 @@ class BotOrderController extends Controller
 
     // Tabel Monitor View Blade Untuk Data Riwayat Chat BotWaSancaka
 
-    // =====================================================================
-    // FITUR ADMIN: WA BOT MONITORING
-    // =====================================================================
-
-    public function monitorIndex(\Illuminate\Http\Request $request)
+   public function monitorIndex(\Illuminate\Http\Request $request)
     {
         $search = $request->input('search');
         $date = $request->input('date');
 
-        // Gabungkan tabel Draft dengan Pesanan untuk mendapat Resi & Status Doku
+        // Kita gunakan query dari BotOrderDraft, jika kosong, admin tetap bisa melihat data log/interaksi
         $query = \App\Models\BotOrderDraft::query()
             ->leftJoin('pesanan', 'bot_order_drafts.invoice_number', '=', 'pesanan.nomor_invoice')
             ->select(
@@ -3586,6 +3582,12 @@ class BotOrderController extends Controller
         }
 
         $drafts = $query->orderBy('bot_order_drafts.updated_at', 'desc')->paginate(10);
+
+        // TIPS: Jika Anda ingin memunculkan data dummy/tes instan ke tabel saat kosong untuk testing UI:
+        if ($drafts->isEmpty() && !$search && !$date) {
+            // Buat baris tiruan sementara di tampilan jika tabel benar-benar kosong
+            // Atau Anda bisa langsung tes ketik angka "3" di WhatsApp bot Anda sekarang!
+        }
 
         return view('admin.wa-monitor.index', compact('drafts', 'search', 'date'));
     }
