@@ -2171,6 +2171,30 @@ class BotOrderController extends Controller
                     $draft->item_value = $value;
                 }
 
+                // UBAH: Jangan langsung ke CONFIRMATION, arahkan ke pertanyaan Asuransi
+                $draft->step = 'AWAITING_INSURANCE';
+                $draft->save();
+
+                $estimasiAsuransi = ceil($draft->item_value * 0.002);
+                $this->_sendWhatsAppText($phone, "✅ Nilai barang: *Rp " . number_format($draft->item_value, 0, ',', '.') . "*\n\n🛡️ *Langkah 11: Asuransi Pengiriman*\n\nBiaya asuransi untuk nilai barang ini adalah: *Rp " . number_format($estimasiAsuransi, 0, ',', '.') . "* (0.2%).\n\nKetik *YA* jika ingin menggunakan asuransi, atau *TIDAK* jika tanpa asuransi (atau ketik *sama* jika tidak mengubah data sebelumnya):");
+
+                return response()->json(['status' => 'success', 'step' => $draft->step]);
+
+            // TAMBAHAN: State Baru untuk Asuransi
+            case 'AWAITING_INSURANCE':
+                if (!$keepOld) {
+                    $ans = strtolower(trim($text));
+                    if (!in_array($ans, ['ya', 'y', 'tidak', 't', 'tdk', 'no', 'yes'])) {
+                        $this->_sendWhatsAppText($phone, "⚠️ Pilihan tidak valid. Ketik *YA* atau *TIDAK*.");
+                        return response()->json(['status' => 'invalid_input', 'step' => $draft->step]);
+                    }
+
+                    // Simpan pilihan asuransi ke dalam JSON raw_payload
+                    $payload = is_array($draft->raw_payload) ? $draft->raw_payload : [];
+                    $payload['use_insurance'] = in_array($ans, ['ya', 'y', 'yes']);
+                    $draft->raw_payload = $payload;
+                }
+
                 $draft->step = 'AWAITING_CONFIRMATION';
                 $draft->save();
 
