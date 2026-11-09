@@ -1,11 +1,11 @@
 <?php
 
-namespace App\Http\Controllers; 
+namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\Product;
-use App\Models\ProductVariant; 
-use Illuminate\Support\Facades\Log; 
+use App\Models\ProductVariant;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Redis;
 use Illuminate\Support\Facades\Cache;
@@ -41,7 +41,7 @@ class CartController extends Controller
     {
         $dbCart = DB::table('cartbelanja')->where($scope)->get();
         $grandTotal = 0;
-        
+
         foreach ($dbCart as $item) {
             $grandTotal += ($item->price * $item->quantity);
         }
@@ -74,7 +74,7 @@ class CartController extends Controller
         // 2. JIKA REDIS KOSONG, TARIK DARI DATABASE (ANTI N+1)
         // =========================================================================
         $dbCart = DB::table('cartbelanja')->where($scope)->get();
-        
+
         // Tarik semua ID Produk & Varian sekaligus untuk menghindari query berulang (N+1)
         $productIds = $dbCart->where('is_ppob', 0)->pluck('product_id')->filter()->unique()->toArray();
         $variantIds = $dbCart->where('is_ppob', 0)->pluck('variant_id')->filter()->unique()->toArray();
@@ -83,30 +83,30 @@ class CartController extends Controller
         $variants = ProductVariant::whereIn('id', $variantIds)->get()->keyBy('id');
 
         $cart = [];
-        $hasChanges = false; 
+        $hasChanges = false;
 
         foreach ($dbCart as $item) {
             $key = $item->is_ppob ? 'ppob_' . $item->ref_id : $item->product_id . '-' . ($item->variant_id ?? '0');
-            $details = (array) $item; 
+            $details = (array) $item;
 
             // Lewati validasi jika ini produk PPOB
             if ($item->is_ppob == 1) {
                 $cart[$key] = $details;
-                continue; 
+                continue;
             }
 
             // Validasi Varian
             if (!empty($details['variant_id'])) {
                 $variant = $variants[$details['variant_id']] ?? null;
-                
+
                 if (!$variant || $variant->stock <= 0) {
                     DB::table('cartbelanja')->where('id', $item->id)->delete();
                     $hasChanges = true;
                     continue;
                 }
-                
+
                 $details['price'] = $variant->price;
-                $details['current_stock'] = $variant->stock; 
+                $details['current_stock'] = $variant->stock;
             } else {
                 // Validasi Produk Utama
                 $product = $products[$details['product_id']] ?? null;
@@ -139,7 +139,7 @@ class CartController extends Controller
     /**
      * Menambahkan produk ke keranjang.
      */
-    public function add(Request $request, Product $product)
+    /* public function add(Request $request, Product $product)
     {
         // 🔥 FITUR IDEMPOTENCY (Pencegah Double Input) 🔥
         $idempotencyKey = $request->header('Idempotency-Key');
@@ -169,8 +169,8 @@ class CartController extends Controller
 
         $itemPrice = $product->price;
         $itemName = $product->name;
-        $itemWeight = max(1, $product->weight ?? 1); 
-        
+        $itemWeight = max(1, $product->weight ?? 1);
+
         if ($variantId) {
             $variant = ProductVariant::find($variantId);
             if ($variant && $variant->product_id == $product->id) {
@@ -189,7 +189,7 @@ class CartController extends Controller
 
         // 🔥 DATABASE TRANSACTION & ROW LOCKING 🔥
         $responseResult = DB::transaction(function () use ($product, $variantId, $quantity, $itemName, $itemPrice, $itemWeight, $request, $scope) {
-            
+
             $existingItem = DB::table('cartbelanja')
                 ->where($scope)
                 ->where('product_id', $product->id)
@@ -213,13 +213,13 @@ class CartController extends Controller
                 ]);
             } else {
                 DB::table('cartbelanja')->insert(array_merge($scope, [
-                    "product_id" => $product->id, 
-                    "variant_id" => $variantId,  
+                    "product_id" => $product->id,
+                    "variant_id" => $variantId,
                     "name"       => $itemName,
                     "quantity"   => $quantity,
                     "price"      => $itemPrice,
-                    "weight"     => $itemWeight, 
-                    "store_id"   => $product->store_id, 
+                    "weight"     => $itemWeight,
+                    "store_id"   => $product->store_id,
                     "image_url"  => $product->image_url,
                     "slug"       => $product->slug,
                     "is_ppob"    => 0,
@@ -232,7 +232,116 @@ class CartController extends Controller
             try { Redis::del($this->getRedisCartKey()); } catch (\Exception $e) {}
 
             if ($request->input('action') === 'buy_now') {
-                return redirect()->route('checkout.index'); 
+                return redirect()->route('checkout.index');
+            }
+            return back()->with('success', 'Produk berhasil ditambahkan ke keranjang!');
+        });
+
+        if ($idempotencyKey && !is_array($responseResult)) {
+            Cache::put('idemp_cart_add_' . $idempotencyKey, $responseResult, now()->addMinutes(5));
+        }
+
+        return $responseResult;
+    } */
+
+    /**
+     * Menambahkan produk ke keranjang.
+     */
+    public function add(Request $request, $productId = null)
+    {
+        // 🔥 FITUR IDEMPOTENCY (Pencegah Double Input) 🔥
+        $idempotencyKey = $request->header('Idempotency-Key');
+        if ($idempotencyKey && Cache::has('idemp_cart_add_' . $idempotencyKey)) {
+            Log::warning("LOG LOG: Idempotency Terdeteksi! Request duplikat Add Cart dicegah untuk key: " . $idempotencyKey);
+            return Cache::get('idemp_cart_add_' . $idempotencyKey);
+        }
+
+        $quantity = (int)$request->input('quantity', 1);
+        $variantId = $request->input('product_variant_id') ?? $request->input('variant_id');
+
+        // Ambil ID Produk dari Form Input atau dari Parameter URL secara fleksibel
+        $targetId = $request->input('product_id') ?? $productId;
+        $product = Product::find($targetId);
+
+        Log::info('--- CEK DEBUGGING ADD TO CART ---');
+        Log::info('Semua data dari Form Request: ', $request->all());
+        Log::info('Data Product dari Parameter Method: ', $product ? $product->toArray() : []);
+
+        if (!$product) {
+            return back()->with('error', 'Produk tidak ditemukan.');
+        }
+
+        // Proteksi Toko Sendiri
+        if (auth()->check() && auth()->user()->store && auth()->user()->store->id == $product->store_id) {
+            return back()->with('error', 'Anda tidak dapat membeli produk/jasa dari toko Anda sendiri.');
+        }
+
+        $itemPrice = $product->price;
+        $itemName = $product->name;
+        $itemWeight = max(1, $product->weight ?? 1);
+
+        if ($variantId) {
+            $variant = ProductVariant::find($variantId);
+            if ($variant && $variant->product_id == $product->id) {
+                $itemPrice = $variant->price;
+                $itemWeight = max(1, $variant->weight ?? $itemWeight);
+            } else {
+                return back()->with('error', 'Varian produk tidak valid.');
+            }
+        } else {
+            if ($product->productVariantTypes()->exists()) {
+                return back()->with('error', 'Silakan pilih varian produk yang tersedia.');
+            }
+        }
+
+        $scope = $this->getCartScope();
+
+        // 🔥 DATABASE TRANSACTION & ROW LOCKING 🔥
+        $responseResult = DB::transaction(function () use ($product, $variantId, $quantity, $itemName, $itemPrice, $itemWeight, $request, $scope) {
+
+            $existingItem = DB::table('cartbelanja')
+                ->where($scope)
+                ->where('product_id', $product->id)
+                ->where(function($q) use ($variantId) {
+                    if ($variantId) $q->where('variant_id', $variantId);
+                    else $q->whereNull('variant_id');
+                })->lockForUpdate()->first();
+
+            $currentQuantityInCart = $existingItem ? $existingItem->quantity : 0;
+            $newTotalQuantity = $currentQuantityInCart + $quantity;
+            $stockToCheck = (int) ($variantId ? ProductVariant::find($variantId)->stock : $product->stock);
+
+            if ($stockToCheck < $newTotalQuantity) {
+                return back()->with('error', "Stok produk tidak mencukupi. Stok tersedia: {$stockToCheck}.");
+            }
+
+            if ($existingItem) {
+                DB::table('cartbelanja')->where('id', $existingItem->id)->update([
+                    'quantity' => $newTotalQuantity,
+                    'updated_at' => now()
+                ]);
+            } else {
+                DB::table('cartbelanja')->insert(array_merge($scope, [
+                    "product_id" => $product->id,
+                    "variant_id" => $variantId,
+                    "name"       => $itemName,
+                    "quantity"   => $quantity,
+                    "price"      => $itemPrice,
+                    "weight"     => $itemWeight,
+                    "store_id"   => $product->store_id,
+                    "image_url"  => $product->image_url,
+                    "slug"       => $product->slug,
+                    "is_ppob"    => 0,
+                    "created_at" => now(),
+                    "updated_at" => now()
+                ]));
+            }
+
+            // Hapus cache keranjang
+            try { Redis::del($this->getRedisCartKey()); } catch (\Exception $e) {}
+
+            if ($request->input('action') === 'buy_now') {
+                return redirect()->route('checkout.index');
             }
             return back()->with('success', 'Produk berhasil ditambahkan ke keranjang!');
         });
@@ -261,7 +370,7 @@ class CartController extends Controller
             $variantId = (isset($parts[1]) && $parts[1] !== '0') ? $parts[1] : null;
 
             $result = DB::transaction(function () use ($scope, $productId, $variantId, $request) {
-                
+
                 $item = DB::table('cartbelanja')
                     ->where($scope)
                     ->where('product_id', $productId)
@@ -272,13 +381,13 @@ class CartController extends Controller
 
                 if ($item) {
                     $requestedQty = (int)$request->quantity;
-                    
+
                     // Validasi Stok Asli dari Database
                     $stockToCheck = (int) ($variantId ? ProductVariant::find($variantId)->stock : Product::find($productId)->stock);
-                    
+
                     if ($requestedQty > $stockToCheck) {
                         return response()->json([
-                            'success' => false, 
+                            'success' => false,
                             'message' => "Stok tidak mencukupi (tersisa: {$stockToCheck}).",
                             'current_stock' => $stockToCheck
                         ], 422);
@@ -286,7 +395,7 @@ class CartController extends Controller
 
                     // Update
                     DB::table('cartbelanja')->where('id', $item->id)->update([
-                        'quantity' => $requestedQty, 
+                        'quantity' => $requestedQty,
                         'updated_at' => now()
                     ]);
 
@@ -297,7 +406,7 @@ class CartController extends Controller
                     $grandTotal = $this->calculateCartTotals($scope);
 
                     return response()->json([
-                        'success' => true, 
+                        'success' => true,
                         'message' => 'Kuantitas berhasil diperbarui.',
                         'quantity' => $requestedQty,
                         'subtotal' => $newSubtotal,
@@ -305,7 +414,7 @@ class CartController extends Controller
                         'current_stock' => $stockToCheck
                     ]);
                 }
-                
+
                 return response()->json(['success' => false, 'message' => 'Produk tidak ditemukan.'], 404);
             });
 
@@ -351,12 +460,12 @@ class CartController extends Controller
 
                 if ($affected) {
                     try { Redis::del($this->getRedisCartKey()); } catch (\Exception $e) {}
-                    
+
                     // Kembalikan JSON khusus untuk Blade
                     $grandTotal = $this->calculateCartTotals($scope);
 
                     return response()->json([
-                        'success' => true, 
+                        'success' => true,
                         'message' => 'Produk berhasil dihapus.',
                         'total' => $grandTotal
                     ]);
@@ -369,7 +478,7 @@ class CartController extends Controller
             }
             return $result;
         }
-        
+
         return response()->json(['success' => false, 'message' => 'ID Produk tidak valid.'], 400);
     }
 
@@ -380,7 +489,7 @@ class CartController extends Controller
     {
         $scope = $this->getCartScope();
         DB::table('cartbelanja')->where($scope)->delete();
-        
+
         try { Redis::del($this->getRedisCartKey()); } catch (\Exception $e) {}
 
         return redirect()->route('cart.index')->with('success', 'Keranjang berhasil dikosongkan.');
@@ -405,10 +514,10 @@ class CartController extends Controller
                 'ref_id' => 'required',
                 'customer_no' => 'required',
             ]);
-    
+
             $scope = $this->getCartScope();
             $logoImage = get_operator_logo($data['sku']);
-    
+
             $result = DB::transaction(function () use ($scope, $data, $logoImage) {
                 $existing = DB::table('cartbelanja')
                     ->where($scope)
@@ -419,25 +528,25 @@ class CartController extends Controller
 
                 if (!$existing) {
                     DB::table('cartbelanja')->insert(array_merge($scope, [
-                        "product_id"  => 0, 
+                        "product_id"  => 0,
                         "variant_id"  => null,
                         "name"        => $data['name'],
                         "quantity"    => 1,
                         "price"       => (int) $data['price'],
-                        "image_url"   => $logoImage, 
+                        "image_url"   => $logoImage,
                         "slug"        => $data['sku'],
                         "weight"      => 0,
-                        "is_ppob"     => 1, 
+                        "is_ppob"     => 1,
                         "ref_id"      => $data['ref_id'],
                         "customer_no" => $data['customer_no'],
                         "store_id"    => 0,
                         "created_at"  => now(),
                         "updated_at"  => now()
                     ]));
-                    
+
                     try { Redis::del($this->getRedisCartKey()); } catch (\Exception $e) {}
                 }
-        
+
                 return response()->json(['success' => true]);
             });
 
