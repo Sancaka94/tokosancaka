@@ -330,7 +330,7 @@ class CartController extends Controller
                     "weight"     => $itemWeight,
                     "store_id"   => $product->store_id,
                     "image_url"  => $product->image_url,
-                    'store_id'   => $product->store_id,
+                    "store_id"   => $product->store_id ?? 0,
                     "slug"       => $product->slug,
                     "is_ppob"    => 0,
                     "created_at" => now(),
