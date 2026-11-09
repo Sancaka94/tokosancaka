@@ -2583,12 +2583,12 @@ class BotOrderController extends Controller
         return $digits;
     }
 
-   private function _sendWhatsAppPayload(array $payload): bool
+  private function _sendWhatsAppPayload(array $payload): bool
     {
         $apiKey = (string) config('services.apicoid.api_key');
 
         if ($apiKey === '') {
-            Log::info('[WA-ERROR] API Key API.co.id kosong di sistem. Pastikan config terseting.');
+            Log::info('[WA-ERROR] API Key API.co.id kosong di config/env.');
             return false;
         }
 
@@ -2598,7 +2598,6 @@ class BotOrderController extends Controller
             $payload['whatsapp_phone_number_id'] = $phoneNumberId;
         }
 
-        // Tampilkan upaya pengiriman di Dashboard Sancaka
         Log::info('[WA-OUTBOUND] Mencoba mengirim balasan...', ['tipe' => $payload['message_type'] ?? 'unknown', 'to' => $payload['phone_number'] ?? '']);
 
         try {
@@ -2631,7 +2630,6 @@ class BotOrderController extends Controller
             }
 
             if (!$response->successful() || $response->json('success') !== true) {
-                // Catat alasan gateway menolak pesan ke dashboard
                 Log::info('[WA-OUTBOUND-FAILED] Ditolak oleh Gateway API.co.id', [
                     'status' => $response->status(),
                     'response' => $response->json()
