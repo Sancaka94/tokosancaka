@@ -3526,5 +3526,30 @@ class BotOrderController extends Controller
         }
     }
 
+    /**
+     * Deteksi apakah customer hanya mengetik sapaan atau kata "menu"
+     * Digunakan sebagai Escape Hatch global.
+     */
+    private function _detectGlobalMenuIntent(string $text): string
+    {
+        $body = strtolower(trim($text));
+
+        // Buang karakter yang tidak relevan
+        $clean = trim(preg_replace('/[^a-z0-9 ]+/', ' ', $body));
+
+        $greetings = ['halo', 'hai', 'hi', 'hallo', 'assalamualaikum', 'menu', 'bantuan', 'mulai', 'p', 'ping'];
+
+        // Cek jika seluruh kata yang diketik masuk kategori sapaan.
+        // Jika pelanggan mengetik "halo menu", ini terdeteksi sebagai sapaan murni.
+        // Jika pelanggan mengetik "halo saya mau nama pengirimnya andi", maka ini BUKAN sapaan murni.
+        $words = explode(' ', $clean);
+        $isPureGreeting = count($words) > 0 && collect($words)->every(fn ($w) => in_array($w, $greetings, true));
+
+        if ($isPureGreeting) {
+            return 'menu';
+        }
+
+        return '';
+    }
 
 }
