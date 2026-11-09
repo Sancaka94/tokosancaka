@@ -20,6 +20,7 @@ use Throwable;
 class BotOrderController extends Controller
 {
     protected $kirimaja;
+    protected $inboundPhoneNumberId = null;
 
     public function __construct(KiriminAjaService $kirimaja)
     {
@@ -1370,6 +1371,7 @@ class BotOrderController extends Controller
         }
 
         $payload = $request->all();
+        $this->inboundPhoneNumberId = data_get($payload, 'data.phone_number_id') ?? data_get($payload, 'phone_number_id');
         $eventType = (string) (data_get($payload, 'event_type') ?? '');
         $inboundEvents = ['message.received', 'message.inbound', 'message', 'incoming_message'];
 
@@ -2581,20 +2583,23 @@ class BotOrderController extends Controller
         return $digits;
     }
 
-    private function _sendWhatsAppPayload(array $payload): bool
+   private function _sendWhatsAppPayload(array $payload): bool
     {
         $apiKey = (string) config('services.apicoid.api_key');
 
         if ($apiKey === '') {
-            Log::error('API.co.id WhatsApp API key belum dikonfigurasi.');
+            Log::info('[WA-ERROR] API Key API.co.id kosong di sistem. Pastikan config terseting.');
             return false;
         }
 
-        // TAMBAHKAN BLOK INI: Inject phone_number_id secara global jika belum ada
-        $phoneNumberId = (string) config('services.apicoid.phone_number_id');
+        // Gunakan ID dinamis dari webhook (paling akurat), fallback ke .env
+        $phoneNumberId = $this->inboundPhoneNumberId ?: (string) config('services.apicoid.phone_number_id');
         if ($phoneNumberId !== '' && !isset($payload['whatsapp_phone_number_id'])) {
             $payload['whatsapp_phone_number_id'] = $phoneNumberId;
         }
+
+        // Tampilkan upaya pengiriman di Dashboard Sancaka
+        Log::info('[WA-OUTBOUND] Mencoba mengirim balasan...', ['tipe' => $payload['message_type'] ?? 'unknown', 'to' => $payload['phone_number'] ?? '']);
 
         try {
             $response = Http::withToken($apiKey)
@@ -2603,7 +2608,6 @@ class BotOrderController extends Controller
                 ->timeout(30)
                 ->post('https://chat.api.co.id/api/v1/public/messages/send', $payload);
 
-            // Window 24 jam tertutup (customer belum pernah chat) -> kirim template dulu.
             if ($this->_isWhatsAppWindowClosed($response)) {
                 $phone = (string) ($payload['phone_number'] ?? '');
                 if ($phone !== '' && $this->_sendWhatsAppOpeningTemplate($phone)) {
@@ -2615,7 +2619,6 @@ class BotOrderController extends Controller
                 }
             }
 
-            // Nomor pengirim belum terdaftar sebagai customer -> daftarkan lalu kirim ulang.
             if ($this->_isApiCoIdCustomerMissing($response)) {
                 $phone = (string) ($payload['phone_number'] ?? '');
                 if ($phone !== '' && $this->_ensureWhatsAppCustomer($phone)) {
@@ -2628,16 +2631,18 @@ class BotOrderController extends Controller
             }
 
             if (!$response->successful() || $response->json('success') !== true) {
-                Log::error('API.co.id WhatsApp send gagal.', [
-                    'http_status' => $response->status(),
-                    'response' => $response->json(),
+                // Catat alasan gateway menolak pesan ke dashboard
+                Log::info('[WA-OUTBOUND-FAILED] Ditolak oleh Gateway API.co.id', [
+                    'status' => $response->status(),
+                    'response' => $response->json()
                 ]);
                 return false;
             }
 
+            Log::info('[WA-OUTBOUND-SUCCESS] Pesan berhasil terkirim ke WhatsApp');
             return true;
         } catch (\Throwable $e) {
-            Log::error('API.co.id WhatsApp HTTP exception: ' . $e->getMessage());
+            Log::info('[WA-OUTBOUND-CRASH] Gagal HTTP: ' . $e->getMessage());
             return false;
         }
     }
