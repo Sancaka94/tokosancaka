@@ -723,6 +723,17 @@
                                                 {{ $product->sold_count > 0 ? format_sold($product->sold_count).' Terjual' : '' }}
                                             </span>
                                         </div>
+
+                                        {{-- TOMBOL KERANJANG --}}
+                                        <form action="{{ route('customer.cart.add', $product->id) }}" method="POST" class="mt-2">
+                                            @csrf
+                                            <input type="hidden" name="product_id" value="{{ $product->id }}">
+                                            <input type="hidden" name="quantity" value="1">
+
+                                            <button type="submit" class="btn-cart">
+                                                <i class="fas fa-cart-plus"></i> + Keranjang
+                                            </button>
+                                        </form>
                                     </div>
 
                                 </div> {{-- End P-2 --}}

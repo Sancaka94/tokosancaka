@@ -2242,11 +2242,20 @@ class BotOrderController extends Controller
         $phone = $draft->phone_number;
         $rp = fn ($v) => 'Rp ' . number_format((int) $v, 0, ',', '.');
 
+        // Ambil data asuransi dari raw_payload
+        $payload = is_array($draft->raw_payload) ? $draft->raw_payload : [];
+        $useInsurance = $payload['use_insurance'] ?? false;
+
+        $insuranceCost = $useInsurance ? (int) ceil($draft->item_value * 0.002) : 0;
+        $totalTagihan = $draft->shipping_cost + $insuranceCost;
+
         $body = "📋 *RINGKASAN PESANAN*\n"
             . "----------------------------------\n"
             . "🚚 Kurir: *{$draft->courier_code} - {$draft->courier_service}*\n"
             . "⚖️ Berat: *{$draft->weight} gram*\n"
             . "💰 Ongkir: *{$rp($draft->shipping_cost)}*\n"
+            . "🛡️ Asuransi: *" . ($useInsurance ? $rp($insuranceCost) : "Tidak") . "*\n"
+            . "💳 *TOTAL: {$rp($totalTagihan)}*\n"
             . "----------------------------------\n"
             . "📤 *PENGIRIM*\n"
             . "Nama: {$draft->sender_name}\n"
@@ -2351,10 +2360,11 @@ class BotOrderController extends Controller
             }
 
             // ==========================================================
-            // 2. KALKULASI ASURANSI PENGIRIMAN
-            // Premi standar 0.2% dari nilai barang (jika nilai > 0)
+            // 2. KALKULASI ASURANSI PENGIRIMAN (Sesuai Pilihan Customer)
             // ==========================================================
-            $isAsuransi = $itemValue > 0;
+            $payload = is_array($draft->raw_payload) ? $draft->raw_payload : [];
+            $isAsuransi = $payload['use_insurance'] ?? false; // Baca pilihan user
+
             $insuranceCost = $isAsuransi ? (int) ceil($itemValue * 0.002) : 0;
             $totalTagihan = $finalCost + $insuranceCost;
 
