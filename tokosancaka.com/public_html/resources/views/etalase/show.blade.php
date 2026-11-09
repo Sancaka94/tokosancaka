@@ -211,10 +211,10 @@ if (!function_exists('formatWaNumber')) {
                              class="w-full h-full object-contain object-center cursor-pointer"
                              onclick="openImageModal()"
                              onerror="this.onerror=null;this.src='https://placehold.co/600x600/EFEFEF/AAAAAA?text=Gambar+Error';">
-                        
+
                         {{-- Tombol Ikon Kaca Pembesar (Muncul saat di-hover / ditaruh di pojok) --}}
-                        <button type="button" 
-                                onclick="openImageModal()" 
+                        <button type="button"
+                                onclick="openImageModal()"
                                 class="absolute bottom-3 right-3 bg-white/90 hover:bg-white text-gray-700 p-2.5 rounded-full shadow-md transition-all z-10 border border-gray-200 focus:outline-none">
                             <i class="fas fa-search-plus text-lg"></i>
                         </button>
@@ -311,7 +311,7 @@ if (!function_exists('formatWaNumber')) {
                         @endif
                     </div>
 
-                    <form id="add-to-cart-form" action="{{ route('cart.add', $product->id) }}" method="POST">
+                    <form id="add-to-cart-form" action="{{ route('customer.cart.add', $product->id) }}" method="POST">
                         @csrf
                         <input type="hidden" name="product_id" value="{{ $product->id }}">
                         <input type="hidden" id="product_variant_id" name="product_variant_id" value="">
@@ -404,7 +404,7 @@ if (!function_exists('formatWaNumber')) {
             <button type="button" onclick="closeImageModal()" class="absolute top-4 right-4 md:top-6 md:right-6 text-white/70 hover:text-red-500 transition-colors z-[110] focus:outline-none p-2">
                 <i class="fas fa-times text-3xl md:text-4xl"></i>
             </button>
-            
+
             {{-- Gambar yang diperbesar --}}
             <img id="modal-image" src="" alt="Zoomed Image" class="max-w-[95%] max-h-[90vh] object-contain transition-transform duration-300 transform scale-95 shadow-2xl rounded">
         </div>
@@ -541,17 +541,17 @@ if (!function_exists('formatWaNumber')) {
         {{-- Product Description Section --}}
         <div class="mt-8 bg-white rounded-lg shadow-sm p-4 md:p-6">
             <h2 class="text-lg font-semibold text-gray-800 mb-4">Deskripsi Produk</h2>
-            
+
             <div id="short-description" class="prose prose-sm max-w-none break-words leading-relaxed">
                 {{-- Gunakan strip_tags agar tidak ada tag HTML yang terpotong berantakan oleh limit --}}
                 {!! nl2br(Str::limit(strip_tags($product->description), 350)) !!}
             </div>
-            
+
             <div id="full-description" class="prose prose-sm max-w-none break-words leading-relaxed hidden">
                 {{-- Hapus fungsi e() agar tag HTML bawaan TinyMCE tereksekusi dengan benar --}}
                 {!! $product->description !!}
             </div>
-            
+
             @if(strlen(strip_tags($product->description ?? '')) > 350)
             <div class="text-center mt-4">
                  <button id="toggle-description" class="text-sm text-red-600 font-medium hover:underline">
@@ -993,17 +993,17 @@ document.addEventListener('DOMContentLoaded', () => {
     // Fungsi Buka Modal
     window.openImageModal = function() {
         if (!mainProductImage.src || mainProductImage.src.includes('placehold.co')) return; // Jangan zoom jika gambar tidak ada
-        
+
         modalImage.src = mainProductImage.src; // Salin URL gambar utama ke gambar di dalam modal
         imageModal.classList.remove('hidden');
-        
+
         // Sedikit delay agar animasi transisi Tailwind berjalan mulus
         setTimeout(() => {
             imageModal.classList.remove('opacity-0');
             modalImage.classList.remove('scale-95');
             modalImage.classList.add('scale-100');
         }, 10);
-        
+
         document.body.style.overflow = 'hidden'; // Matikan scroll background
     }
 
@@ -1012,7 +1012,7 @@ document.addEventListener('DOMContentLoaded', () => {
         imageModal.classList.add('opacity-0');
         modalImage.classList.remove('scale-100');
         modalImage.classList.add('scale-95');
-        
+
         // Tunggu animasi selesai baru sembunyikan elemennya
         setTimeout(() => {
             imageModal.classList.add('hidden');
