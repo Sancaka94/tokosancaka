@@ -815,7 +815,7 @@
                 </div>
 
                 {{-- TOMBOL KERANJANG (BARU) --}}
-                <form action="{{ route('cart.add') }}" method="POST" class="mt-2">
+                <form action="{{ route('customer.cart.add', $product->id) }}" method="POST" class="mt-2">
                     @csrf
                     <input type="hidden" name="product_id" value="{{ $product->id }}">
                     <input type="hidden" name="quantity" value="1">
