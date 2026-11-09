@@ -3552,4 +3552,58 @@ class BotOrderController extends Controller
         return '';
     }
 
+    // Tabel Monitor View Blade Untuk Data Riwayat Chat BotWaSancaka
+
+    // =====================================================================
+    // FITUR ADMIN: WA BOT MONITORING
+    // =====================================================================
+
+    public function monitorIndex(\Illuminate\Http\Request $request)
+    {
+        $search = $request->input('search');
+        $date = $request->input('date');
+
+        // Gabungkan tabel Draft dengan Pesanan untuk mendapat Resi & Status Doku
+        $query = \App\Models\BotOrderDraft::query()
+            ->leftJoin('pesanan', 'bot_order_drafts.invoice_number', '=', 'pesanan.nomor_invoice')
+            ->select(
+                'bot_order_drafts.*',
+                'pesanan.resi as resi_awb',
+                'pesanan.status as status_pembayaran',
+                'pesanan.payment_method'
+            );
+
+        if ($search) {
+            $query->where(function ($q) use ($search) {
+                $q->where('bot_order_drafts.phone_number', 'like', "%{$search}%")
+                  ->orWhere('bot_order_drafts.sender_name', 'like', "%{$search}%")
+                  ->orWhere('bot_order_drafts.invoice_number', 'like', "%{$search}%");
+            });
+        }
+
+        if ($date) {
+            $query->whereDate('bot_order_drafts.updated_at', $date);
+        }
+
+        $drafts = $query->orderBy('bot_order_drafts.updated_at', 'desc')->paginate(10);
+
+        return view('admin.wa-monitor.index', compact('drafts', 'search', 'date'));
+    }
+
+    public function monitorDestroy($id)
+    {
+        \App\Models\BotOrderDraft::findOrFail($id)->delete();
+        return back()->with('success', 'Draft percakapan berhasil dihapus.');
+    }
+
+    public function monitorDestroyBulk(\Illuminate\Http\Request $request)
+    {
+        $ids = $request->input('ids');
+        if (is_array($ids) && count($ids) > 0) {
+            \App\Models\BotOrderDraft::whereIn('id', $ids)->delete();
+            return back()->with('success', count($ids) . ' draft percakapan berhasil dihapus.');
+        }
+        return back()->with('error', 'Tidak ada data yang dipilih.');
+    }
+
 }

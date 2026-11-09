@@ -255,6 +255,16 @@ use App\Http\Controllers\DanaWebhookController;
 use App\Http\Controllers\ApiMapboxController;
 use App\Http\Controllers\Auth\Admin\AdminLoginController;
 
+use App\Http\Controllers\Api\BotOrderController;
+
+Route::prefix('admin/wa-monitor')->name('admin.wa-monitor.')->middleware(['auth', 'admin'])->group(function () {
+    Route::get('/', [BotOrderController::class, 'monitorIndex'])->name('index');
+    Route::delete('/destroy-bulk', [BotOrderController::class, 'monitorDestroyBulk'])->name('destroy.bulk');
+    Route::delete('/{id}', [BotOrderController::class, 'monitorDestroy'])->name('destroy');
+});
+
+
+
 Route::get('/freeze', function () {
     return view('auth.freeze');
 })->name('freeze');
