@@ -291,8 +291,8 @@ class CheckoutController extends Controller
                         $userLat  = ($user && $user->latitude) ? (float) $user->latitude : null;
                         $userLng  = ($user && $user->longitude) ? (float) $user->longitude : null;
 
-                        $totalWeight = (int) collect($cart)->sum(function($item) {
-                            $product = \App\Models\Product::find($item['product_id']);
+                        $totalWeight = (int) collect($cart)->sum(function($item) use ($productsCache) {
+                            $product = $productsCache[$item['product_id']] ?? null; // ✅ Ambil dari memory/cache
                             return ($product->weight ?? 1000) * $item['quantity'];
                         });
                         $finalWeight = max(1000, $totalWeight);
@@ -438,7 +438,7 @@ class CheckoutController extends Controller
         $paymentMethodRaw = strtoupper(trim($request->payment_method));
         $cashMethods = ['CASH', 'COD', 'CODBARANG'];
         if (in_array($paymentMethodRaw, $cashMethods)) {
-            if (!$user || $user->id_pengguna != 4) {
+            if (!$user || strtolower($user->role) !== 'admin') {
                 return redirect()->back()->withInput()
                     ->with('error', 'Metode pembayaran Cash/COD hanya diperbolehkan khusus untuk akun Administrator Sancaka.');
             }
