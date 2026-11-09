@@ -330,6 +330,7 @@ class CartController extends Controller
                     "weight"     => $itemWeight,
                     "store_id"   => $product->store_id,
                     "image_url"  => $product->image_url,
+                    'store_id'   => $product->store_id,
                     "slug"       => $product->slug,
                     "is_ppob"    => 0,
                     "created_at" => now(),
@@ -341,7 +342,7 @@ class CartController extends Controller
             try { Redis::del($this->getRedisCartKey()); } catch (\Exception $e) {}
 
             if ($request->input('action') === 'buy_now') {
-                return redirect()->route('checkout.index');
+                return redirect()->route('customer.checkout.index');
             }
             return back()->with('success', 'Produk berhasil ditambahkan ke keranjang!');
         });
