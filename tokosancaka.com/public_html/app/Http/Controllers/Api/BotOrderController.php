@@ -1459,6 +1459,8 @@ class BotOrderController extends Controller
 
         $crossKey = 'wa_seen_body:' . md5($phone . '|' . mb_strtolower($text));
         if (Cache::has($crossKey)) {
+            // Tambahkan baris Log ini agar Anda tahu kalau pesan dicegat Anti-Spam
+            Log::info('[WA-IGNORED] Pesan diabaikan karena isinya sama persis dalam 90 detik terakhir.', ['teks' => $text]);
             return response()->json(['status' => 'ignored', 'reason' => 'duplicate_content']);
         }
         Cache::put($crossKey, 1, now()->addSeconds(90));
