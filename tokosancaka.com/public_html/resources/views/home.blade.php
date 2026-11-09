@@ -2054,7 +2054,7 @@ width: 22px;
 
                 <form id="contactForm">
                     @csrf
-                    @honeypot <!-- Sistem Anti Bot Bawaan Anda -->
+                    <x-honeypot />
 
                     <!-- Hidden Input untuk Koordinat GPS -->
                     <input type="hidden" name="latitude" id="contact_latitude" value="">
