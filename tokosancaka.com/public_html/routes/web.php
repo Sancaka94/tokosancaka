@@ -257,9 +257,9 @@ use App\Http\Controllers\Auth\Admin\AdminLoginController;
 
 
 Route::prefix('admin/wa-monitor')->name('admin.wa-monitor.')->middleware(['auth', 'admin'])->group(function () {
-    Route::get('/', [BotOrderController::class, 'monitorIndex'])->name('index');
-    Route::delete('/destroy-bulk', [BotOrderController::class, 'monitorDestroyBulk'])->name('destroy.bulk');
-    Route::delete('/{id}', [BotOrderController::class, 'monitorDestroy'])->name('destroy');
+    Route::get('/', [\App\Http\Controllers\Api\BotOrderController::class, 'monitorIndex'])->name('index');
+    Route::delete('/destroy-bulk', [\App\Http\Controllers\Api\BotOrderController::class, 'monitorDestroyBulk'])->name('destroy.bulk');
+    Route::delete('/{id}', [\App\Http\Controllers\Api\BotOrderController::class, 'monitorDestroy'])->name('destroy');
 });
 
 
