@@ -104,14 +104,18 @@ class DokuWebhookController extends Controller
                 // Kirim notifikasi pembayaran ke Expo Mobile (Customer & Admin)
                 $this->sendExpoPaymentNotification($orderId);
 
-                // -------------------------------------------------------------
-                // A.0 NOTIFIKASI WHATSAPP UNTUK PESANAN DARI BOT WA (SCK-)
-                // -------------------------------------------------------------
-                // -------------------------------------------------------------
-                // A.0 NOTIFIKASI WHATSAPP UNTUK PESANAN DARI BOT WA (SCK-)
+               // -------------------------------------------------------------
+                // A.0 DELEGASI KE BOT ORDER CONTROLLER (SCK-BOT- / SCK-CUST-)
                 // -------------------------------------------------------------
                 if (Str::startsWith($orderId, 'SCK-BOT-') || Str::startsWith($orderId, 'SCK-CUST-')) {
-                    $this->_notifyWhatsAppBotOrder($orderId, $data);
+                    Log::info("➡️ Order $orderId didelegasikan langsung ke BotOrderController.");
+
+                    // Buat request baru dari data webhook untuk dilempar
+                    $botRequest = new \Illuminate\Http\Request();
+                    $botRequest->replace($data);
+
+                    // Lempar ke fungsi yang sudah kita buat sebelumnya dan hentikan eksekusi di file ini
+                    return App::make(\App\Http\Controllers\Api\BotOrderController::class)->handleDokuWebhook($botRequest);
                 }
 
                 // -------------------------------------------------------------
@@ -1254,7 +1258,10 @@ class DokuWebhookController extends Controller
         return $digits;
     }
 
-    private function _notifyWhatsAppBotOrder(string $orderId, array $data)
+    /**
+     * Notifikasi WhatsApp untuk pesanan dari Bot WA (SCK-BOT- / SCK-CUST-)
+     */
+    /* private function _notifyWhatsAppBotOrder(string $orderId, array $data)
     {
         try {
             $pesanan = \App\Models\Pesanan::where('nomor_invoice', $orderId)->first();
@@ -1329,6 +1336,6 @@ class DokuWebhookController extends Controller
         } catch (\Exception $e) {
             Log::error("❌ Gagal proses webhook lunas untuk Bot Order {$orderId}: " . $e->getMessage());
         }
-    }
+    } */
 
 }

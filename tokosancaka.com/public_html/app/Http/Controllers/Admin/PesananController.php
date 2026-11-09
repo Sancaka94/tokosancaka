@@ -1986,7 +1986,7 @@ private function _saveOrUpdateKontak(array $data, string $prefix, string $tipe)
 
                     // Kirim menggunakan metode Fonnte yang sudah ada di AdminPesananController
                     if (!empty($senderPhone)) {
-                        $this->_sendFonnteMessage($senderPhone, $waMessage);
+                        $this->_sendApiCoId($senderPhone, $waMessage);
                         Log::info("Notifikasi WA Lunas (Multi-Order) berhasil dikirim ke $senderPhone");
                     }
 
@@ -2179,31 +2179,18 @@ TEXT;
         );
 
         // ---------------------------------------------------------------------
-        // 7. KIRIM PESAN (MODIFIKASI PUSHWA)
+        // 7. KIRIM PESAN (MENGGUNAKAN API.CO.ID)
         // ---------------------------------------------------------------------
         $senderWa = preg_replace('/^0/', '62', $this->_sanitizePhoneNumber($pesanan->sender_phone));
         $receiverWa = preg_replace('/^0/', '62', $this->_sanitizePhoneNumber($pesanan->receiver_phone));
 
         try {
-            // --- OPSI 1: PUSHWA (AKTIF) ---
-            /*if ($senderWa) {
-                $this->_sendPushWa($senderWa, $message);
-            }
-            if ($receiverWa) {
-                $this->_sendPushWa($receiverWa, $message);
-            }
-            */
-
-            // --- OPSI 2: FONNTE (NON-AKTIF / CADANGAN) ---
-
             if ($senderWa) {
-                FonnteService::sendMessage($senderWa, $message);
+                $this->_sendApiCoId($senderWa, $message);
             }
             if ($receiverWa) {
-                FonnteService::sendMessage($receiverWa, $message);
+                $this->_sendApiCoId($receiverWa, $message);
             }
-
-
         } catch (Exception $e) {
             Log::error('WA Notification failed: ' . $e->getMessage(), ['invoice' => $pesanan->nomor_invoice]);
         }
@@ -2263,19 +2250,8 @@ TEXT;
             $message .= "{$trackingLink}\n\n";
             $message .= "Simpan bukti resi ini ya Kak. Terima kasih telah menggunakan Sancaka Express! 🙏";
 
-          // 6. Kirim via PushWA (Gantikan Fonnte)
-            $response = FonnteService::sendMessage($targetPhone, $message); // <-- Fonnte Lama
-
-            // Panggil Helper PushWA
-            // $pushWaResponse = $this->_sendPushWa($targetPhone, $message);
-
-            // 7. Return JSON
-            /* return response()->json([
-                'status' => 'success',
-                'message' => "Resi berhasil dikirim ke WhatsApp {$roleName} ({$targetName}) via PushWA.",
-                'debug' => $pushWaResponse
-            ]);\
-            */
+          // 6. Kirim via API.CO.ID
+            $response = $this->_sendApiCoId($targetPhone, $message);
 
             // 7. Return JSON
             return response()->json([
@@ -2725,6 +2701,46 @@ public function cetakThermal($resi)
             ]
         ]);
     }
+
+    private function _sendApiCoId($phone, $message)
+{
+    // Sesuaikan endpoint dan parameter wajib dari dokumentasi api.co.id
+    $token = env('APICOID_TOKEN');
+    $endpoint = 'https://api.co.id/api/send'; // Ganti dengan URL endpoint yang tepat
+
+    $curl = curl_init();
+    curl_setopt_array($curl, array(
+        CURLOPT_URL => $endpoint,
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_ENCODING => '',
+        CURLOPT_MAXREDIRS => 10,
+        CURLOPT_TIMEOUT => 30,
+        CURLOPT_FOLLOWLOCATION => true,
+        CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+        CURLOPT_CUSTOMREQUEST => 'POST',
+        CURLOPT_POSTFIELDS => http_build_query([
+            'phone' => $phone,
+            'message' => $message,
+            // Tambahkan parameter lain di sini jika api.co.id memintanya
+        ]),
+        CURLOPT_HTTPHEADER => array(
+            "Authorization: Bearer $token", // Sesuaikan jika format auth mereka berbeda
+            "Content-Type: application/x-www-form-urlencoded"
+        ),
+    ));
+
+    $response = curl_exec($curl);
+    $err = curl_error($curl);
+    curl_close($curl);
+
+    if ($err) {
+        Log::error("API.CO.ID Request Error: $err");
+        return false;
+    }
+
+    Log::info("API.CO.ID Response: $response");
+    return $response;
+}
 
 
 } // Akhir Class PesananController

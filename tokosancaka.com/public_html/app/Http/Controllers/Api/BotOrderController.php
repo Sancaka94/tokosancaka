@@ -3405,5 +3405,94 @@ class BotOrderController extends Controller
         return $phone;
     }
 
+    /**
+     * Endpoint Webhook dari DOKU saat pelanggan selesai bayar
+     */
+    public function handleDokuWebhook(Request $request)
+    {
+        $data = $request->all();
+        // Sesuaikan dengan struktur JSON dari webhook DOKU
+        $merchantRef = $data['order']['invoice_number'] ?? null;
+        $status = $data['transaction']['status'] ?? null;
+
+        if (!$merchantRef || $status !== 'SUCCESS') {
+            return response()->json(['message' => 'Ignored or Failed'], 200);
+        }
+
+        DB::beginTransaction();
+        try {
+            $pesanan = Pesanan::where('nomor_invoice', $merchantRef)
+                              ->where('status', 'Menunggu Pembayaran')
+                              ->lockForUpdate()
+                              ->first();
+
+            if (!$pesanan) {
+                DB::rollBack();
+                return response()->json(['message' => 'Order not found or already processed'], 200);
+            }
+
+            // 1. Update Status Pembayaran
+            $pesanan->status = 'paid';
+            $pesanan->status_pesanan = 'paid';
+
+            // 2. Siapkan data alamat untuk dikirim ke Service KiriminAja
+            $senderAddressData = [
+                'kirimaja_data' => [
+                    'district_id' => $pesanan->sender_district_id,
+                    'subdistrict_id' => $pesanan->sender_subdistrict_id,
+                    'postal_code' => $pesanan->sender_postal_code ?? '00000'
+                ]
+            ];
+
+            $receiverAddressData = [
+                'kirimaja_data' => [
+                    'district_id' => $pesanan->receiver_district_id,
+                    'subdistrict_id' => $pesanan->receiver_subdistrict_id,
+                    'postal_code' => $pesanan->receiver_postal_code ?? '00000'
+                ]
+            ];
+
+            // 3. Tembak API KiriminAja melalui Service terpisah
+            $kiriminResponse = $this->kirimaja->createOrder(
+                $pesanan->toArray(),
+                $senderAddressData,
+                $receiverAddressData,
+                0, // cod_value 0 karena bayar via Doku
+                $pesanan->shipping_cost,
+                $pesanan->insurance_cost
+            );
+
+            if (($kiriminResponse['status'] ?? false) !== true) {
+                $pesanan->status = 'Pembayaran Lunas (Gagal Auto-Resi)';
+                $pesanan->status_pesanan = 'Pembayaran Lunas (Gagal Auto-Resi)';
+                Log::error('Auto-Resi KiriminAja FAILED: ' . json_encode($kiriminResponse));
+            } else {
+                $bookingId = $kiriminResponse['id'] ?? $kiriminResponse['data']['id'] ?? null;
+                $awbAsli = $kiriminResponse['awb'] ?? $kiriminResponse['data']['awb'] ?? null;
+
+                $finalResi = !empty($awbAsli) ? $awbAsli : $bookingId;
+                if (empty($finalResi)) $finalResi = 'REF-' . $pesanan->nomor_invoice;
+
+                $pesanan->resi = $finalResi;
+                $pesanan->shipping_ref = $bookingId;
+                $pesanan->status = 'Pesanan Dibuat';
+                $pesanan->status_pesanan = 'Pesanan Dibuat';
+
+                // Opsional: Kirim WA ke customer bahwa paket sedang diproses
+                $this->_sendWhatsAppText($pesanan->sender_phone, "✅ Pembayaran untuk invoice *{$pesanan->nomor_invoice}* telah diterima.\n📦 Resi Pengiriman: *{$finalResi}*\nPesanan Anda sedang kami proses.");
+            }
+
+            $pesanan->save();
+            DB::commit();
+
+            return response()->json(['message' => 'Webhook Processed Successfully'], 200);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Doku Webhook Error: ' . $e->getMessage());
+            return response()->json(['message' => 'Internal server error'], 500);
+        }
+    }
+
 
 }
