@@ -253,7 +253,7 @@
                         <div class="row g-2 mb-3">
                             <div class="col-12 col-sm-6 disabled-btn-wrapper" onclick="checkGpsClick()">
                                 <a href="{{ route('login.google') }}" id="btn-submit-google" class="btn btn-outline-dark btn-lg w-100 d-flex justify-content-center align-items-center disabled" role="button" aria-disabled="true">
-                                    <img src="https://tokosancaka.com/public/assets/google.png" alt="Google Logo" style="width: 20px; height: 20px; object-fit: contain;" class="me-2">
+                                    <img src="https://tokosancaka.com/public/assets/google_icon.png" alt="Google Logo" style="width: 20px; height: 20px; object-fit: contain;" class="me-2">
                                     Google
                                 </a>
                             </div>

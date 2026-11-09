@@ -288,7 +288,7 @@
 
                     <div class="d-grid mb-2 disabled-btn-wrapper" onclick="checkGpsClick()">
                         <a href="{{ route('register.google') }}" id="btn-submit-google" class="btn btn-outline-dark btn-lg d-flex justify-content-center align-items-center disabled" role="button" aria-disabled="true">
-                            <img src="https://tokosancaka.com/public/assets/google.png" class="img-fluid me-2" alt="Google Logo" style="width: 24px; height: 24px; object-fit: contain;">
+                            <img src="https://tokosancaka.com/public/assets/google_icon.png" class="img-fluid me-2" alt="Google Logo" style="width: 24px; height: 24px; object-fit: contain;">
                             <span style="font-size: 0.95rem;">Daftar dengan Google</span>
                         </a>
                     </div>
