@@ -148,9 +148,10 @@
                     <div class="lg:col-span-2 bg-white rounded-xl shadow-sm">
                         <div class="p-4 sm:p-6 border-b border-gray-200 flex justify-between items-center">
                             <h2 class="text-lg font-semibold text-gray-900">Item di Keranjang</h2>
-                            @if(Route::has('cart.clear') || Route::has('customer.cart.clear'))
+                           @if(Route::has('cart.clear') || Route::has('customer.cart.clear'))
                             <form action="{{ Route::has('customer.cart.clear') ? route('customer.cart.clear') : route('cart.clear') }}" method="POST" onsubmit="return confirm('Anda yakin ingin mengosongkan keranjang?');">
                                 @csrf
+                                @method('DELETE') {{-- Method Spoofing untuk Route::delete --}}
                                 <button type="submit" class="text-sm font-medium text-red-600 hover:text-red-800">
                                     <i class="fas fa-trash-alt mr-1"></i> Kosongkan Keranjang
                                 </button>
@@ -333,6 +334,7 @@ $(document).ready(function () {
 
     let updateTimeout;
 
+    // --- UPDATE KUANTITAS (+/-) ---
     $('#cart-content-area').on('click', '.quantity-change', function () {
         const cartKey = $(this).data('id');
         const action = $(this).data('action');
@@ -360,6 +362,7 @@ $(document).ready(function () {
         }
     });
 
+    // --- UPDATE KUANTITAS (INPUT TYPING) ---
     $('#cart-content-area').on('input', '.quantity-input', function () {
         clearTimeout(updateTimeout);
         const cartKey = $(this).data('id');
@@ -398,9 +401,10 @@ $(document).ready(function () {
 
         $.ajax({
             url: '{{ Route::has('customer.cart.update') ? route('customer.cart.update') : route('cart.update') }}',
-            method: 'POST',
+            type: 'POST',
             data: {
                 _token: '{{ csrf_token() }}',
+                _method: 'PUT', {{-- Menjaga kompatibilitas jika rute update menggunakan PUT/PATCH --}}
                 id: cartKey,
                 quantity: quantity
             },
@@ -465,6 +469,7 @@ $(document).ready(function () {
         });
     }
 
+    // --- HAPUS ITEM (AJAX DELETE) ---
     $('#cart-content-area').on('click', '.remove-item', function () {
         if (!confirm('Anda yakin ingin menghapus item ini dari keranjang?')) {
             return;
@@ -476,9 +481,10 @@ $(document).ready(function () {
 
         $.ajax({
             url: '{{ Route::has('customer.cart.remove') ? route('customer.cart.remove') : route('cart.remove') }}',
-            method: 'POST',
+            type: 'POST',
             data: {
                 _token: '{{ csrf_token() }}',
+                _method: 'DELETE', {{-- FIX: Method spoofing agar cocok dengan Route::delete --}}
                 id: cartKey
             },
             success: function (response) {
