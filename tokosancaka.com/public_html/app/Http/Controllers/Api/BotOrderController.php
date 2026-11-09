@@ -2590,6 +2590,12 @@ class BotOrderController extends Controller
             return false;
         }
 
+        // TAMBAHKAN BLOK INI: Inject phone_number_id secara global jika belum ada
+        $phoneNumberId = (string) config('services.apicoid.phone_number_id');
+        if ($phoneNumberId !== '' && !isset($payload['whatsapp_phone_number_id'])) {
+            $payload['whatsapp_phone_number_id'] = $phoneNumberId;
+        }
+
         try {
             $response = Http::withToken($apiKey)
                 ->acceptJson()
