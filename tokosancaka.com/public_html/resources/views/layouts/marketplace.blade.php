@@ -60,7 +60,7 @@
 
                 <!-- User Actions (Desktop) -->
                 <div class="hidden md:flex items-center space-x-4 flex-shrink-0">
-                    <a href="{{ route('cart.index') }}" class="relative text-gray-600 hover:text-red-500 p-2">
+                    <a href="{{ route('customer.cart.index') }}" class="relative text-gray-600 hover:text-red-500 p-2">
                         <i class="fas fa-shopping-cart text-2xl"></i>
                         @if(session('cart') && count(session('cart')) > 0)
                             <span class="absolute top-0 right-0 bg-red-500 text-white text-xs w-5 h-5 flex items-center justify-center rounded-full">{{ count((array) session('cart')) }}</span>
@@ -91,7 +91,7 @@
                 <!-- TOMBOL KERANJANG & MENU BURGER (KHUSUS HP) -->
                 <!-- ========================================== -->
                 <div class="flex items-center space-x-3 md:hidden flex-shrink-0">
-                    <a href="{{ route('cart.index') }}" class="relative text-gray-600 hover:text-red-500 p-2">
+                    <a href="{{ route('customer.cart.index') }}" class="relative text-gray-600 hover:text-red-500 p-2">
                         <i class="fas fa-shopping-cart text-2xl"></i>
                         @if(session('cart') && count(session('cart')) > 0)
                             <span class="absolute top-0 right-0 bg-red-500 text-white text-[10px] font-bold w-4 h-4 flex items-center justify-center rounded-full border border-white">
