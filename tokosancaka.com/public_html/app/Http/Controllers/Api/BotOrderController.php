@@ -1474,12 +1474,33 @@ class BotOrderController extends Controller
         $draft = BotOrderDraft::where('phone_number', $phone)->first();
         $isDraftActive = $draft && !in_array(strtoupper((string) $draft->step), ['COMPLETED', 'CANCELLED'], true);
 
-        // Jika ADA draft aktif, tahan di Laravel sebagai State Machine 10 Langkah
+        // DETEKSI GLOBAL: Cek apakah user berniat kembali ke menu utama atau menyapa.
+        // Jika terdeteksi sebagai 'menu', kita otomatis mereset/menghapus draft aktif.
+        $globalIntent = $this->_detectGlobalMenuIntent($text);
+
+        if ($globalIntent === 'menu') {
+            if ($isDraftActive) {
+                // Auto-batal: Hapus draft aktif diam-diam agar customer tidak nyangkut
+                $draft->delete();
+                Cache::forget('sck_ongkir_ctx:' . md5((string) $phone));
+                Log::info('[WA-AUTO-CANCEL] Draft dibatalkan otomatis karena customer mengetik sapaan/menu.', ['phone' => $phone]);
+            }
+
+            // Kirim menu utama
+            $this->_sendWhatsAppText($phone, $this->_menuText());
+            return response()->json([
+                'status' => 'success',
+                'handled' => 'by_laravel_state_machine',
+                'intent' => 'menu'
+            ]);
+        }
+
+        // Jika ADA draft aktif (dan bukan sedang meminta menu), proses isian data
         if ($isDraftActive) {
             return $this->_handleStepInput($phone, $text);
         }
 
-        // Jika TIDAK ADA draft aktif, deteksi Intent utama
+        // Jika TIDAK ADA draft aktif, deteksi Intent fungsional (ongkir, tracking, dll)
         $intent = $this->_handleMenuIntent($phone, $text);
 
         if ($intent === 'ongkir' || $intent === 'menu' || $intent === 'tracking') {
