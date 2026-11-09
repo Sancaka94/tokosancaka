@@ -850,7 +850,7 @@
                 <span :class="(isExpanded || isHovered) ? 'block' : 'block lg:hidden'" class="whitespace-nowrap">Buku Alamat</span>
             </a>
 
-            {{-- Chat Whatsapp --}}
+           {{-- Chat Whatsapp --}}
             <div x-data="{ open: {{ request()->routeIs('broadcast.*') || request()->is('whatsapp*') || request()->routeIs('admin.wa.scan') || request()->routeIs('admin.fonnte.scan') ? 'true' : 'false' }} }"
                  x-show="!searchQuery || $el.textContent.toLowerCase().includes(searchQuery.toLowerCase())"
                  x-effect="if(searchQuery && $el.textContent.toLowerCase().includes(searchQuery.toLowerCase())) open = true">
@@ -858,10 +858,8 @@
                 <button @click="open = !open; if(!isExpanded && !isHovered && !isMobile) isExpanded = true"
                         class="w-full flex items-center justify-between px-3 py-2 text-sm font-medium text-left rounded-lg transition-colors duration-200 group {{ request()->routeIs('broadcast.*') || request()->is('whatsapp*') ? 'bg-blue-600 text-white shadow-md shadow-blue-200' : 'text-gray-600 hover:bg-blue-600 hover:text-white' }}">
                     <span class="flex items-center">
-
                             <i class="fa-brands fa-whatsapp fa-fw w-5 h-5 mr-2 flex-shrink-0 {{ request()->routeIs('broadcast.*') || request()->is('whatsapp*') ? 'text-white' : 'text-gray-400 group-hover:text-white' }}"></i>
                             <span :class="(isExpanded || isHovered) ? 'block' : 'block lg:hidden'" class="whitespace-nowrap">Chat Whatsapp</span>
-
                     </span>
                     <div :class="(isExpanded || isHovered) ? 'block' : 'block lg:hidden'">
                         <i class="fa-solid fa-chevron-down w-3 h-3 transform transition-transform duration-200"
@@ -877,6 +875,14 @@
                     </ul>
                 </div>
             </div>
+
+            {{-- MENU BARU: WA BOT MONITOR --}}
+            <a href="{{ route('admin.wa-monitor.index') }}" wire:navigate
+               x-show="!searchQuery || $el.textContent.toLowerCase().includes(searchQuery.toLowerCase())"
+               class="group flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors duration-200 {{ request()->routeIs('admin.wa-monitor.*') ? 'bg-blue-600 text-white shadow-md shadow-blue-200' : 'text-gray-600 hover:bg-blue-600 hover:text-white' }}">
+                <i class="fa-solid fa-robot fa-fw w-5 h-5 mr-2 flex-shrink-0 {{ request()->routeIs('admin.wa-monitor.*') ? 'text-white' : 'text-gray-400 group-hover:text-white' }}"></i>
+                <span :class="(isExpanded || isHovered) ? 'block' : 'block lg:hidden'" class="whitespace-nowrap">WA Bot Monitor</span>
+            </a>
 
             {{-- Blog --}}
             <div x-data="{ open: {{ request()->is('admin/posts*') || request()->is('admin/categories*') || request()->is('admin/tags*') ? 'true' : 'false' }} }"
