@@ -115,15 +115,6 @@
                         {{ $draft->updated_at->diffForHumans() }}
                     </td>
                     <td class="p-4 flex justify-end gap-2">
-                        <!-- Btn Cek Pembayaran DOKU -->
-                        @if($draft->invoice_number)
-                        <form action="{{ route('admin.wa-monitor.check-payment', $draft->invoice_number) }}" method="POST" class="inline" title="Cek Status DOKU">
-                            @csrf
-                            <button type="submit" class="p-1.5 text-blue-500 hover:text-blue-700 hover:bg-blue-50 rounded transition-colors flex items-center justify-center">
-                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                            </button>
-                        </form>
-                        @endif
 
                         @if($draft->invoice_number && $draft->status_pembayaran !== 'paid')
                             <form
@@ -139,9 +130,19 @@
                                     type="submit"
                                     class="p-1.5 text-purple-600 hover:text-purple-800 hover:bg-purple-50 rounded transition-colors"
                                 >
-                                    <span class="text-xs font-semibold">Hit DOKU</span>
+                                    <span class="text-xs font-semibold">Hit Payment</span>
                                 </button>
                             </form>
+                        @endif
+
+                        <!-- Btn Cek Pembayaran DOKU -->
+                        @if($draft->invoice_number)
+                        <form action="{{ route('admin.wa-monitor.check-payment', $draft->invoice_number) }}" method="POST" class="inline" title="Cek Status DOKU">
+                            @csrf
+                            <button type="submit" class="p-1.5 text-blue-500 hover:text-blue-700 hover:bg-blue-50 rounded transition-colors flex items-center justify-center">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                            </button>
+                        </form>
                         @endif
 
                         <!-- Btn Hit Ulang KiriminAja (Hanya muncul jika lunas & belum punya resi) -->
