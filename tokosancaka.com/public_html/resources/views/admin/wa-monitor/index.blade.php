@@ -4,9 +4,6 @@
 @section('content')
 <div x-data="waMonitor()" class="p-6 bg-gray-50 min-h-screen font-sans text-gray-800">
 
-    <!-- Header & Actions -->
-    <div class="mb-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-
         @if (session('success'))
             <div class="mb-4 rounded-lg bg-green-100 p-4 text-green-800">
                 {{ session('success') }}
@@ -24,6 +21,9 @@
                 {{ session('warning') }}
             </div>
         @endif
+
+    <!-- Header & Actions -->
+    <div class="mb-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
 
 
         <div>
