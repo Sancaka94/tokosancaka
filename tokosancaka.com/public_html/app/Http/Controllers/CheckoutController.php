@@ -474,7 +474,7 @@ class CheckoutController extends Controller
             $kategoriGroup = strtolower($productCheck->category->category_group ?? '');
         } elseif (is_string($productCheck->category)) {
             // Kalau berbentuk String teks biasa, jadikan itu sebagai namanya
-            $kategoriName = strtolower($productCheck->category);
+            $kategoriName  = strtolower($productCheck->category);
         }
 
        // Logika Produk Digital / Jasa / Tiket
