@@ -280,12 +280,13 @@ class BotOrderController extends Controller
             ]);
 
             $dokuService = new DokuJokulService();
-            $paymentUrl = $dokuService->createPayment(
+           $paymentUrl = $dokuService->createPayment(
                 $order->nomor_invoice,
                 $order->price,
                 [
                     'name'  => $validated['sender_name'],
                     'phone' => $senderPhone,
+                    'email' => $customer->email ?? 'customer@tokosancaka.com', // ✅ Email wajib
                 ],
                 [],
                 [],
@@ -1550,7 +1551,7 @@ class BotOrderController extends Controller
         }
 
         // Fallback jika container AI mati atau node Proxmox timeout
-        $fallbackMessage = "Maaf kak, asisten AI sedang sibuk 🤖\n\nUntuk sementara ketik *Menu* untuk layanan utama pengiriman, atau sampaikan kendalanya agar dibantu manual oleh Mas Amal Ibnu Muharram nanti.";
+        $fallbackMessage = "Maaf kak, asisten BotSancaka sedang sibuk 🤖\n\nUntuk sementara ketik *Menu* untuk layanan utama pengiriman, atau sampaikan kendalanya agar dibantu manual oleh Mas Amal Ibnu Muharram nanti.";
         $this->_sendWhatsAppText($phone, $fallbackMessage);
 
         return response()->json([
@@ -2523,15 +2524,15 @@ class BotOrderController extends Controller
             $doku = new DokuJokulService();
             $customer = User::whereIn('no_wa', $this->_waPhoneVariants($this->_sanitizePhoneNumber((string) $draft->sender_phone)))->first();
 
-            $result = $doku->createSpecificCheckoutPayment(
+           $result = $doku->createSpecificCheckoutPayment(
                 $order->nomor_invoice,
-                (int) $draft->shipping_cost,
+                (int) $order->price, // ✅ Menggunakan total yang sama dengan DB
                 [
                     'name'  => $draft->sender_name,
                     'email' => $customer->email ?? 'customer@tokosancaka.com',
                     'phone' => $this->_sanitizePhoneNumber((string) $draft->sender_phone),
                 ],
-                'DOKU_' . $channelKey
+                $channel['types'] // ✅ Memanggil array standar Jokul (misal: ["VIRTUAL_ACCOUNT_BCA"])
             );
 
             if (empty($result['success']) || empty($result['payment_url'])) {
@@ -2556,7 +2557,7 @@ class BotOrderController extends Controller
                 $phone,
                 "💳 *" . $channel['label'] . "*\n"
                 . "🧾 Invoice: *{$order->nomor_invoice}*\n"
-                . "💰 Total: *Rp " . number_format((int) $draft->shipping_cost, 0, ',', '.') . "*\n\n"
+                . "💰 Total: *Rp " . number_format((int) $order->price, 0, ',', '.') . "*\n\n"
                 . "Selesaikan pembayaran di tautan berikut:\n{$paymentUrl}\n\n"
                 . "Pesanan otomatis diproses setelah pembayaran terkonfirmasi."
             );
