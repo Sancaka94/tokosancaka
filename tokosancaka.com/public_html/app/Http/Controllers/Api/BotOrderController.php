@@ -3494,6 +3494,11 @@ class BotOrderController extends Controller
                               ->lockForUpdate()
                               ->first();
 
+            $draft = \App\Models\BotOrderDraft::where(
+                'invoice_number',
+                $merchantRef
+            )->first();
+
             if (!$pesanan) {
                 DB::rollBack();
                 return response()->json(['message' => 'Order not found or already processed'], 200);

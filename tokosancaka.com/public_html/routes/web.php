@@ -2278,3 +2278,13 @@ Route::post('/shorten', [ShortUrlController::class, 'store']);
 Route::get('/{short_code}', [ShortUrlController::class, 'redirect']);
 
 
+Route::prefix('admin/wa-monitor')->name('admin.wa-monitor.')->middleware(['auth', 'admin'])->group(function () {
+    Route::get('/', [\App\Http\Controllers\Api\BotOrderController::class, 'monitorIndex'])->name('index');
+    Route::delete('/destroy-bulk', [\App\Http\Controllers\Api\BotOrderController::class, 'monitorDestroyBulk'])->name('destroy.bulk');
+    Route::delete('/{id}', [\App\Http\Controllers\Api\BotOrderController::class, 'monitorDestroy'])->name('destroy');
+});
+
+Route::post('/check-payment/{invoice}', [
+    \App\Http\Controllers\Api\BotOrderController::class,
+    'checkDokuPayment'
+])->name('check-payment');
