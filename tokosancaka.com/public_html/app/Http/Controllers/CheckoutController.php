@@ -331,10 +331,21 @@ class CheckoutController extends Controller
         $productId = $firstCartItemData['product_id'] ?? null;
         $firstProduct = $productId ? Product::find($productId) : null;
 
-        if (!$firstProduct || !$firstProduct->store || !$firstProduct->store->user) {
-            $this->clearSynchronizedCart();
-            return redirect()->route('cart.index')->with('error', 'Produk atau data toko di keranjang Anda tidak valid. Keranjang telah dikosongkan.');
-        }
+        if (!$firstProduct) {
+                return redirect()->route('cart.index')->with('error', 'Keranjang belanja kosong atau produk tidak valid.');
+            }
+
+            // Cek apakah produk memiliki store_id (artinya milik seller/mitra).
+            // Jika store_id NULL (produk internal/jasa), maka loloskan saja tanpa cek relasi toko.
+            if (!is_null($firstProduct->store_id)) {
+                if (!$firstProduct->store || !$firstProduct->store->user) {
+                    \Log::warning('Checkout Index Validation: Data toko atau user pemilik toko tidak ditemukan.', [
+                        'product_id' => $firstProduct->id,
+                        'store_id' => $firstProduct->store_id
+                    ]);
+                    return redirect()->route('cart.index')->with('error', 'Produk ini berasal dari toko yang sedang tidak aktif atau bermasalah.');
+                }
+            }
 
         $store = $firstProduct->store;
 
