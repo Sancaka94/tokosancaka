@@ -3584,7 +3584,11 @@ class BotOrderController extends Controller
                     $pesanan->status_pesanan = 'Pesanan Dibuat';
                 } else {
                     // Pickup sudah berhasil, AWB menyusul.
-                    $pesanan->shipping_ref = $pickupId;
+                    // Pertahankan shipping_ref lama jika API tidak memberikan ID baru.
+                    if (!empty($pickupId)) {
+                        $pesanan->shipping_ref = $pickupId;
+                    }
+
                     $pesanan->status = 'Menunggu Pickup';
                     $pesanan->status_pesanan = 'Menunggu Pickup';
                 }
