@@ -3530,7 +3530,7 @@ class BotOrderController extends Controller
             // 4. Log bahwa pesanan ditemukan dan mulai diproses
             Log::info('[WEBHOOK-DOKU] Processing valid payment', [
                 'invoice' => $merchantRef,
-                'pesanan_id' => $pesanan->id
+                'pesanan_id' => $pesanan->id_pesanan
             ]);
 
             // 1. Update Status Pembayaran
