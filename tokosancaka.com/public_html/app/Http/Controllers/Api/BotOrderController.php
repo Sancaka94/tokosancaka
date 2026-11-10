@@ -2651,6 +2651,13 @@ class BotOrderController extends Controller
             return false;
         }
 
+        // Normalisasi nomor WA menjadi 62xxxxxxxxxx
+        if (!empty($payload['phone_number'])) {
+            $payload['phone_number'] = $this->_normalizeWaPhone(
+                (string) $payload['phone_number']
+            );
+        }
+
         // Gunakan ID dinamis dari webhook (paling akurat), fallback ke .env
         $phoneNumberId = $this->inboundPhoneNumberId ?: (string) config('services.apicoid.phone_number_id');
         if ($phoneNumberId !== '' && !isset($payload['whatsapp_phone_number_id'])) {
@@ -2724,6 +2731,8 @@ class BotOrderController extends Controller
     {
         $apiKey = (string) config('services.apicoid.api_key');
         $template = (string) config('services.apicoid.template_name');
+
+        $phone = $this->_normalizeWaPhone($phone);
 
         if ($apiKey === '' || $template === '') {
             Log::warning('API.co.id: template pembuka belum dikonfigurasi (APICOID_TEMPLATE_NAME).', [
