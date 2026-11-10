@@ -2002,19 +2002,21 @@ Route::post('/admin/settings/api/bca-debug', [\App\Http\Controllers\BcaControlle
 // =========================================================================
 // FITUR HYBRID CHECKOUT & CART (BEBAS AKSES TANPA LOGIN)
 // =========================================================================
-Route::prefix('customer')->name('customer.')->group(function () {
+Route::prefix('customer')->group(function () {
     // Marketplace & Cart
     Route::get('/cart', [\App\Http\Controllers\CartController::class, 'index'])->name('cart.index');
     Route::post('/cart/add/{product}', [\App\Http\Controllers\CartController::class, 'add'])->name('cart.add');
     Route::post('/cart/add-ppob', [\App\Http\Controllers\CartController::class, 'addPpob'])->name('cart.addPpob');
     Route::patch('/cart/update', [\App\Http\Controllers\CartController::class, 'update'])->name('cart.update');
     Route::delete('/cart/remove', [\App\Http\Controllers\CartController::class, 'remove'])->name('cart.remove');
+
+    // Checkout Barang
+    Route::get('/checkout', [\App\Http\Controllers\Customer\CheckoutController::class, 'index'])->name('checkout.index');
+    Route::post('/checkout', [\App\Http\Controllers\Customer\CheckoutController::class, 'store'])->name('checkout.store');
 });
 
-// Alias nama route tanpa prefix 'customer.' agar view & controller lama tetap jalan
-Route::get('/customer/checkout', [\App\Http\Controllers\Customer\CheckoutController::class, 'index'])->name('checkout.index');
-Route::post('/customer/checkout', [\App\Http\Controllers\Customer\CheckoutController::class, 'store'])->name('checkout.store');
-Route::get('/customer/cart', [\App\Http\Controllers\CartController::class, 'index'])->name('cart.index');
+// Alias untuk layout marketplace.blade.php baris 63 yang masih memakai nama lama
+Route::get('/customer/cart', [\App\Http\Controllers\CartController::class, 'index'])->name('customer.cart.index');
 
 
 
