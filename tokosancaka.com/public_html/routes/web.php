@@ -2013,10 +2013,10 @@ Route::prefix('customer')->name('customer.')->group(function () {
     Route::post('/checkout', [\App\Http\Controllers\Customer\CheckoutController::class, 'store'])->name('checkout.store');
 });
 
-// Alias nama tanpa prefix, dipakai oleh CheckoutController & view checkout/index.blade.php
-Route::get('/customer/checkout', [\App\Http\Controllers\Customer\CheckoutController::class, 'index'])->name('checkout.index');
-Route::post('/customer/checkout', [\App\Http\Controllers\Customer\CheckoutController::class, 'store'])->name('checkout.store');
-Route::get('/customer/cart', [\App\Http\Controllers\CartController::class, 'index'])->name('cart.index');
+// Alias nama tanpa prefix (URL berbeda agar tidak menimpa nama di atas)
+Route::get('/checkout-barang', [\App\Http\Controllers\Customer\CheckoutController::class, 'index'])->name('checkout.index');
+Route::post('/checkout-barang', [\App\Http\Controllers\Customer\CheckoutController::class, 'store'])->name('checkout.store');
+Route::get('/keranjang', [\App\Http\Controllers\CartController::class, 'index'])->name('cart.index');
 
 
 
