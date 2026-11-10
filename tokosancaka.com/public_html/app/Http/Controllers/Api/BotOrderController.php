@@ -3710,7 +3710,6 @@ public function hitDokuPayload($id)
             $draft->invoice_number = $newInvoice;
             $draft->payment_url = $paymentUrl;
             $draft->step = 'AWAITING_PAYMENT';
-            $draft->status_pembayaran = 'pending';
             $draft->save();
 
             \Illuminate\Support\Facades\Log::info('Hit ulang payload DOKU berhasil', [
