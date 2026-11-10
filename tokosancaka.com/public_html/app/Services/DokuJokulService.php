@@ -739,7 +739,13 @@ class DokuJokulService
             'DOKU_JOKUL'      => [] // Menampilkan semua opsi
         ];
 
-        $paymentMethodTypes = $methodMapping[$paymentMethodRaw] ?? [];
+        if (is_array($paymentMethodRaw)) {
+            // Sudah berupa payment_method_types dari BotOrderController
+            $paymentMethodTypes = $paymentMethodRaw;
+        } else {
+            // Tetap mendukung pemanggilan lama yang mengirim kode string
+            $paymentMethodTypes = $methodMapping[$paymentMethodRaw] ?? [];
+        }
 
         // 2. Siapkan Request Body Sesuai Dokumentasi DOKU Checkout
         $requestBody = [
