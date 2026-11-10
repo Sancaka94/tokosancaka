@@ -97,8 +97,26 @@
                         </span>
                     </td>
                     <td class="p-4">
-                        <div class="text-gray-900 font-mono text-xs">{{ $draft->invoice_number ?? '-' }}</div>
-                        <div class="text-blue-600 font-mono text-xs mt-1">{{ $draft->resi_awb ?? 'Resi Pending' }}</div>
+                        <div class="text-gray-900 font-mono text-xs">
+                            {{ $draft->invoice_number ?? '-' }}
+                        </div>
+
+                        @if($draft->payment_url)
+                            <a href="{{ $draft->payment_url }}"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            class="inline-block text-blue-600 hover:text-blue-800 underline text-xs mt-1 break-all">
+                                Lihat Link Pembayaran DOKU
+                            </a>
+                        @else
+                            <div class="text-gray-400 text-xs mt-1">
+                                Link pembayaran belum tersedia
+                            </div>
+                        @endif
+
+                        <div class="text-blue-600 font-mono text-xs mt-1">
+                            {{ $draft->resi_awb ?? 'Resi Pending' }}
+                        </div>
                     </td>
                     <td class="p-4">
                         @if($draft->status_pembayaran === 'paid')

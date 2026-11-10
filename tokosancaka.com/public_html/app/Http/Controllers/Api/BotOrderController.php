@@ -3712,6 +3712,31 @@ public function hitDokuPayload($id)
             $draft->step = 'AWAITING_PAYMENT';
             $draft->save();
 
+            // Kirim link pembayaran DOKU ke WhatsApp pengirim
+            $targetPhone = $this->_sanitizePhoneNumber(
+                (string) ($draft->sender_phone ?: $draft->phone_number)
+            );
+
+            $message = "💳 *Tagihan Pembayaran Sancaka*\n\n";
+            $message .= "Halo *{$draft->sender_name}*,\n";
+            $message .= "Invoice: *{$newInvoice}*\n";
+            $message .= "Total: *Rp " . number_format((int) $order->price, 0, ',', '.') . "*\n\n";
+            $message .= "Silakan selesaikan pembayaran melalui link berikut:\n";
+            $message .= "{$paymentUrl}\n\n";
+            $message .= "Pesanan akan diproses setelah pembayaran berhasil dikonfirmasi.";
+
+            $waSent = $this->_sendWhatsAppText($targetPhone, $message);
+
+            if (!$waSent) {
+                \Illuminate\Support\Facades\Log::error(
+                    'Gagal mengirim link pembayaran DOKU ke pengirim.',
+                    [
+                        'invoice' => $newInvoice,
+                        'phone' => $targetPhone,
+                    ]
+                );
+            }
+
             \Illuminate\Support\Facades\Log::info('Hit ulang payload DOKU berhasil', [
                 'old_invoice' => $oldInvoice,
                 'new_invoice' => $newInvoice,
