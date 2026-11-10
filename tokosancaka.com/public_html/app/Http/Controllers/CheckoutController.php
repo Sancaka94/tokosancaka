@@ -1127,6 +1127,8 @@ class CheckoutController extends Controller
      * Menampilkan halaman checkout.
      */
 
+    /*
+
    public function index(KiriminAjaService $kiriminAja)
     {
         $scope = auth()->check() ? ['user_id' => auth()->id()] : ['session_id' => session()->getId()];
@@ -1434,9 +1436,9 @@ class CheckoutController extends Controller
         }
 
         return view('checkout.index', compact('cart', 'expressOptions', 'instantOptions', 'user', 'tripayChannels', 'hasDigital', 'hasPhysical', 'isStrictlyDigital', 'isLocalFood', 'storeLat', 'storeLng'));
-    }
+    } */
 
-    */
+
 
    /*
    public function store(Request $request, KiriminAjaService $kiriminAja)
