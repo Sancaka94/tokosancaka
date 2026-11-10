@@ -3488,11 +3488,21 @@ class BotOrderController extends Controller
     public function handleDokuWebhook(Request $request)
     {
         $data = $request->all();
+        
+        // 1. Log payload masuk (Berguna untuk melihat format data asli dari DOKU)
+        Log::info('[WEBHOOK-DOKU] Incoming payload', ['data' => $data]);
+
         // Sesuaikan dengan struktur JSON dari webhook DOKU
         $merchantRef = $data['order']['invoice_number'] ?? null;
         $status = $data['transaction']['status'] ?? null;
 
         if (!$merchantRef || $status !== 'SUCCESS') {
+            // 2. Log jika webhook diabaikan (bukan SUCCESS atau tidak ada invoice)
+            Log::info('[WEBHOOK-DOKU] Webhook ignored', [
+                'invoice' => $merchantRef,
+                'status'  => $status
+            ]);
+            
             return response()->json(['message' => 'Ignored or Failed'], 200);
         }
 
@@ -3510,8 +3520,18 @@ class BotOrderController extends Controller
 
             if (!$pesanan) {
                 DB::rollBack();
+                // 3. Log peringatan jika pesanan tidak ditemukan atau statusnya sudah bukan "Menunggu Pembayaran"
+                Log::warning('[WEBHOOK-DOKU] Order not found or already processed', [
+                    'invoice' => $merchantRef
+                ]);
                 return response()->json(['message' => 'Order not found or already processed'], 200);
             }
+
+            // 4. Log bahwa pesanan ditemukan dan mulai diproses
+            Log::info('[WEBHOOK-DOKU] Processing valid payment', [
+                'invoice' => $merchantRef,
+                'pesanan_id' => $pesanan->id
+            ]);
 
             // 1. Update Status Pembayaran
             $pesanan->status = 'paid';
@@ -3534,6 +3554,11 @@ class BotOrderController extends Controller
                 ]
             ];
 
+            // 5. Log sebelum request API KiriminAja
+            Log::info('[WEBHOOK-DOKU] Creating KiriminAja pickup', [
+                'invoice' => $merchantRef
+            ]);
+
             $kiriminResponse = $this->_createKiriminPickup($pesanan, $draft);
 
             if (
@@ -3543,8 +3568,9 @@ class BotOrderController extends Controller
                 $pesanan->status = 'Pembayaran Lunas (Gagal Auto-Resi)';
                 $pesanan->status_pesanan = 'Pembayaran Lunas (Gagal Auto-Resi)';
 
+                // 6. Log error bawaan diperjelas detailnya
                 Log::error('[WEBHOOK-DOKU] KiriminAja gagal', [
-                    'invoice' => $merchantRef,
+                    'invoice'  => $merchantRef,
                     'response' => $kiriminResponse
                 ]);
             } else {
@@ -3563,9 +3589,10 @@ class BotOrderController extends Controller
                     $pesanan->status_pesanan = 'Menunggu Pickup';
                 }
 
+                // 7. Log keberhasilan Auto-Resi
                 Log::info('[WEBHOOK-DOKU] KiriminAja pickup berhasil', [
-                    'invoice' => $merchantRef,
-                    'awb' => $awb,
+                    'invoice'   => $merchantRef,
+                    'awb'       => $awb,
                     'pickup_id' => $pickupId
                 ]);
             }
@@ -3573,11 +3600,21 @@ class BotOrderController extends Controller
             $pesanan->save();
             DB::commit();
 
+            // 8. Log proses webhook selesai
+            Log::info('[WEBHOOK-DOKU] Webhook Processed Successfully', [
+                'invoice' => $merchantRef
+            ]);
+
             return response()->json(['message' => 'Webhook Processed Successfully'], 200);
 
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('Doku Webhook Error: ' . $e->getMessage());
+            // 9. Log error exception secara detail (termasuk file dan line)
+            Log::error('[WEBHOOK-DOKU] Exception Error: ' . $e->getMessage(), [
+                'invoice' => $merchantRef ?? 'Unknown',
+                'file'    => $e->getFile(),
+                'line'    => $e->getLine()
+            ]);
             return response()->json(['message' => 'Internal server error'], 500);
         }
     }
