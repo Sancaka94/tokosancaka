@@ -3902,17 +3902,12 @@ private function normalizeWaPhone($phone)
             $weight = max((int) ($draft->weight ?? $pesanan->weight ?? 1000), 1);
             $itemValue = max((int) ($draft->item_value ?? $pesanan->item_price ?? 10000), 1000);
 
-            // KiriminAja mewajibkan jadwal pickup (schedule).
-            $kiriminSchedule = null;
-            try {
-                $kiriminSchedule = (new \App\Services\KiriminAjaService())->getSchedules();
-            } catch (\Throwable $e) {
-                Log::warning('[WEBHOOK-DOKU] Gagal ambil jadwal pickup: ' . $e->getMessage());
-            }
+            // Jadwal pickup pertama: 1 jam dari sekarang.
+            $timezone = config('app.timezone', 'Asia/Jakarta');
 
-            $scheduleClock = data_get($kiriminSchedule, 'clock')
-                ?? data_get($kiriminSchedule, 'schedule')
-                ?? null;
+            $scheduleClock = now($timezone)
+                ->addHour()
+                ->format('H:i');
 
             if (empty($scheduleClock)) {
                 Log::warning('[WEBHOOK-DOKU] Tidak ada jadwal pickup tersedia untuk ' . $pesanan->nomor_invoice);
@@ -3999,20 +3994,46 @@ private function normalizeWaPhone($phone)
                 ]],
             ];
 
-            Log::info('[WEBHOOK-DOKU] Payload pickup KiriminAja:', $payload);
+           $kirimin = new \App\Services\KiriminAjaService();
 
-            $kirimin = new \App\Services\KiriminAjaService();
+            // Percobaan pertama: 1 jam dari sekarang.
+            $payload['schedule'] = $scheduleClock;
+
+            Log::info('[WEBHOOK-DOKU] Pickup percobaan pertama:', $payload);
+
             $response = $kirimin->createExpressOrder($payload);
 
-            Log::info('[WEBHOOK-DOKU] Respon pickup KiriminAja:', (array) $response);
+            Log::info('[WEBHOOK-DOKU] Respons pickup pertama:', [
+                'response' => $response,
+            ]);
+
+            // Jika API secara eksplisit menjawab gagal, coba besok jam 09.00.
+            if (is_array($response) && ($response['status'] ?? false) === false) {
+
+                $payload['schedule'] = now($timezone)
+                    ->addDay()
+                    ->setTime(9, 0)
+                    ->format('H:i');
+
+                Log::warning('[WEBHOOK-DOKU] Mencoba ulang pickup besok jam 09.00:', [
+                    'invoice' => $pesanan->nomor_invoice,
+                    'schedule' => $payload['schedule'],
+                ]);
+
+                $response = $kirimin->createExpressOrder($payload);
+
+                Log::info('[WEBHOOK-DOKU] Respons pickup percobaan kedua:', [
+                    'response' => $response,
+                ]);
+            }
 
             if (!is_array($response) || ($response['status'] ?? false) !== true) {
-                Log::error('[WEBHOOK-DOKU] Pickup gagal untuk ' . $pesanan->nomor_invoice . ': ' . json_encode($response));
+                Log::error('[WEBHOOK-DOKU] Pickup gagal:', [
+                    'invoice' => $pesanan->nomor_invoice,
+                    'response' => $response,
+                ]);
 
-                return [
-                    'status' => false,
-                    'message' => 'KiriminAja pickup gagal'
-                ];
+                return null;
             }
 
             // Beberapa bentuk respons: data.awb / data[0].awb / results[].awb
