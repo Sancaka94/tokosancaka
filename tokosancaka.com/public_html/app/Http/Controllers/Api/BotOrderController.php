@@ -3585,6 +3585,60 @@ class BotOrderController extends Controller
         return '';
     }
 
+    public function checkDokuPayment($invoice)
+{
+    try {
+        $draft = \App\Models\BotOrderDraft::where(
+            'invoice_number',
+            $invoice
+        )->first();
+
+        if (!$draft) {
+            return back()->with('error', 'Draft invoice tidak ditemukan.');
+        }
+
+        $pesanan = \App\Models\Pesanan::where(
+            'nomor_invoice',
+            $invoice
+        )->first();
+
+        if (!$pesanan) {
+            return back()->with('error', 'Pesanan tidak ditemukan.');
+        }
+
+        $status = strtolower((string) ($pesanan->status_pesanan
+            ?? $pesanan->status
+            ?? ''));
+
+        if (in_array($status, ['paid', 'lunas', 'pembayaran lunas'], true)) {
+            $draft->status_pembayaran = 'paid';
+            $draft->step = 'PAID';
+            $draft->save();
+
+            return back()->with(
+                'success',
+                "Invoice {$invoice} sudah lunas."
+            );
+        }
+
+        return back()->with(
+            'warning',
+            "Invoice {$invoice} belum tercatat lunas. Status: {$status}"
+        );
+
+    } catch (\Throwable $e) {
+        \Illuminate\Support\Facades\Log::error(
+            'Check DOKU Payment Error: ' . $e->getMessage(),
+            ['invoice' => $invoice]
+        );
+
+        return back()->with(
+            'error',
+            'Gagal memeriksa pembayaran: ' . $e->getMessage()
+        );
+    }
+}
+
     // Tabel Monitor View Blade Untuk Data Riwayat Chat BotWaSancaka
 
    public function monitorIndex(\Illuminate\Http\Request $request)
