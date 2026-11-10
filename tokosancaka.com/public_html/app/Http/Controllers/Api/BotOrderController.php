@@ -3536,24 +3536,38 @@ class BotOrderController extends Controller
 
             $kiriminResponse = $this->_createKiriminPickup($pesanan, $draft);
 
-            if (($kiriminResponse['status'] ?? false) !== true) {
+            if (
+                !is_array($kiriminResponse) ||
+                ($kiriminResponse['status'] ?? false) !== true
+            ) {
                 $pesanan->status = 'Pembayaran Lunas (Gagal Auto-Resi)';
                 $pesanan->status_pesanan = 'Pembayaran Lunas (Gagal Auto-Resi)';
-                Log::error('Auto-Resi KiriminAja FAILED: ' . json_encode($kiriminResponse));
+
+                Log::error('[WEBHOOK-DOKU] KiriminAja gagal', [
+                    'invoice' => $merchantRef,
+                    'response' => $kiriminResponse
+                ]);
             } else {
-                $bookingId = $kiriminResponse['id'] ?? $kiriminResponse['data']['id'] ?? null;
-                $awbAsli = $kiriminResponse['awb'] ?? $kiriminResponse['data']['awb'] ?? null;
+                $awb = $kiriminResponse['awb'] ?? null;
+                $pickupId = $kiriminResponse['id'] ?? null;
 
-                $finalResi = !empty($awbAsli) ? $awbAsli : $bookingId;
-                if (empty($finalResi)) $finalResi = 'REF-' . $pesanan->nomor_invoice;
+                if ($awb) {
+                    $pesanan->resi = $awb;
+                    $pesanan->resi_aktual = $awb;
+                    $pesanan->status = 'Pesanan Dibuat';
+                    $pesanan->status_pesanan = 'Pesanan Dibuat';
+                } else {
+                    // Pickup sudah berhasil, AWB menyusul.
+                    $pesanan->shipping_ref = $pickupId;
+                    $pesanan->status = 'Menunggu Pickup';
+                    $pesanan->status_pesanan = 'Menunggu Pickup';
+                }
 
-                $pesanan->resi = $finalResi;
-                $pesanan->shipping_ref = $bookingId;
-                $pesanan->status = 'Pesanan Dibuat';
-                $pesanan->status_pesanan = 'Pesanan Dibuat';
-
-                // Opsional: Kirim WA ke customer bahwa paket sedang diproses
-                $this->_sendWhatsAppText($pesanan->sender_phone, "✅ Pembayaran untuk invoice *{$pesanan->nomor_invoice}* telah diterima.\n📦 Resi Pengiriman: *{$finalResi}*\nPesanan Anda sedang kami proses.");
+                Log::info('[WEBHOOK-DOKU] KiriminAja pickup berhasil', [
+                    'invoice' => $merchantRef,
+                    'awb' => $awb,
+                    'pickup_id' => $pickupId
+                ]);
             }
 
             $pesanan->save();
@@ -3834,7 +3848,7 @@ private function normalizeWaPhone($phone)
      * Terbitkan resi aktual via KiriminAja request_pickup, simpan ke Pesanan.
      * Read-only terhadap data pelanggan; hanya mengisi kolom resi & status.
      */
-    private function _createKiriminPickup($pesanan, $draft): ?string
+    private function _createKiriminPickup($pesanan, $draft): ?array
     {
         try {
             $senderDistrict = (int) ($pesanan->sender_district_id ?? 0);
@@ -3958,7 +3972,10 @@ private function normalizeWaPhone($phone)
             if (!is_array($response) || ($response['status'] ?? false) !== true) {
                 Log::error('[WEBHOOK-DOKU] Pickup gagal untuk ' . $pesanan->nomor_invoice . ': ' . json_encode($response));
 
-                return null;
+                return [
+                    'status' => false,
+                    'message' => 'KiriminAja pickup gagal'
+                ];
             }
 
             // Beberapa bentuk respons: data.awb / data[0].awb / results[].awb
@@ -4026,11 +4043,23 @@ private function normalizeWaPhone($phone)
 
             Log::info("[WEBHOOK-DOKU] Resi aktual terbit {$resi} untuk {$pesanan->nomor_invoice}");
 
-            return $resi;
+            return [
+                'status' => true,
+                'awb' => $resi,
+                'id' => data_get($response, 'data.id')
+                    ?? data_get($response, 'id')
+                    ?? data_get($response, 'pickup_number'),
+                'pending_awb' => false
+            ];
         } catch (\Throwable $e) {
             Log::error('[WEBHOOK-DOKU] Exception pickup KiriminAja: ' . $e->getMessage());
 
-            return null;
+            return [
+                'status' => true,
+                'awb' => null,
+                'id' => $pickupNumber,
+                'pending_awb' => true
+            ];
         }
     }
 
