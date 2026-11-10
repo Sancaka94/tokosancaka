@@ -1,28 +1,31 @@
 @extends('layouts.admin')
 
-@if (session('success'))
-    <div class="mb-4 rounded-lg bg-green-100 p-4 text-green-800">
-        {{ session('success') }}
-    </div>
-@endif
-
-@if (session('error'))
-    <div class="mb-4 rounded-lg bg-red-100 p-4 text-red-800">
-        {{ session('error') }}
-    </div>
-@endif
-
-@if (session('warning'))
-    <div class="mb-4 rounded-lg bg-yellow-100 p-4 text-yellow-800">
-        {{ session('warning') }}
-    </div>
-@endif
 
 @section('content')
 <div x-data="waMonitor()" class="p-6 bg-gray-50 min-h-screen font-sans text-gray-800">
 
     <!-- Header & Actions -->
     <div class="mb-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+
+        @if (session('success'))
+            <div class="mb-4 rounded-lg bg-green-100 p-4 text-green-800">
+                {{ session('success') }}
+            </div>
+        @endif
+
+        @if (session('error'))
+            <div class="mb-4 rounded-lg bg-red-100 p-4 text-red-800">
+                {{ session('error') }}
+            </div>
+        @endif
+
+        @if (session('warning'))
+            <div class="mb-4 rounded-lg bg-yellow-100 p-4 text-yellow-800">
+                {{ session('warning') }}
+            </div>
+        @endif
+
+
         <div>
             <h1 class="text-2xl font-bold text-gray-900 tracking-tight">Monitoring WA Bot</h1>
             <p class="text-sm text-gray-500 mt-1">Evaluasi draft percakapan, resi, dan status DOKU pelanggan Sancaka.</p>
