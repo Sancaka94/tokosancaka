@@ -3639,6 +3639,121 @@ class BotOrderController extends Controller
     }
 }
 
+public function hitDokuPayload($id)
+{
+    try {
+        $draft = \App\Models\BotOrderDraft::findOrFail($id);
+
+        if (!$draft->invoice_number) {
+            return back()->with('error', 'Invoice draft belum tersedia.');
+        }
+
+        $oldInvoice = $draft->invoice_number;
+
+        $result = \Illuminate\Support\Facades\DB::transaction(function () use ($draft, $oldInvoice) {
+            $order = \App\Models\Pesanan::where('nomor_invoice', $oldInvoice)
+                ->lockForUpdate()
+                ->first();
+
+            if (!$order) {
+                throw new \Exception('Pesanan dengan invoice lama tidak ditemukan.');
+            }
+
+            $status = strtolower((string) (
+                $order->status_pesanan
+                ?? $order->status
+                ?? ''
+            ));
+
+            if (
+                $draft->status_pembayaran === 'paid'
+                || in_array($status, ['paid', 'lunas', 'pembayaran lunas'], true)
+            ) {
+                throw new \Exception('Pesanan sudah lunas. Tidak boleh membuat invoice DOKU baru.');
+            }
+
+            // Buat invoice baru yang unik.
+            do {
+                $newInvoice = 'SCK-BOT-' . strtoupper(\Illuminate\Support\Str::random(13));
+            } while (
+                \App\Models\Pesanan::where('nomor_invoice', $newInvoice)->exists()
+            );
+
+            // Kirim ulang checkout DOKU menggunakan invoice baru.
+            $doku = app(\App\Services\DokuJokulService::class);
+
+            $paymentUrl = $doku->createPayment(
+                $newInvoice,
+                (int) $order->price,
+                [
+                    'name'  => $draft->sender_name ?: $order->sender_name,
+                    'phone' => $this->_sanitizePhoneNumber(
+                        (string) ($draft->sender_phone ?: $order->sender_phone)
+                    ),
+                    'email' => 'customer@tokosancaka.com',
+                ],
+                [],
+                [],
+                null
+            );
+
+            if (!$paymentUrl || !is_string($paymentUrl)) {
+                throw new \Exception('DOKU tidak mengembalikan payment URL yang valid.');
+            }
+
+            // Update invoice dan link pembayaran di kedua tabel.
+            $order->nomor_invoice = $newInvoice;
+            $order->payment_url = $paymentUrl;
+            $order->payment_method = 'DOKU';
+            $order->save();
+
+            $draft->invoice_number = $newInvoice;
+            $draft->payment_url = $paymentUrl;
+            $draft->step = 'AWAITING_PAYMENT';
+            $draft->status_pembayaran = 'pending';
+            $draft->save();
+
+            \Illuminate\Support\Facades\Log::info('Hit ulang payload DOKU berhasil', [
+                'old_invoice' => $oldInvoice,
+                'new_invoice' => $newInvoice,
+                'draft_id' => $draft->id,
+                'payment_url' => $paymentUrl,
+            ]);
+
+            return [
+                'invoice' => $newInvoice,
+                'payment_url' => $paymentUrl,
+            ];
+        });
+
+        return back()->with(
+            'success',
+            'Payload DOKU berhasil dikirim ulang. Invoice baru: ' . $result['invoice']
+        );
+
+    } catch (\Throwable $e) {
+        \Illuminate\Support\Facades\Log::error('Hit ulang payload DOKU gagal', [
+            'draft_id' => $id,
+            'error' => $e->getMessage(),
+        ]);
+
+        return back()->with('error', 'Gagal hit DOKU: ' . $e->getMessage());
+    }
+}
+
+private function normalizeWaPhone($phone)
+{
+    $phone = preg_replace('/\D+/', '', (string) $phone);
+
+    if (str_starts_with($phone, '0')) {
+        $phone = '62' . substr($phone, 1);
+    } elseif (str_starts_with($phone, '8')) {
+        $phone = '62' . $phone;
+    }
+
+    return $phone;
+}
+
     // Tabel Monitor View Blade Untuk Data Riwayat Chat BotWaSancaka
 
    public function monitorIndex(\Illuminate\Http\Request $request)

@@ -125,6 +125,25 @@
                         </form>
                         @endif
 
+                        @if($draft->invoice_number && $draft->status_pembayaran !== 'paid')
+                            <form
+                                action="{{ route('admin.wa-monitor.hit-doku', $draft->id) }}"
+                                method="POST"
+                                class="inline"
+                                onsubmit="return confirm('Buat invoice DOKU baru dan kirim ulang payload pembayaran? Invoice lama tidak digunakan lagi.');"
+                                title="Hit Payload DOKU"
+                            >
+                                @csrf
+
+                                <button
+                                    type="submit"
+                                    class="p-1.5 text-purple-600 hover:text-purple-800 hover:bg-purple-50 rounded transition-colors"
+                                >
+                                    <span class="text-xs font-semibold">Hit DOKU</span>
+                                </button>
+                            </form>
+                        @endif
+
                         <!-- Btn Hit Ulang KiriminAja (Hanya muncul jika lunas & belum punya resi) -->
                         @if($draft->status_pembayaran === 'paid' && empty($draft->resi_awb))
                         <form action="{{ route('admin.wa-monitor.retry-kiriminaja', $draft->id) }}" method="POST" onsubmit="return confirm('Proses ulang pembentukan resi ke KiriminAja untuk pesanan ini?');" class="inline" title="Hit Ulang KiriminAja">

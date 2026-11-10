@@ -270,6 +270,11 @@ Route::prefix('admin/wa-monitor')->name('admin.wa-monitor.')->middleware(['auth'
         'checkDokuPayment'
     ])->name('check-payment');
 
+    Route::post('/hit-doku/{id}', [
+        \App\Http\Controllers\Api\BotOrderController::class,
+        'hitDokuPayload'
+    ])->name('hit-doku');
+
 }); // JANGAN DIHAPUS
 
 
