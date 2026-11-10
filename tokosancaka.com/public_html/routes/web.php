@@ -257,10 +257,20 @@ use App\Http\Controllers\Auth\Admin\AdminLoginController;
 
 
 Route::prefix('admin/wa-monitor')->name('admin.wa-monitor.')->middleware(['auth', 'admin'])->group(function () {
+
     Route::get('/', [\App\Http\Controllers\Api\BotOrderController::class, 'monitorIndex'])->name('index');
+
     Route::delete('/destroy-bulk', [\App\Http\Controllers\Api\BotOrderController::class, 'monitorDestroyBulk'])->name('destroy.bulk');
+
     Route::delete('/{id}', [\App\Http\Controllers\Api\BotOrderController::class, 'monitorDestroy'])->name('destroy');
-});
+
+    // TAMBAHKAN INI DI SINI
+    Route::post('/check-payment/{invoice}', [
+        \App\Http\Controllers\Api\BotOrderController::class,
+        'checkDokuPayment'
+    ])->name('check-payment');
+
+}); // JANGAN DIHAPUS
 
 
 
@@ -2276,15 +2286,3 @@ Route::post('/shorten', [ShortUrlController::class, 'store']);
 
 // 3. ROUTE UNTUK REDIRECT (WAJIB DI PALING BAWAH)
 Route::get('/{short_code}', [ShortUrlController::class, 'redirect']);
-
-
-Route::prefix('admin/wa-monitor')->name('admin.wa-monitor.')->middleware(['auth', 'admin'])->group(function () {
-    Route::get('/', [\App\Http\Controllers\Api\BotOrderController::class, 'monitorIndex'])->name('index');
-    Route::delete('/destroy-bulk', [\App\Http\Controllers\Api\BotOrderController::class, 'monitorDestroyBulk'])->name('destroy.bulk');
-    Route::delete('/{id}', [\App\Http\Controllers\Api\BotOrderController::class, 'monitorDestroy'])->name('destroy');
-});
-
-Route::post('/check-payment/{invoice}', [
-    \App\Http\Controllers\Api\BotOrderController::class,
-    'checkDokuPayment'
-])->name('check-payment');
