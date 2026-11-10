@@ -300,4 +300,32 @@ class KiriminAjaService
         // Jika sukses 200 OK
         return $response->json();
     }
+
+    /**
+     * Membuat pesanan (Request Pickup) ke KiriminAja (Express / Reguler)
+     *
+     * @param array $dataPayload Payload lengkap yang berisi detail pengirim, penerima, dan paket
+     * @return array|null Response dari KiriminAja API atau null jika gagal
+     */
+    public function createOrder(array $dataPayload)
+    {
+        Log::info('KiriminAja createOrder Payload:', $dataPayload);
+
+        // Kita bisa memanfaatkan private method $this->request() yang sudah Anda buat sebelumnya
+        $response = $this->request('POST', '/api/mitra/v6.1/request_pickup', $dataPayload);
+
+        if (!$response) {
+             Log::error('KiriminAja createOrder Gagal: Response kosong atau terjadi error pada koneksi.');
+             return null;
+        }
+
+        // Cek status keberhasilan dari response API (biasanya 'status' => true)
+        if (isset($response['status']) && $response['status'] == false) {
+             Log::error('KiriminAja createOrder Ditolak oleh API:', ['response' => $response]);
+             return null;
+        }
+
+        Log::info('KiriminAja createOrder Sukses:', ['response' => $response]);
+        return $response;
+    }
 }
