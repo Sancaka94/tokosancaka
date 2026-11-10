@@ -3881,245 +3881,307 @@ private function normalizeWaPhone($phone)
         return back()->with('error', 'Tidak ada data yang dipilih.');
     }
 
-    /**
-     * Terbitkan resi aktual via KiriminAja request_pickup, simpan ke Pesanan.
-     * Read-only terhadap data pelanggan; hanya mengisi kolom resi & status.
-     */
-    private function _createKiriminPickup($pesanan, $draft): ?array
-    {
+   
+/**
+ * Terbitkan resi aktual via KiriminAja request_pickup, simpan ke Pesanan.
+ * Read-only terhadap data pelanggan; hanya mengisi kolom resi & status.
+ */
+private function _createKiriminPickup($pesanan, $draft): ?array
+{
+    // Inisialisasi agar aman jika terjadi exception di tengah proses.
+    $pickupNumber = null;
+
+    try {
+        $senderDistrict = (int) ($pesanan->sender_district_id ?? 0);
+        $senderSub      = (int) ($pesanan->sender_subdistrict_id ?? 0);
+        $receiverDistrict = (int) ($pesanan->receiver_district_id ?? 0);
+        $receiverSub      = (int) ($pesanan->receiver_subdistrict_id ?? 0);
+
+        if ($senderDistrict <= 0 || $senderSub <= 0 || $receiverDistrict <= 0 || $receiverSub <= 0) {
+            Log::warning("[WEBHOOK-DOKU] Pickup dilewati: ID wilayah tidak lengkap untuk {$pesanan->nomor_invoice}");
+
+            return [
+                'status' => false,
+                'awb' => null,
+                'id' => null,
+                'pending_awb' => false,
+                'message' => 'ID wilayah tidak lengkap',
+            ];
+        }
+
+        $weight = max((int) ($draft->weight ?? $pesanan->weight ?? 1000), 1);
+        $itemValue = max((int) ($draft->item_value ?? $pesanan->item_price ?? 10000), 1000);
+
+        // Jadwal pickup pertama: 1 jam dari sekarang.
+        $timezone = config('app.timezone', 'Asia/Jakarta');
+
+        $scheduleClock = now($timezone)
+            ->addHour()
+            ->format('H:i');
+
+        if (empty($scheduleClock)) {
+            Log::warning('[WEBHOOK-DOKU] Tidak ada jadwal pickup tersedia untuk ' . $pesanan->nomor_invoice);
+
+            return [
+                'status' => false,
+                'awb' => null,
+                'id' => null,
+                'pending_awb' => false,
+                'message' => 'Jadwal pickup tidak tersedia',
+            ];
+        }
+
+        // REALTIME_PRICE_FIX: KiriminAja memvalidasi shipping_cost == harga
+        // shipping_price terakhir. Ambil ulang agar tidak ditolak.
+        $serviceCode = $this->_pickServiceCode($pesanan, $draft);
+        $courierCode = strtolower((string) ($draft->courier_code ?? $pesanan->expedition ?? ''));
+
+        $realtimeCost = null;
         try {
-            $senderDistrict = (int) ($pesanan->sender_district_id ?? 0);
-            $senderSub      = (int) ($pesanan->sender_subdistrict_id ?? 0);
-            $receiverDistrict = (int) ($pesanan->receiver_district_id ?? 0);
-            $receiverSub      = (int) ($pesanan->receiver_subdistrict_id ?? 0);
+            $pricing = (new \App\Services\KiriminAjaService())->getExpressPricing(
+                $senderDistrict,
+                $senderSub,
+                $receiverDistrict,
+                $receiverSub,
+                $weight,
+                1,
+                1,
+                1,
+                $itemValue,
+                null,
+                'regular',
+                0
+            );
 
-            if ($senderDistrict <= 0 || $senderSub <= 0 || $receiverDistrict <= 0 || $receiverSub <= 0) {
-                Log::warning("[WEBHOOK-DOKU] Pickup dilewati: ID wilayah tidak lengkap untuk {$pesanan->nomor_invoice}");
+            if (is_array($pricing) && ($pricing['status'] ?? false) === true) {
+                foreach ((array) ($pricing['results'] ?? []) as $row) {
+                    if (!is_array($row)) {
+                        continue;
+                    }
 
-                return null;
-            }
+                    $sameCourier = strtolower((string) ($row['service'] ?? '')) === $courierCode;
+                    $sameService = (string) ($row['service_type'] ?? '') === $serviceCode;
 
-            $weight = max((int) ($draft->weight ?? $pesanan->weight ?? 1000), 1);
-            $itemValue = max((int) ($draft->item_value ?? $pesanan->item_price ?? 10000), 1000);
-
-            // Jadwal pickup pertama: 1 jam dari sekarang.
-            $timezone = config('app.timezone', 'Asia/Jakarta');
-
-            $scheduleClock = now($timezone)
-                ->addHour()
-                ->format('H:i');
-
-            if (empty($scheduleClock)) {
-                Log::warning('[WEBHOOK-DOKU] Tidak ada jadwal pickup tersedia untuk ' . $pesanan->nomor_invoice);
-
-                return null;
-            }
-
-            // REALTIME_PRICE_FIX: KiriminAja memvalidasi shipping_cost == harga
-            // shipping_price terakhir. Ambil ulang agar tidak ditolak.
-            $serviceCode = $this->_pickServiceCode($pesanan, $draft);
-            $courierCode = strtolower((string) ($draft->courier_code ?? $pesanan->expedition ?? ''));
-
-            $realtimeCost = null;
-            try {
-                $pricing = (new \App\Services\KiriminAjaService())->getExpressPricing(
-                    $senderDistrict, $senderSub, $receiverDistrict, $receiverSub,
-                    $weight, 1, 1, 1, $itemValue, null, 'regular', 0
-                );
-
-                if (is_array($pricing) && ($pricing['status'] ?? false) === true) {
-                    foreach ((array) ($pricing['results'] ?? []) as $row) {
-                        if (!is_array($row)) {
-                            continue;
-                        }
-                        $sameCourier = strtolower((string) ($row['service'] ?? '')) === $courierCode;
-                        $sameService = (string) ($row['service_type'] ?? '') === $serviceCode;
-                        if ($sameCourier && $sameService) {
-                            $realtimeCost = (int) ($row['cost'] ?? 0);
-                            break;
-                        }
+                    if ($sameCourier && $sameService) {
+                        $realtimeCost = (int) ($row['cost'] ?? 0);
+                        break;
                     }
                 }
-            } catch (\Throwable $e) {
-                Log::warning('[WEBHOOK-DOKU] Gagal ambil harga real-time: ' . $e->getMessage());
+            }
+        } catch (\Throwable $e) {
+            Log::warning('[WEBHOOK-DOKU] Gagal ambil harga real-time: ' . $e->getMessage());
+        }
+
+        $storedCost = (int) ($pesanan->shipping_cost ?? $draft->shipping_cost ?? 0);
+
+        if ($realtimeCost !== null && $realtimeCost > 0) {
+            if ($storedCost > 0 && $storedCost !== $realtimeCost) {
+                Log::warning('[WEBHOOK-DOKU] Selisih ongkir ' . $pesanan->nomor_invoice
+                    . ': tersimpan=' . $storedCost . ' realtime=' . $realtimeCost
+                    . ' (pickup memakai harga real-time)');
             }
 
-            $storedCost = (int) ($pesanan->shipping_cost ?? $draft->shipping_cost ?? 0);
+            $shippingCostForPickup = $realtimeCost;
+        } else {
+            $shippingCostForPickup = $storedCost;
+        }
 
-            if ($realtimeCost !== null && $realtimeCost > 0) {
-                if ($storedCost > 0 && $storedCost !== $realtimeCost) {
-                    Log::warning('[WEBHOOK-DOKU] Selisih ongkir ' . $pesanan->nomor_invoice
-                        . ': tersimpan=' . $storedCost . ' realtime=' . $realtimeCost
-                        . ' (pickup memakai harga real-time)');
-                }
-                $shippingCostForPickup = $realtimeCost;
-            } else {
-                $shippingCostForPickup = $storedCost;
-            }
+        $payload = [
+            'address'          => $pesanan->sender_address,
+            'phone'            => $this->normalizeWaPhone((string) ($pesanan->sender_phone ?? $draft->sender_phone)),
+            'kecamatan_id'     => $senderDistrict,
+            'kelurahan_id'     => $senderSub,
+            'name'             => $pesanan->sender_name ?? $draft->sender_name,
+            'zipcode'          => $pesanan->sender_postal_code ?? '63271',
+            'platform_name'    => 'TOKOSANCAKA.COM',
+            'category'         => 'regular',
+            'schedule'         => $scheduleClock,
+            'packages'         => [[
+                // order_id wajib: KiriminAja memakainya sebagai referensi paket
+                // KiriminAja memvalidasi PREFIX order_id terhadap akun, dan maksimal 20 karakter.
+                // Format terdaftar: SCK-YYYYMMDD-XXXXXX (lihat 296 pesanan sukses).
+                'order_id'                 => substr(str_replace('SCK-BOT-', 'SCK-', (string) $pesanan->nomor_invoice), 0, 20),
+                'destination_name'         => $pesanan->receiver_name ?? $draft->receiver_name,
+                'destination_phone'        => $this->normalizeWaPhone((string) ($pesanan->receiver_phone ?? $draft->receiver_phone)),
+                'destination_address'      => $pesanan->receiver_address ?? $draft->receiver_address,
+                'destination_kecamatan_id' => $receiverDistrict,
+                'destination_kelurahan_id' => $receiverSub,
+                'destination_zipcode'      => $pesanan->receiver_postal_code ?? '60227',
+                'weight'                   => $weight,
+                'width'                    => (int) ($pesanan->width ?? 10),
+                'height'                   => (int) ($pesanan->height ?? 10),
+                'length'                   => (int) ($pesanan->length ?? 10),
+                'item_value'               => $itemValue,
+                'shipping_cost'            => (int) $shippingCostForPickup,
+                'service'                  => strtolower((string) ($draft->courier_code ?? $pesanan->expedition ?? '')),
+                // service_type harus KODE layanan (mis. 00/REG), bukan nama. Ambil dari expedition.
+                'service_type'             => $serviceCode,
+                'insurance_amount'         => 0,
+                'item_name'                => mb_substr((string) ($pesanan->item_description ?? 'Paket'), 0, 50),
+                'package_type_id'          => 1,
+                'cod'                      => 0,
+            ]],
+        ];
 
-            $payload = [
-                'address'          => $pesanan->sender_address,
-                'phone'            => $this->normalizeWaPhone((string) ($pesanan->sender_phone ?? $draft->sender_phone)),
-                'kecamatan_id'     => $senderDistrict,
-                'kelurahan_id'     => $senderSub,
-                'name'             => $pesanan->sender_name ?? $draft->sender_name,
-                'zipcode'          => $pesanan->sender_postal_code ?? '63271',
-                'platform_name'    => 'TOKOSANCAKA.COM',
-                'category'         => 'regular',
-                'schedule'         => $scheduleClock,
-                'packages'         => [[
-                    // order_id wajib: KiriminAja memakainya sebagai referensi paket
-                    // KiriminAja memvalidasi PREFIX order_id terhadap akun, dan maksimal 20 karakter.
-                    // Format terdaftar: SCK-YYYYMMDD-XXXXXX (lihat 296 pesanan sukses).
-                    'order_id'                 => substr(str_replace('SCK-BOT-', 'SCK-', (string) $pesanan->nomor_invoice), 0, 20),
-                    'destination_name'         => $pesanan->receiver_name ?? $draft->receiver_name,
-                    'destination_phone'        => $this->normalizeWaPhone((string) ($pesanan->receiver_phone ?? $draft->receiver_phone)),
-                    'destination_address'      => $pesanan->receiver_address ?? $draft->receiver_address,
-                    'destination_kecamatan_id' => $receiverDistrict,
-                    'destination_kelurahan_id' => $receiverSub,
-                    'destination_zipcode'      => $pesanan->receiver_postal_code ?? '60227',
-                    'weight'                   => $weight,
-                    'width'                    => (int) ($pesanan->width ?? 10),
-                    'height'                   => (int) ($pesanan->height ?? 10),
-                    'length'                   => (int) ($pesanan->length ?? 10),
-                    'item_value'               => $itemValue,
-                    'shipping_cost'            => (int) $shippingCostForPickup,
-                    'service'                  => strtolower((string) ($draft->courier_code ?? $pesanan->expedition ?? '')),
-                    // service_type harus KODE layanan (mis. 00/REG), bukan nama. Ambil dari expedition.
-                    'service_type'             => $serviceCode,
-                    'insurance_amount'         => 0,
-                    'item_name'                => mb_substr((string) ($pesanan->item_description ?? 'Paket'), 0, 50),
-                    'package_type_id'          => 1,
-                    'cod'                      => 0,
-                ]],
-            ];
+        $kirimin = new \App\Services\KiriminAjaService();
 
-           $kirimin = new \App\Services\KiriminAjaService();
+        // Percobaan pertama: 1 jam dari sekarang.
+        $payload['schedule'] = $scheduleClock;
 
-            // Percobaan pertama: 1 jam dari sekarang.
-            $payload['schedule'] = $scheduleClock;
+        Log::info('[WEBHOOK-DOKU] Pickup percobaan pertama:', $payload);
 
-            Log::info('[WEBHOOK-DOKU] Pickup percobaan pertama:', $payload);
+        $response = $kirimin->createExpressOrder($payload);
+
+        Log::info('[WEBHOOK-DOKU] Respons pickup pertama:', [
+            'response' => $response,
+        ]);
+
+        // Jika API secara eksplisit menjawab gagal, coba besok jam 09.00.
+        if (is_array($response) && ($response['status'] ?? false) === false) {
+
+            $payload['schedule'] = now($timezone)
+                ->addDay()
+                ->setTime(9, 0)
+                ->format('H:i');
+
+            Log::warning('[WEBHOOK-DOKU] Mencoba ulang pickup besok jam 09.00:', [
+                'invoice' => $pesanan->nomor_invoice,
+                'schedule' => $payload['schedule'],
+            ]);
 
             $response = $kirimin->createExpressOrder($payload);
 
-            Log::info('[WEBHOOK-DOKU] Respons pickup pertama:', [
+            Log::info('[WEBHOOK-DOKU] Respons pickup percobaan kedua:', [
+                'response' => $response,
+            ]);
+        }
+
+        if (!is_array($response) || ($response['status'] ?? false) !== true) {
+            Log::error('[WEBHOOK-DOKU] Pickup gagal:', [
+                'invoice' => $pesanan->nomor_invoice,
                 'response' => $response,
             ]);
 
-            // Jika API secara eksplisit menjawab gagal, coba besok jam 09.00.
-            if (is_array($response) && ($response['status'] ?? false) === false) {
+            return [
+                'status' => false,
+                'awb' => null,
+                'id' => null,
+                'pending_awb' => false,
+                'message' => 'KiriminAja gagal memproses pickup',
+            ];
+        }
 
-                $payload['schedule'] = now($timezone)
-                    ->addDay()
-                    ->setTime(9, 0)
-                    ->format('H:i');
+        // Beberapa bentuk respons: data.awb / data[0].awb / results[].awb
+        $resi = data_get($response, 'data.awb')
+            ?? data_get($response, 'data.0.awb')
+            ?? data_get($response, 'results.0.awb')
+            ?? data_get($response, 'results.0.order_id')
+            ?? data_get($response, 'awb');
 
-                Log::warning('[WEBHOOK-DOKU] Mencoba ulang pickup besok jam 09.00:', [
-                    'invoice' => $pesanan->nomor_invoice,
-                    'schedule' => $payload['schedule'],
-                ]);
+        if (empty($resi)) {
+            // Pickup sukses tetapi AWB belum terbit (normal: resi keluar
+            // setelah kurir menjemput). Simpan nomor pickup sebagai acuan.
+            $pickupNumber = data_get($response, 'pickup_number')
+                ?? data_get($response, 'details.0.pickup_number');
 
-                $response = $kirimin->createExpressOrder($payload);
-
-                Log::info('[WEBHOOK-DOKU] Respons pickup percobaan kedua:', [
-                    'response' => $response,
-                ]);
-            }
-
-            if (!is_array($response) || ($response['status'] ?? false) !== true) {
-                Log::error('[WEBHOOK-DOKU] Pickup gagal:', [
-                    'invoice' => $pesanan->nomor_invoice,
-                    'response' => $response,
-                ]);
-
-                return null;
-            }
-
-            // Beberapa bentuk respons: data.awb / data[0].awb / results[].awb
-            $resi = data_get($response, 'data.awb')
-                ?? data_get($response, 'data.0.awb')
-                ?? data_get($response, 'results.0.awb')
-                ?? data_get($response, 'results.0.order_id')
-                ?? data_get($response, 'awb');
-
-            if (empty($resi)) {
-                // Pickup sukses tetapi AWB belum terbit (normal: resi keluar
-                // setelah kurir menjemput). Simpan nomor pickup sebagai acuan.
-                $pickupNumber = data_get($response, 'pickup_number')
-                    ?? data_get($response, 'details.0.pickup_number');
-
-                if (!empty($pickupNumber)) {
-                    $pesanan->shipping_ref = (string) $pickupNumber;
-                    $pesanan->status_pesanan = 'Menunggu Pickup';
-                    if (empty($pesanan->expedition)) {
-                        $pesanan->expedition = $draft->courier_code ?? null;
-                    }
-                    $pesanan->save();
-
-                    Log::info('[WEBHOOK-DOKU] Pickup terdaftar (AWB menyusul): ' . $pickupNumber
-                        . ' untuk ' . $pesanan->nomor_invoice);
-                } else {
-                    Log::warning('[WEBHOOK-DOKU] Pickup sukses tapi resi/pickup_number kosong: ' . json_encode($response));
-                }
-
-                return null;
-            }
-
-            $resi = (string) $resi;
-
-            // AWB_GUARD_FIX: pickup_number (EPR-xxxx) bukan AWB kurir.
-            // Jangan pernah menyimpannya sebagai resi/resi_aktual.
-            $pickupRef = (string) (data_get($response, 'pickup_number') ?? '');
-            $looksLikePickup = str_starts_with(strtoupper($resi), 'EPR-')
-                || ($pickupRef !== '' && $resi === $pickupRef);
-
-            if ($looksLikePickup) {
-                if ($pickupRef !== '') {
-                    $pesanan->shipping_ref = $pickupRef;
-                }
+            if (!empty($pickupNumber)) {
+                $pesanan->shipping_ref = (string) $pickupNumber;
                 $pesanan->status_pesanan = 'Menunggu Pickup';
+
+                if (empty($pesanan->expedition)) {
+                    $pesanan->expedition = $draft->courier_code ?? null;
+                }
+
                 $pesanan->save();
 
-                Log::info('[WEBHOOK-DOKU] Pickup terdaftar, AWB menyusul: ' . ($pickupRef ?: $resi)
+                Log::info('[WEBHOOK-DOKU] Pickup terdaftar (AWB menyusul): ' . $pickupNumber
                     . ' untuk ' . $pesanan->nomor_invoice);
-
-                return null;
+            } else {
+                Log::warning('[WEBHOOK-DOKU] Pickup sukses tapi resi/pickup_number kosong: ' . json_encode($response));
             }
 
-            $pesanan->resi = $resi;
-            $pesanan->resi_aktual = $resi;
-            $pesanan->shipping_ref = data_get($response, 'data.order_id') ?? data_get($response, 'results.0.order_id') ?? $resi;
-            $pesanan->shipped_at = $pesanan->shipped_at ?? now();
-            if (empty($pesanan->expedition)) {
-                $pesanan->expedition = $draft->courier_code ?? null;
-            }
-            if (empty($pesanan->jasa_ekspedisi_aktual)) {
-                $pesanan->jasa_ekspedisi_aktual = $draft->courier_code ?? null;
-            }
-            $pesanan->save();
-
-            Log::info("[WEBHOOK-DOKU] Resi aktual terbit {$resi} untuk {$pesanan->nomor_invoice}");
-
-            return [
-                'status' => true,
-                'awb' => $resi,
-                'id' => data_get($response, 'data.id')
-                    ?? data_get($response, 'id')
-                    ?? data_get($response, 'pickup_number'),
-                'pending_awb' => false
-            ];
-        } catch (\Throwable $e) {
-            Log::error('[WEBHOOK-DOKU] Exception pickup KiriminAja: ' . $e->getMessage());
-
+            // Tetap sukses karena API sudah mengonfirmasi status true.
+            // AWB atau nomor pickup dapat menyusul.
             return [
                 'status' => true,
                 'awb' => null,
                 'id' => $pickupNumber,
-                'pending_awb' => true
+                'pending_awb' => true,
             ];
         }
+
+        $resi = (string) $resi;
+
+        // AWB_GUARD_FIX: pickup_number (EPR-xxxx) bukan AWB kurir.
+        // Jangan pernah menyimpannya sebagai resi/resi_aktual.
+        $pickupRef = (string) (data_get($response, 'pickup_number') ?? '');
+        $looksLikePickup = str_starts_with(strtoupper($resi), 'EPR-')
+            || ($pickupRef !== '' && $resi === $pickupRef);
+
+        if ($looksLikePickup) {
+            if ($pickupRef !== '') {
+                $pesanan->shipping_ref = $pickupRef;
+            }
+
+            $pesanan->status_pesanan = 'Menunggu Pickup';
+            $pesanan->save();
+
+            Log::info('[WEBHOOK-DOKU] Pickup terdaftar, AWB menyusul: ' . ($pickupRef ?: $resi)
+                . ' untuk ' . $pesanan->nomor_invoice);
+
+            return [
+                'status' => true,
+                'awb' => null,
+                'id' => $pickupRef ?: $resi,
+                'pending_awb' => true,
+            ];
+        }
+
+        $pesanan->resi = $resi;
+        $pesanan->resi_aktual = $resi;
+        $pesanan->shipping_ref = data_get($response, 'data.order_id')
+            ?? data_get($response, 'results.0.order_id')
+            ?? $resi;
+        $pesanan->shipped_at = $pesanan->shipped_at ?? now();
+
+        if (empty($pesanan->expedition)) {
+            $pesanan->expedition = $draft->courier_code ?? null;
+        }
+
+        if (empty($pesanan->jasa_ekspedisi_aktual)) {
+            $pesanan->jasa_ekspedisi_aktual = $draft->courier_code ?? null;
+        }
+
+        $pesanan->save();
+
+        Log::info("[WEBHOOK-DOKU] Resi aktual terbit {$resi} untuk {$pesanan->nomor_invoice}");
+
+        return [
+            'status' => true,
+            'awb' => $resi,
+            'id' => data_get($response, 'data.id')
+                ?? data_get($response, 'id')
+                ?? data_get($response, 'pickup_number'),
+            'pending_awb' => false,
+        ];
+
+    } catch (\Throwable $e) {
+        Log::error('[WEBHOOK-DOKU] Exception pickup KiriminAja: ' . $e->getMessage(), [
+            'invoice' => $pesanan->nomor_invoice ?? null,
+            'error_file' => $e->getFile(),
+            'error_line' => $e->getLine(),
+        ]);
+
+        return [
+            'status' => false,
+            'awb' => null,
+            'id' => null,
+            'pending_awb' => false,
+            'message' => 'Exception saat memproses pickup KiriminAja',
+        ];
     }
+}
+
 
     /**
      * Ambil KODE layanan ekspedisi (mis. 00, REG, REG23) dari pesanan/draft.
