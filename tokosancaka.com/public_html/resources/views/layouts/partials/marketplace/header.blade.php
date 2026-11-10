@@ -21,6 +21,12 @@
 
             {{-- MENU DESKTOP --}}
             <div class="hidden md:flex items-center space-x-4 flex-shrink-0">
+
+                {{-- ICON CHECKOUT DESKTOP --}}
+                <a href="{{ route('checkout.index') }}" title="Checkout" class="relative text-gray-600 hover:text-red-500 p-2">
+                    <i class="fas fa-credit-card text-2xl"></i>
+                </a>
+
                 <a href="{{ route('cart.index') }}" class="relative text-gray-600 hover:text-red-500 p-2">
                     <i class="fas fa-shopping-cart text-2xl"></i>
                     @if(session('cart') && count(session('cart')) > 0)
@@ -40,6 +46,11 @@
 
             {{-- MENU MOBILE (Diperbaiki: Tambah flex-shrink-0 agar tidak tertekan Logo) --}}
             <div class="flex items-center space-x-3 md:hidden flex-shrink-0">
+
+                {{-- ICON CHECKOUT MOBILE --}}
+                <a href="{{ route('checkout.index') }}" title="Checkout" class="relative text-gray-600 hover:text-red-500 p-1.5 flex items-center justify-center">
+                    <i class="fas fa-credit-card text-[22px]"></i>
+                </a>
 
                 {{-- ICON KERANJANG MOBILE --}}
                 <a href="{{ route('cart.index') }}" class="relative text-gray-600 hover:text-red-500 p-1.5 flex items-center justify-center">
