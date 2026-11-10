@@ -102,45 +102,46 @@ class BotOrderController extends Controller
                 $nomorInvoice = 'SCK-BOT-' . strtoupper(Str::random(13));
             } while (Pesanan::where('nomor_invoice', $nomorInvoice)->exists());
 
-            $order = Pesanan::create([
+           $order = Pesanan::create([
                 'nomor_invoice'           => $nomorInvoice,
                 'id_pengguna_pembeli'     => $customerId,
                 'customer_id'             => $customerId,
                 'status'                  => 'Menunggu Pembayaran',
                 'status_pesanan'          => 'Menunggu Pembayaran',
                 'tanggal_pesanan'         => now(),
-                'ip_address'              => $request->ip(),
-                'user_agent'              => 'Bot/Hermes Proxmox',
+                'ip_address'              => null,
+                'user_agent'              => 'Bot/WhatsApp Draft',
 
-                // Data Pengirim
-                'sender_name'             => $validated['sender_name'],
+                'sender_name'             => $draft->sender_name,
                 'sender_phone'            => $sanitizedPhone,
-                'sender_address'          => $validated['sender_address'],
+                'sender_address'          => $draft->sender_address,
                 'sender_district_id'      => $senderLocation['district_id'],
                 'sender_subdistrict_id'   => $senderLocation['subdistrict_id'],
                 'sender_postal_code'      => $senderLocation['postal_code'],
 
-                // Data Penerima
-                'receiver_name'           => $validated['receiver_name'],
-                'receiver_phone'          => $this->_sanitizePhoneNumber($validated['receiver_phone']),
-                'receiver_address'        => $validated['receiver_address'],
+                'receiver_name'           => $draft->receiver_name,
+                'receiver_phone'          => $this->_sanitizePhoneNumber((string) $draft->receiver_phone),
+                'receiver_address'        => $draft->receiver_address,
                 'receiver_district_id'    => $receiverLocation['district_id'],
                 'receiver_subdistrict_id' => $receiverLocation['subdistrict_id'],
                 'receiver_postal_code'    => $receiverLocation['postal_code'],
 
-                // Data Paket & Biaya
-                'item_description'        => $validated['item_description'],
-                'item_price'              => $itemValue,
-                'weight'                  => $validated['weight'],
-                'service_type'            => $shippingCost['service_type'],
-                'expedition'              => "regular-{$shippingCost['courier']}-{$shippingCost['service_type']}-{$shippingCost['cost']}-0-0-0",
-                'payment_method'          => strtoupper($validated['payment_method'] ?? 'TRIPAY'),
-                'shipping_cost'           => $shippingCost['cost'],
-                'price'                   => $shippingCost['cost'], // Total yang dibayar (Ongkir saja)
-                'asuransi'               => 'tidak',
-                'insurance_cost'          => 0,
+                'item_description'        => $draft->item_description,
+
+                // PERBAIKAN: Seragamkan nama field nilai barang dan pastikan courier tersimpan
+                'item_value'              => $itemValue,
+                'weight'                  => $draft->weight,
+                'courier'                 => strtolower($draft->courier_code), // <- WAJIB ADA
+                'service_type'            => $draft->courier_service,
+                'expedition'              => 'regular-' . strtolower($draft->courier_code) . '-' . $draft->courier_service . '-' . $finalCost . '-0-0-0',
+                'payment_method'          => 'DOKU',
+
+                'shipping_cost'           => $finalCost,
+                'price'                   => $totalTagihan,
+                'asuransi'                => $isAsuransi ? 'ya' : 'tidak',
+                'insurance_cost'          => $insuranceCost,
                 'cod_fee'                 => 0,
-                'item_type'               => 1 // Default Paket Umum
+                'item_type'               => 1,
             ]);
 
             // =====================================================================
