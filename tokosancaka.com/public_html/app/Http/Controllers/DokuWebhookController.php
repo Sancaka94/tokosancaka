@@ -104,18 +104,11 @@ class DokuWebhookController extends Controller
                 // Kirim notifikasi pembayaran ke Expo Mobile (Customer & Admin)
                 $this->sendExpoPaymentNotification($orderId);
 
-               // -------------------------------------------------------------
-                // A.0 DELEGASI KE BOT ORDER CONTROLLER (SCK-BOT- / SCK-CUST-)
                 // -------------------------------------------------------------
-                if (Str::startsWith($orderId, 'SCK-BOT-') || Str::startsWith($orderId, 'SCK-CUST-')) {
-                    Log::info("➡️ Order $orderId didelegasikan langsung ke BotOrderController.");
-
-                    // Buat request baru dari data webhook untuk dilempar
-                    $botRequest = new \Illuminate\Http\Request();
-                    $botRequest->replace($data);
-
-                    // Lempar ke fungsi yang sudah kita buat sebelumnya dan hentikan eksekusi di file ini
-                    return App::make(\App\Http\Controllers\Api\BotOrderController::class)->handleDokuWebhook($botRequest);
+                // A.0 NOTIFIKASI WHATSAPP UNTUK PESANAN DARI BOT WA (SCK-BOT-)
+                // -------------------------------------------------------------
+                if (Str::startsWith($orderId, 'SCK-BOT-')) {
+                    $this->_notifyWhatsAppBotOrder($orderId, $data);
                 }
 
                 // -------------------------------------------------------------
@@ -892,6 +885,243 @@ class DokuWebhookController extends Controller
     }
 
     /**
+     * Kirim notifikasi WhatsApp ke customer saat pesanan dari Bot WA (SCK-BOT-*)
+     * berhasil dibayar. Nomor tujuan diambil dari bot_order_drafts.
+     */
+    private function _notifyWhatsAppBotOrder(string $orderId, array $data): void
+    {
+        try {
+            $draft = \App\Models\BotOrderDraft::where('invoice_number', $orderId)->first();
+
+            if (!$draft) {
+                Log::warning("[WEBHOOK-DOKU] Draft WA untuk invoice $orderId tidak ditemukan — notifikasi dilewati.");
+
+                return;
+            }
+
+            $phone = $this->normalizeWaPhone((string) $draft->phone_number);
+            if ($phone === '') {
+                Log::warning("[WEBHOOK-DOKU] Nomor WA kosong untuk invoice $orderId.");
+
+                return;
+            }
+
+            $amount = (int) ($data['order']['amount'] ?? $draft->shipping_cost);
+
+            // Tandai pesanan sebagai lunas (idempoten: hanya ubah bila belum lunas).
+            $pesanan = \App\Models\Pesanan::where('nomor_invoice', $orderId)->first();
+            if ($pesanan && !in_array(strtolower((string) $pesanan->status_pesanan), ['pembayaran lunas', 'lunas', 'menunggu pickup'], true)) {
+                $pesanan->status = 'Pembayaran Lunas';
+                $pesanan->status_pesanan = 'Menunggu Pickup';
+                $pesanan->save();
+
+                Log::info("[WEBHOOK-DOKU] Pesanan $orderId ditandai lunas & menunggu pickup.");
+            }
+
+            // Terbitkan resi aktual lewat KiriminAja (sekali saja, idempoten).
+            $resiAktual = null;
+            if ($pesanan && empty($pesanan->resi_aktual)) {
+                $resiAktual = $this->_createKiriminPickup($pesanan, $draft);
+            } else {
+                $resiAktual = $pesanan->resi_aktual ?? null;
+            }
+
+            $body = "✅ *PEMBAYARAN BERHASIL*\n\n"
+                . "🧾 Invoice: *{$orderId}*\n"
+                . "💰 Total: *Rp " . number_format($amount, 0, ',', '.') . "*\n"
+                . "🚚 Kurir: {$draft->courier_code} - {$draft->courier_service}\n"
+                . "📥 Penerima: {$draft->receiver_name} ({$draft->receiver_phone})\n";
+
+            if (!empty($resiAktual)) {
+                $body .= "📦 No. Resi: *{$resiAktual}*\n\n"
+                    . "Paket Anda sudah kami teruskan ke kurir. Simpan nomor resi ini untuk melacak pengiriman.\n\n";
+            } else {
+                $body .= "\nPesanan Anda sedang disiapkan untuk penjemputan oleh kurir. "
+                    . "Nomor resi akan dikirim ke chat ini setelah paket dijemput.\n\n";
+            }
+
+            $body .= "Terima kasih telah berbelanja di Sancaka Express 🙏";
+
+            $result = app(\App\Http\Controllers\Api\BotOrderController::class)
+                ->sendWhatsAppTextPublic($phone, $body);
+
+            if (!$result) {
+                Log::error("[WEBHOOK-DOKU] Gagal kirim notifikasi WA untuk $orderId ke $phone.");
+            }
+
+            // Notifikasi ke ADMIN: ada pesanan masuk untuk diproses.
+            $this->_notifyAdminNewOrder($orderId, $amount, $draft, $resiAktual);
+
+            // Bersihkan draft setelah tuntas agar tidak dipakai ulang.
+            $draft->step = 'COMPLETED';
+            $draft->save();
+        } catch (\Throwable $e) {
+            Log::error("[WEBHOOK-DOKU] Exception notifikasi WA BotOrder: " . $e->getMessage());
+        }
+    }
+
+    /**
+     * Terbitkan resi aktual via KiriminAja request_pickup, simpan ke Pesanan.
+     * Read-only terhadap data pelanggan; hanya mengisi kolom resi & status.
+     */
+    private function _createKiriminPickup($pesanan, $draft): ?string
+    {
+        try {
+            $senderDistrict = (int) ($pesanan->sender_district_id ?? 0);
+            $senderSub      = (int) ($pesanan->sender_subdistrict_id ?? 0);
+            $receiverDistrict = (int) ($pesanan->receiver_district_id ?? 0);
+            $receiverSub      = (int) ($pesanan->receiver_subdistrict_id ?? 0);
+
+            if ($senderDistrict <= 0 || $senderSub <= 0 || $receiverDistrict <= 0 || $receiverSub <= 0) {
+                Log::warning("[WEBHOOK-DOKU] Pickup dilewati: ID wilayah tidak lengkap untuk {$pesanan->nomor_invoice}");
+
+                return null;
+            }
+
+            $weight = max((int) ($draft->weight ?? $pesanan->weight ?? 1000), 1);
+            $itemValue = max((int) ($draft->item_value ?? $pesanan->item_price ?? 10000), 1000);
+
+            // KiriminAja mewajibkan jadwal pickup (schedule).
+            $kiriminSchedule = null;
+            try {
+                $kiriminSchedule = (new \App\Services\KiriminAjaService())->getSchedules();
+            } catch (\Throwable $e) {
+                Log::warning('[WEBHOOK-DOKU] Gagal ambil jadwal pickup: ' . $e->getMessage());
+            }
+
+            $scheduleClock = data_get($kiriminSchedule, 'clock')
+                ?? data_get($kiriminSchedule, 'schedule')
+                ?? null;
+
+            if (empty($scheduleClock)) {
+                Log::warning('[WEBHOOK-DOKU] Tidak ada jadwal pickup tersedia untuk ' . $pesanan->nomor_invoice);
+
+                return null;
+            }
+
+            $payload = [
+                'address'          => $pesanan->sender_address,
+                'phone'            => $this->normalizeWaPhone((string) ($pesanan->sender_phone ?? $draft->sender_phone)),
+                'kecamatan_id'     => $senderDistrict,
+                'kelurahan_id'     => $senderSub,
+                'name'             => $pesanan->sender_name ?? $draft->sender_name,
+                'zipcode'          => $pesanan->sender_postal_code ?? '63271',
+                'platform_name'    => 'TOKOSANCAKA.COM',
+                'category'         => 'regular',
+                'schedule'         => $scheduleClock,
+                'packages'         => [[
+                    // order_id wajib: KiriminAja memakainya sebagai referensi paket
+                    // KiriminAja memvalidasi PREFIX order_id terhadap akun, dan maksimal 20 karakter.
+                    // Format terdaftar: SCK-YYYYMMDD-XXXXXX (lihat 296 pesanan sukses).
+                    'order_id'                 => substr(str_replace('SCK-BOT-', 'SCK-', (string) $pesanan->nomor_invoice), 0, 20),
+                    'destination_name'         => $pesanan->receiver_name ?? $draft->receiver_name,
+                    'destination_phone'        => $this->normalizeWaPhone((string) ($pesanan->receiver_phone ?? $draft->receiver_phone)),
+                    'destination_address'      => $pesanan->receiver_address ?? $draft->receiver_address,
+                    'destination_kecamatan_id' => $receiverDistrict,
+                    'destination_kelurahan_id' => $receiverSub,
+                    'destination_zipcode'      => $pesanan->receiver_postal_code ?? '60227',
+                    'weight'                   => $weight,
+                    'width'                    => (int) ($pesanan->width ?? 10),
+                    'height'                   => (int) ($pesanan->height ?? 10),
+                    'length'                   => (int) ($pesanan->length ?? 10),
+                    'item_value'               => $itemValue,
+                    'shipping_cost'            => (int) ($pesanan->shipping_cost ?? $draft->shipping_cost ?? 0),
+                    'service'                  => strtolower((string) ($draft->courier_code ?? $pesanan->expedition ?? '')),
+                    // service_type harus KODE layanan (mis. 00/REG), bukan nama. Ambil dari expedition.
+                    'service_type'             => $this->_pickServiceCode($pesanan, $draft),
+                    'insurance_amount'         => 0,
+                    'item_name'                => mb_substr((string) ($pesanan->item_description ?? 'Paket'), 0, 50),
+                    'package_type_id'          => 1,
+                    'cod'                      => 0,
+                ]],
+            ];
+
+            Log::info('[WEBHOOK-DOKU] Payload pickup KiriminAja:', $payload);
+
+            $kirimin = new \App\Services\KiriminAjaService();
+            $response = $kirimin->createExpressOrder($payload);
+
+            Log::info('[WEBHOOK-DOKU] Respon pickup KiriminAja:', (array) $response);
+
+            if (!is_array($response) || ($response['status'] ?? false) !== true) {
+                Log::error('[WEBHOOK-DOKU] Pickup gagal untuk ' . $pesanan->nomor_invoice . ': ' . json_encode($response));
+
+                return null;
+            }
+
+            // Beberapa bentuk respons: data.awb / data[0].awb / results[].awb
+            $resi = data_get($response, 'data.awb')
+                ?? data_get($response, 'data.0.awb')
+                ?? data_get($response, 'results.0.awb')
+                ?? data_get($response, 'results.0.order_id')
+                ?? data_get($response, 'awb');
+
+            if (empty($resi)) {
+                Log::warning('[WEBHOOK-DOKU] Pickup sukses tapi resi tidak ditemukan: ' . json_encode($response));
+
+                return null;
+            }
+
+            $resi = (string) $resi;
+
+            $pesanan->resi = $resi;
+            $pesanan->resi_aktual = $resi;
+            $pesanan->shipping_ref = data_get($response, 'data.order_id') ?? data_get($response, 'results.0.order_id') ?? $resi;
+            $pesanan->shipped_at = $pesanan->shipped_at ?? now();
+            if (empty($pesanan->expedition)) {
+                $pesanan->expedition = $draft->courier_code ?? null;
+            }
+            if (empty($pesanan->jasa_ekspedisi_aktual)) {
+                $pesanan->jasa_ekspedisi_aktual = $draft->courier_code ?? null;
+            }
+            $pesanan->save();
+
+            Log::info("[WEBHOOK-DOKU] Resi aktual terbit {$resi} untuk {$pesanan->nomor_invoice}");
+
+            return $resi;
+        } catch (\Throwable $e) {
+            Log::error('[WEBHOOK-DOKU] Exception pickup KiriminAja: ' . $e->getMessage());
+
+            return null;
+        }
+    }
+
+    /**
+     * Ambil KODE layanan ekspedisi (mis. 00, REG, REG23) dari pesanan/draft.
+     * Kolom service_type kadang berisi nama layanan, expedition berformat
+     * 'regular-<kurir>-<nama>-<harga>-...'.
+     */
+    private function _pickServiceCode($pesanan, $draft): string
+    {
+        $candidates = [
+            $pesanan->service_type ?? null,
+            $pesanan->jasa_ekspedisi_aktual ?? null,
+        ];
+
+        // expedition: regular-idx-ID Express Standard-11500-0-0-0
+        $expedition = (string) ($pesanan->expedition ?? '');
+        if ($expedition !== '') {
+            $parts = explode('-', $expedition);
+            foreach ($parts as $part) {
+                $part = trim($part);
+                if (preg_match('/^[A-Z0-9]{1,12}$/', $part) && !is_numeric($part)) {
+                    $candidates[] = $part;
+                }
+            }
+        }
+
+        foreach ($candidates as $candidate) {
+            $candidate = trim((string) $candidate);
+            // kode valid: pendek, tanpa spasi
+            if ($candidate !== '' && strlen($candidate) <= 12 && !str_contains($candidate, ' ')) {
+                return $candidate;
+            }
+        }
+
+        return '';
+    }
+
+    /**
      * Kabari admin bahwa ada pesanan ekspedisi masuk untuk diproses.
      * Nomor admin dari ADMIN_WA_NUMBERS (koma) atau APICOID_DEFAULT_PHONE.
      */
@@ -966,86 +1196,4 @@ class DokuWebhookController extends Controller
 
         return $digits;
     }
-
-    /**
-     * Notifikasi WhatsApp untuk pesanan dari Bot WA (SCK-BOT- / SCK-CUST-)
-     */
-    /* private function _notifyWhatsAppBotOrder(string $orderId, array $data)
-    {
-        try {
-            $pesanan = \App\Models\Pesanan::where('nomor_invoice', $orderId)->first();
-
-            if ($pesanan && $pesanan->sender_phone) {
-                // 1. Reset step draft ke PAID agar sesi selesai
-                \App\Models\BotOrderDraft::where('invoice_number', $orderId)
-                    ->update(['step' => 'PAID']);
-
-                // =========================================================
-                // 2. HIT API KIRIMINAJA OTOMATIS
-                // =========================================================
-                $kiriminAjaResi = null;
-                try {
-                    $apiKey = 'ff78e56f84a91283cb2d46098f43677fc77a6470d13b510c502e1e2e4e927fd6'; // API Key Prod Sancaka
-
-                    // Sesuaikan payload ini dengan struktur request API KiriminAja Anda
-                    $payloadKiriminAja = [
-                        'order_id'       => $pesanan->nomor_invoice,
-                        'name'           => $pesanan->receiver_name ?? 'Penerima Sancaka Express',
-                        'phone'          => $pesanan->receiver_phone ?? '08123456789',
-                        'address'        => $pesanan->receiver_address ?? 'Ngawi',
-                        'kecamatan'      => $pesanan->receiver_kecamatan ?? '',
-                        'city'           => $pesanan->receiver_city ?? 'Ngawi',
-                        'zip_code'       => $pesanan->receiver_zip ?? '63211',
-                        'weight'         => $pesanan->weight ?? 1000,
-                        'item_name'      => $pesanan->item_name ?? 'Paket Sancaka Express',
-                        'item_value'     => $pesanan->price ?? 0,
-                        'service'        => $pesanan->shipping_service ?? 'reg', // e.g. regular, JNE, JNT, etc
-                        'payment_type'   => 'non_cod', // Karena sudah dibayar lunas via DOKU
-                    ];
-
-                    $response = \Illuminate\Support\Facades\Http::withHeaders([
-                        'Authorization' => 'Bearer ' . $apiKey,
-                        'Accept'        => 'application/json',
-                    ])->post('https://api.kiriminaja.com/v1/v2/order', $payloadKiriminAja);
-
-                    if ($response->successful()) {
-                        $resBody = $response->json();
-                        // Ambil resi dari response KiriminAja (sesuaikan key JSON-nya, misal 'waybill' atau 'receipt')
-                        $kiriminAjaResi = $resBody['data']['waybill'] ?? $resBody['data']['order_id'] ?? 'OTOMATIS-TERDAFTAR';
-
-                        // Simpan resi ke tabel pesanan
-                        $pesanan->update(['resi' => $kiriminAjaResi, 'status' => 'Diproses Kurir']);
-                        \Illuminate\Support\Facades\Log::info("📦 Berhasil create order KiriminAja untuk {$orderId}, Resi: {$kiriminAjaResi}");
-                    } else {
-                        \Illuminate\Support\Facades\Log::error("❌ Gagal hit API KiriminAja untuk {$orderId}: " . $response->body());
-                    }
-                } catch (\Exception $eKA) {
-                    \Illuminate\Support\Facades\Log::error("❌ Exception KiriminAja API: " . $eKA->getMessage());
-                }
-
-                // 3. Format pesan WA untuk Pelanggan (Sertakan Resi jika ada)
-                $amount = $data['order']['amount'] ?? $data['transaction']['amount'] ?? $pesanan->price;
-                $msg = "🎉 *Pembayaran Berhasil Diterima!*\n\n"
-                     . "🧾 Invoice: *{$orderId}*\n"
-                     . "💰 Nominal: *Rp " . number_format((int)$amount, 0, ',', '.') . "*\n"
-                     . "✅ Status: *LUNAS & Diproses*\n";
-
-                if ($kiriminAjaResi) {
-                    $msg .= "🏷️ No. Resi KiriminAja: *{$kiriminAjaResi}*\n";
-                }
-
-                $msg .= "\nKurir akan segera menjemput paket Anda. Terima kasih telah menggunakan Sancaka Express! 🚚📦";
-
-                // 4. Kirim WA ke pemesan
-                $botController = app(\App\Http\Controllers\Api\BotOrderController::class);
-                $botController->sendWhatsAppTextPublic($pesanan->sender_phone, $msg);
-
-                Log::info("✅ Notifikasi WA Lunas & Info Resi berhasil dikirim untuk $orderId");
-            }
-        } catch (\Exception $e) {
-            Log::error("❌ Gagal proses webhook lunas untuk Bot Order {$orderId}: " . $e->getMessage());
-        }
-    } */
-
-
 }
