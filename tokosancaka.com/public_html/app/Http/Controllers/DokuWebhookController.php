@@ -533,10 +533,15 @@ class DokuWebhookController extends Controller
                         Log::error("❌ Gagal membuat lisensi untuk order $orderId: " . $e->getMessage());
                     }
 
-                        if ($tenantSec && !empty($tenantSec->whatsapp)) {
+                    // Kirim kode lisensi melalui WhatsApp setelah proses pembuatan lisensi.
+                    try {
+                        if (isset($tenantSec) && $tenantSec && !empty($tenantSec->whatsapp) && isset($licenseCode)) {
                             $phone = preg_replace('/[^0-9]/', '', $tenantSec->whatsapp);
-                            if (str_starts_with($phone, '62')) $phone = '0' . substr($phone, 2);
-                            elseif (str_starts_with($phone, '8')) $phone = '0' . $phone;
+                            if (str_starts_with($phone, '62')) {
+                                $phone = '0' . substr($phone, 2);
+                            } elseif (str_starts_with($phone, '8')) {
+                                $phone = '0' . $phone;
+                            }
 
                             $msg = "🎉 *PEMBAYARAN BERHASIL*\n\n" .
                                    "Terima kasih telah membeli lisensi SancakaPOS!\n" .
@@ -549,16 +554,15 @@ class DokuWebhookController extends Controller
                             $this->_sendFonnteMessage($phone, $msg);
                             Log::info("✅ Kode Lisensi $licenseCode berhasil dikirim ke WA $phone");
                         } else {
-                            Log::error("⚠️ Gagal kirim WA: Nomor WA tidak ditemukan untuk subdomain $subdomain.");
+                            Log::error("⚠️ Gagal kirim WA: Nomor WA tidak ditemukan untuk subdomain $subdomain atau kode lisensi belum dibuat.");
                         }
-
                     } catch (\Exception $e) {
                         Log::error("❌ CRITICAL ERROR LISC-: " . $e->getMessage());
                     }
                 }
 
                 // =============================================================
-                // A.5 TIKET PESAWAT (FLT-) --> TAMBAHKAN BLOK INI DI SINI
+                // A.5 TIKET PESAWAT (FLT-)
                 // =============================================================
                 else if (Str::startsWith($orderId, 'FLT-')) {
                     Log::info("✈️ LOG FLIGHT: Webhook DOKU Masuk untuk Tiket Pesawat: $orderId");
