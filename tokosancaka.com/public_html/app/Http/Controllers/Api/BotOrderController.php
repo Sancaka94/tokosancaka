@@ -3488,7 +3488,7 @@ class BotOrderController extends Controller
     public function handleDokuWebhook(Request $request)
     {
         $data = $request->all();
-        
+
         // 1. Log payload masuk (Berguna untuk melihat format data asli dari DOKU)
         Log::info('[WEBHOOK-DOKU] Incoming payload', ['data' => $data]);
 
@@ -3502,7 +3502,7 @@ class BotOrderController extends Controller
                 'invoice' => $merchantRef,
                 'status'  => $status
             ]);
-            
+
             return response()->json(['message' => 'Ignored or Failed'], 200);
         }
 
@@ -3885,7 +3885,7 @@ private function normalizeWaPhone($phone)
         return back()->with('error', 'Tidak ada data yang dipilih.');
     }
 
- 
+
 /**
  * Ambil KODE layanan ekspedisi KiriminAja.
  *
@@ -3893,11 +3893,18 @@ private function normalizeWaPhone($phone)
  * - KODE layanan, misalnya REG atau 00.
  * - NAMA layanan, misalnya ID Express Standard.
  */
+
 private function _pickServiceCode($pesanan, $draft): string
 {
+    // Ambil service_type dari pesanan.
     $stored = trim((string) ($pesanan->service_type ?? ''));
 
-    // 1. Jika sudah berupa kode layanan, langsung gunakan.
+    // PENTING: String kosong juga harus fallback ke draft.
+    if ($stored === '') {
+        $stored = trim((string) ($draft->courier_service ?? ''));
+    }
+
+    // Jika sudah berupa kode layanan, gunakan langsung.
     if (
         $stored !== '' &&
         strlen($stored) <= 12 &&
@@ -3906,17 +3913,22 @@ private function _pickServiceCode($pesanan, $draft): string
         return $stored;
     }
 
-    // 2. Jika berupa nama layanan, cari kode dari KiriminAja.
+    // Jika berupa nama layanan, resolve ke kode KiriminAja.
     if ($stored !== '') {
-        $resolved = $this->_resolveServiceCodeFromKirimin($pesanan, $draft);
+        $resolved = $this->_resolveServiceCodeFromKirimin(
+            $pesanan,
+            $draft
+        );
 
         if ($resolved !== '') {
             return $resolved;
         }
     }
 
-    // 3. Coba kode layanan aktual jika tersedia.
-    $aktual = trim((string) ($pesanan->jasa_ekspedisi_aktual ?? ''));
+    // Fallback kode aktual.
+    $aktual = trim(
+        (string) ($pesanan->jasa_ekspedisi_aktual ?? '')
+    );
 
     if (
         $aktual !== '' &&
@@ -3926,9 +3938,9 @@ private function _pickServiceCode($pesanan, $draft): string
         return $aktual;
     }
 
-    // 4. Jangan menebak kode layanan jika tidak ditemukan.
     return '';
 }
+
 
 
 /**
@@ -4009,6 +4021,12 @@ private function _resolveServiceCodeFromKirimin($pesanan, $draft): string
         $wantedName = strtolower(trim(
             (string) ($pesanan->service_type ?? '')
         ));
+
+        if ($wantedName === '') {
+            $wantedName = strtolower(trim(
+                (string) ($draft->courier_service ?? '')
+            ));
+        }
 
         if ($wantedCourier === '' || $wantedName === '') {
             Log::warning('[WEBHOOK-DOKU] Nama layanan atau kurir kosong', [
@@ -4446,6 +4464,22 @@ private function _createKiriminPickup($pesanan, $draft): ?array
                 'id' => null,
                 'pending_awb' => false,
                 'message' => 'Data pengirim atau penerima tidak lengkap',
+            ];
+        }
+
+        if ($courierCode === '' || $serviceCode === '') {
+            Log::error('[WEBHOOK-DOKU] Pickup dibatalkan: kode layanan kosong', [
+                'invoice' => $pesanan->nomor_invoice,
+                'pesanan_service_type' => $pesanan->service_type,
+                'draft_courier_service' => $draft->courier_service ?? null,
+                'courier' => $courierCode,
+                'service_code' => $serviceCode,
+            ]);
+
+            return [
+                'status' => false,
+                'message' => 'Kode kurir atau service_type tidak ditemukan',
+                'awb' => null,
             ];
         }
 
