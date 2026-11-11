@@ -472,43 +472,18 @@ class DokuWebhookController extends Controller
                                 } else {
                                     Log::info("⚠️ Order $orderId sudah berstatus paid sebelumnya.");
                                 }
-                            } else {
+                           } else {
                                 Log::error("❌ WEBHOOK GAGAL: Order $orderId tidak ditemukan di mysql maupun mysql_second!");
                             }
-                        } catch (\InvalidArgumentException $e) {
-                            Log::warning("⚠️ WEBHOOK GAGAL: Database mysql_second belum terkonfigurasi, order $orderId juga tidak ada di DB Utama.");
                         } catch (\Exception $e) {
                             Log::error("❌ CRITICAL ERROR WEBHOOK MARKETPLACE:", ['msg' => $e->getMessage()]);
                         }
                     }
-                }
-                    // 2. JIKA TIDAK ADA DI MARKETPLACE, BARU CARI DI MAIN DB (TOKO UTAMA / EKSPEDISI)
-                    else {
-                        // UNTUK MYSQL UTAMA, KITA TETAP PERTAHANKAN PENCARIAN PARENT_INVOICE!
-                        $pesananTokoUtama = \App\Models\Order::where('parent_invoice', $orderId)
-                                                            ->orWhere('invoice_number', $orderId)
-                                                            ->first();
+                } // <--- INI PENUTUP BLOK SCK-
 
-                        $pesananEkspedisi = \App\Models\Pesanan::where('nomor_invoice', $orderId)->first();
-
-                        if ($pesananTokoUtama) {
-                            Log::info("➡️ Order $orderId terdeteksi di Toko Utama (mysql). Lempar ke CheckoutController.");
-                            return App::make(\App\Http\Controllers\CheckoutController::class)->handleDokuCallback($data);
-                        }
-                        else if ($pesananEkspedisi) {
-                            Log::info("➡️ Order $orderId terdeteksi di Ekspedisi/Mobile (mysql). Lempar ke PesananController.");
-                            return App::make(\App\Http\Controllers\Admin\PesananController::class)->handleDokuCallback($data);
-                        }
-                        else {
-                            Log::error("❌ WEBHOOK GAGAL: Order $orderId tidak ditemukan di mysql_second maupun mysql!");
-                        }
-                    }
-                }
-
-
-                // -------------------------------------------------------------
+                // =================================================================
                 // A.4 ORDER LISENSI (LISC)
-                // -------------------------------------------------------------
+                // =================================================================
                 else if (Str::startsWith($orderId, 'LISC-')) {
                     Log::info("🚀 LOG LISENSI: Webhook Masuk untuk Pembelian Lisensi: $orderId");
 
@@ -553,6 +528,9 @@ class DokuWebhookController extends Controller
                         ]);
 
                         Log::info("✅ KODE LISENSI DIBUAT: $licenseCode untuk paket $newPackage ($durationDays hari) terikat pada Tenant ID: $tenantId, User ID: $userId");
+                    } catch (\Exception $e) {
+                        Log::error("❌ Gagal membuat lisensi untuk order $orderId: " . $e->getMessage());
+                    }
 
                         if ($tenantSec && !empty($tenantSec->whatsapp)) {
                             $phone = preg_replace('/[^0-9]/', '', $tenantSec->whatsapp);
