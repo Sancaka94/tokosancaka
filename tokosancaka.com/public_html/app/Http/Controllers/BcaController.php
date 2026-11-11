@@ -27,8 +27,8 @@ class BcaController extends Controller
 
         // 2. Tentukan Base URL
         $this->baseUrl = ($this->mode === 'production')
-            ? 'https://api.bca.co.id'
-            : 'https://sandbox.bca.co.id';
+            ? 'https://api.klikbca.com'
+            : 'https://simulator.api.bca.co.id';
 
         // 3. Ambil kredensial sesuai mode aktif secara dinamis dari DB
         $this->clientId     = Api::getValue('BCA_CLIENT_ID', $this->mode);
@@ -365,7 +365,7 @@ class BcaController extends Controller
     {
         try {
             $type = $request->input('type');
-            
+
             if ($type === 'token') {
                 Cache::forget('bca_snap_token_v3_' . $this->mode); // Paksa hapus cache lama
                 $token = $this->getSnapToken(); // Fungsi Anda akan memicu LOG LOG
@@ -378,7 +378,7 @@ class BcaController extends Controller
                 $url = $request->input('url');
                 $rawBody = $request->input('bodyData');
                 $body = !empty($rawBody) ? json_decode($rawBody, true) : [];
-                
+
                 if (json_last_error() !== JSON_ERROR_NONE && !empty($rawBody)) {
                     return response()->json(['success' => false, 'message' => 'Format Payload JSON tidak valid!']);
                 }
@@ -393,7 +393,7 @@ class BcaController extends Controller
                 $timestamp = $request->input('timestamp');
                 $signature = $request->input('signature');
                 $url = $request->input('url');
-                
+
                 $rawBody = $request->input('bodyData');
                 $bodyArray = !empty($rawBody) ? json_decode($rawBody, true) : [];
 
