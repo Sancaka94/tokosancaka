@@ -27,8 +27,8 @@ class BcaController extends Controller
 
         // 2. Tentukan Base URL
         $this->baseUrl = ($this->mode === 'production')
-            ? 'https://api.klikbca.com'
-            : 'https://simulator.api.bca.co.id';
+            ? 'https://api.bca.co.id'
+            : 'https://sandbox.bca.co.id';
 
         // 3. Ambil kredensial sesuai mode aktif secara dinamis dari DB
         $this->clientId     = Api::getValue('BCA_CLIENT_ID', $this->mode);
