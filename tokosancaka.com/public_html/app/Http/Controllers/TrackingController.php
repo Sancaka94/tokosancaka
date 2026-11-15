@@ -867,36 +867,59 @@ class TrackingController extends Controller
         }
 
         $statusTerkini = (string) ($result['status'] ?? 'Dalam Proses');
-        $resiTampil = (string) ($result['resi_aktual'] ?? $result['resi'] ?? $resi);
-        $ekspedisi = trim((string) ($result['ekspedisi'] ?? $result['jasa_ekspedisi_aktual'] ?? ''));
-        $penerima = (string) ($result['penerima'] ?? '-');
+$resiTampil = (string) ($result['resi_aktual'] ?? $result['resi'] ?? $resi);
+$ekspedisi = trim((string) ($result['ekspedisi'] ?? $result['jasa_ekspedisi_aktual'] ?? ''));
+$penerima = (string) ($result['penerima'] ?? '-');
 
-        // Teks siap kirim ke WhatsApp (dipakai bot agar tidak menyusun sendiri).
-        $lines = [
-            '*STATUS PAKET*',
-            '',
-            'No. Resi: *' . $resiTampil . '*',
-        ];
-        if ($ekspedisi !== '') {
-            $lines[] = 'Ekspedisi: ' . $ekspedisi;
-        }
-        $lines[] = 'Status: *' . $statusTerkini . '*';
-        $lines[] = 'Penerima: ' . $penerima;
+$bulan = [1=>'Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
+$fmtWaktu = function ($w) use ($bulan) {
+    if (!$w) {
+        return '';
+    }
+    $c = \Carbon\Carbon::parse($w);
 
-        if (!empty($histories)) {
-            $lines[] = '';
-            $lines[] = '*Riwayat terakhir:*';
-            foreach (array_slice($histories, 0, 5) as $h) {
-                $waktu = $h['waktu'] ? \Carbon\Carbon::parse($h['waktu'])->format('d/m H:i') : '';
-                $lokasi = $h['lokasi'] && $h['lokasi'] !== '-' ? ' — ' . $h['lokasi'] : '';
-                $lines[] = '• ' . trim(($h['status'] ?? 'Update') . $lokasi) . ($waktu ? ' (' . $waktu . ')' : '');
-            }
-        } else {
-            $lines[] = '';
-            $lines[] = 'Belum ada riwayat perjalanan. Paket sedang disiapkan/dijemput kurir.';
-        }
+    return $c->format('d') . ' ' . $bulan[(int) $c->format('n')] . ' ' . $c->format('H:i');
+};
 
-        $whatsappText = implode("\n", $lines);
+[$lbl, $det] = $this->_botSplitStatus($statusTerkini);
+[$icon, $lblId] = $this->_botStatusIcon($lbl);
+
+$lines = [
+    '📦 *STATUS PAKET*',
+    '━━━━━━━━━━━━━━',
+    '🔖 Resi: *' . $resiTampil . '*',
+];
+if ($ekspedisi !== '') {
+    $lines[] = '🚚 Kurir: ' . $ekspedisi;
+}
+$lines[] = '👤 Penerima: ' . $this->_botMaskName($penerima);
+$lines[] = '';
+$lines[] = $icon . ' *' . $lblId . '*';
+if ($det !== '') {
+    $lines[] = $det;
+}
+if (!empty($histories[0]['waktu'])) {
+    $lines[] = '🕐 ' . $fmtWaktu($histories[0]['waktu']);
+}
+
+$sebelumnya = array_slice($histories, 1, 5);
+if (!empty($sebelumnya)) {
+    $lines[] = '';
+    $lines[] = '🗂 *Riwayat Sebelumnya*';
+    foreach ($sebelumnya as $h) {
+        [$l2, $d2] = $this->_botSplitStatus((string) ($h['status'] ?? ''));
+        $teks = $d2 !== '' ? $d2 : $l2;
+        $lines[] = '▫️ ' . $fmtWaktu($h['waktu'] ?? null) . ' — ' . $teks;
+    }
+} elseif (empty($histories)) {
+    $lines[] = '';
+    $lines[] = 'Belum ada riwayat perjalanan. Paket sedang disiapkan/dijemput kurir.';
+}
+
+$lines[] = '';
+$lines[] = '_Ketik *Menu* untuk layanan lain_';
+
+$whatsappText = implode("\n", $lines);
 
         $response = [
             'status'          => 'success',
@@ -929,6 +952,39 @@ class TrackingController extends Controller
 
         return response()->json($response, 200);
     }
+
+    private function _botSplitStatus(string $raw): array
+{
+    $parts = explode('|', $raw, 2);
+
+    return [trim($parts[0]), trim($parts[1] ?? '')];
+}
+
+private function _botStatusIcon(string $label): array
+{
+    $map = [
+        'on delivery' => ['🛵', 'Sedang Diantar'],
+        'on shipping' => ['🚚', 'Dalam Perjalanan'],
+        'delivered'   => ['✅', 'Paket Diterima'],
+        'picked up'   => ['📥', 'Sudah Dijemput Kurir'],
+        'pickup'      => ['📥', 'Sudah Dijemput Kurir'],
+        'new order'   => ['🕒', 'Menunggu Pickup'],
+        'returned'    => ['↩️', 'Dikembalikan (Retur)'],
+        'cancel'      => ['❌', 'Dibatalkan'],
+    ];
+
+    return $map[strtolower($label)] ?? ['📦', $label !== '' ? $label : 'Dalam Proses'];
+}
+
+private function _botMaskName(string $name): string
+{
+    $words = preg_split('/\s+/', trim($name)) ?: [];
+
+    return implode(' ', array_map(
+        fn ($w) => mb_strlen($w) <= 2 ? $w : mb_substr($w, 0, 2) . '***',
+        $words
+    ));
+}
 
     public function refreshTimeline()
     {
