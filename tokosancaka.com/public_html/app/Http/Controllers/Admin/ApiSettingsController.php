@@ -15,6 +15,27 @@ class ApiSettingsController extends Controller
 {
     public const OWNER_PHONE = '6285745808809';
 
+    public const OWNER_PHONES = [
+        '6285745808809',
+        '6285166383694', // +62 851-6638-3694
+    ];
+
+    /**
+     * Cek apakah nomor adalah owner. Menerima format 08..., 628..., +62..., atau xxx@s.whatsapp.net.
+     */
+    public static function isOwner(string $phone): bool
+    {
+        $digits = preg_replace('/\D/', '', explode('@', $phone)[0]);
+
+        if (str_starts_with($digits, '0')) {
+            $digits = '62' . substr($digits, 1);
+        } elseif (str_starts_with($digits, '8')) {
+            $digits = '62' . $digits;
+        }
+
+        return in_array($digits, self::OWNER_PHONES, true);
+    }
+
     /**
      * Kirim tombol interaktif saklar ON/OFF ke WhatsApp Owner
      */
@@ -25,7 +46,7 @@ class ApiSettingsController extends Controller
             $normalizedPhone = '62' . substr($normalizedPhone, 1);
         }
 
-        if ($normalizedPhone !== self::OWNER_PHONE) {
+        if (!self::isOwner($normalizedPhone)) {
             Log::warning("[SAKLAR-WA] Akses ditolak: bukan nomor owner ({$normalizedPhone})");
             return false;
         }
@@ -63,7 +84,7 @@ class ApiSettingsController extends Controller
             $normalizedPhone = '62' . substr($normalizedPhone, 1);
         }
 
-        if ($normalizedPhone !== self::OWNER_PHONE) {
+        if (!self::isOwner($normalizedPhone)) {
             Log::warning("[SAKLAR-WA] Eksekusi ditolak: bukan nomor owner ({$normalizedPhone})");
             return false;
         }

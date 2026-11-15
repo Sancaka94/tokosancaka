@@ -1452,11 +1452,13 @@ class BotOrderController extends Controller
         }
 
         if (trim(strtolower($text)) === '/saklar') {
-            $isOwner = ($phone === \App\Http\Controllers\Admin\ApiSettingsController::OWNER_PHONE);
-            if ($isOwner) {
-                $sent = \App\Http\Controllers\Admin\ApiSettingsController::sendSaklarWhatsAppPrompt($phone);
+            if (\App\Http\Controllers\Admin\ApiSettingsController::isOwner($phone)) {
+                \App\Http\Controllers\Admin\ApiSettingsController::sendSaklarWhatsAppPrompt($phone);
                 return response()->json(['status' => 'success', 'handled' => 'saklar_prompt']);
             }
+
+            $this->_sendWhatsAppText($phone, $this->_menuText());
+            return response()->json(['status' => 'success', 'handled' => 'menu']);
         }
 
         $crossKey = 'wa_seen_body:' . md5($phone . '|' . mb_strtolower($text));
@@ -1531,11 +1533,11 @@ class BotOrderController extends Controller
 
             $hermesEndpoint = config('services.hermes.endpoint');
             if (empty($hermesEndpoint)) {
-                $this->_sendWhatsAppText($phone, $this->_menuText());
-                return response()->json(['status' => 'success', 'handled' => 'menu_no_hermes']);
+                $this->_sendWhatsAppText($phone, $this->_friendlyReply($text) . "\n\nKetik *Menu* untuk daftar layanan.");
+                return response()->json(['status' => 'success', 'handled' => 'fallback_no_hermes']);
             }
 
-            $response = Http::timeout(15)->post($hermesEndpoint, [
+            $response = Http::timeout(5)->post($hermesEndpoint, [
                 'session_id' => $phone,
                 'message'    => $text,
                 'context'    => 'Customer Sancaka Express bertanya di luar konteks order/ongkir.'
@@ -1804,19 +1806,21 @@ class BotOrderController extends Controller
 
     /**
      * Deteksi sapaan / pilihan menu / permintaan layanan, lalu kirim menu.
-     * Return true bila sudah ditangani (jangan lanjut ke state machine).
+     * Return string bila sudah ditangani (jangan lanjut ke state machine).
      */
     private function _handleMenuIntent(string $phone, string $text): string
     {
+        // Buang nomor menu di depan: "1 ngawi ke solo" -> "ngawi ke solo"
+        $text = preg_replace('/^\s*[1-4][\s.)\-:]+(?=\S)/', '', $text) ?? $text;
         $body = strtolower(trim($text));
         if ($body === '') {
-            return false;
+            return '';
         }
 
         // Bila ada draft aktif, state machine yang berhak menangani.
         $draft = BotOrderDraft::where('phone_number', $phone)->first();
         if ($draft && !in_array(strtoupper((string) $draft->step), ['COMPLETED', 'CANCELLED'], true)) {
-            return false;
+            return '';
         }
 
         // Bersihkan penomoran & tanda baca di depan.
@@ -1862,8 +1866,7 @@ class BotOrderController extends Controller
         // ROUTE_INTENT_V1: "dari ngawi ke surabaya 1kg" tanpa kata "ongkir"
         // tetap jelas maksudnya permintaan tarif.
         if (!$isService) {
-            $hasRoute = (bool) preg_match('/\b(dari|ke)\b/', $body)
-                && (bool) preg_match('/\d+\s*(kg|kilogram|gram|gr)\b/', $body);
+            $hasRoute = (bool) preg_match('/\b(dari|ke)\b/', $body);
 
             if ($hasRoute && $this->_handleOngkirText($phone, $text)) {
                 return 'ongkir';
