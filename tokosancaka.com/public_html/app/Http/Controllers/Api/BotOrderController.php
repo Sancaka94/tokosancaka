@@ -1527,7 +1527,13 @@ class BotOrderController extends Controller
 
         try {
             // Arahkan ke endpoint Hermes lokal di Proxmox (via IP LAN atau Tailscale)
-            $hermesEndpoint = config('services.hermes.endpoint', 'http://192.168.100.50:5000/api/chat');
+            // $hermesEndpoint = config('services.hermes.endpoint', 'http://192.168.100.50:5000/api/chat');
+
+            $hermesEndpoint = config('services.hermes.endpoint');
+            if (empty($hermesEndpoint)) {
+                $this->_sendWhatsAppText($phone, $this->_menuText());
+                return response()->json(['status' => 'success', 'handled' => 'menu_no_hermes']);
+            }
 
             $response = Http::timeout(15)->post($hermesEndpoint, [
                 'session_id' => $phone,
@@ -1552,13 +1558,16 @@ class BotOrderController extends Controller
         }
 
         // Fallback jika container AI mati atau node Proxmox timeout
-        $fallbackMessage = "Maaf kak, asisten BotSancaka sedang sibuk 🤖\n\nUntuk sementara ketik *Menu* untuk layanan utama pengiriman, atau sampaikan kendalanya agar dibantu manual oleh Mas Amal Ibnu Muharram nanti.";
-        $this->_sendWhatsAppText($phone, $fallbackMessage);
+        //$fallbackMessage = "Maaf kak, asisten BotSancaka sedang sibuk 🤖\n\nUntuk sementara ketik *Menu* untuk layanan utama pengiriman, atau sampaikan kendalanya agar dibantu manual oleh Mas Amal Ibnu Muharram nanti.";
+        //$this->_sendWhatsAppText($phone, $fallbackMessage);
 
-        return response()->json([
-            'status' => 'success',
-            'handled' => 'fallback_smalltalk'
-        ]);
+        $this->_sendWhatsAppText($phone, $this->_friendlyReply($text) . "\n\nKetik *Menu* untuk daftar layanan.");
+        return response()->json(['status' => 'success', 'handled' => 'fallback_smalltalk']);
+
+        // return response()->json([
+        //     'status' => 'success',
+        //     'handled' => 'fallback_smalltalk'
+        // ]);
     }
 
     /**
@@ -1819,6 +1828,17 @@ class BotOrderController extends Controller
                       'permisi', 'tes', 'test', 'p', 'menu', 'bantuan', 'mulai'];
 
         $isNumber = (bool) preg_match('/^(no\.?\s*)?0?[1-9]\)?[.:]?$/', $body);
+
+        if (preg_match('/^[1-4]$/', $body)) {
+            $map = [
+                '1' => 'ongkir',
+                '2' => 'resi',
+                '3' => 'kirim paket',
+                '4' => 'bayar tagihan',
+            ];
+            $this->_sendWhatsAppText($phone, $this->_menuServiceHint($map[$body]));
+            return $map[$body] === 'resi' ? 'tracking' : 'menu';
+        }
 
         $isGreeting = $clean === ''
             || (bool) preg_match('/^[0-9]+$/', $body)
