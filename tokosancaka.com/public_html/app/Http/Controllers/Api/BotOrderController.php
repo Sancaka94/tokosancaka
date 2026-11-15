@@ -1844,6 +1844,16 @@ class BotOrderController extends Controller
             return $map[$body] === 'resi' ? 'tracking' : 'menu';
         }
 
+        // Lacak resi: ada kata kunci, atau pesan berupa nomor resi saja (huruf+angka)
+        $hasTrackWord = str_contains($body, 'resi') || str_contains($body, 'lacak') || str_contains($body, 'tracking');
+        $looksLikeResi = (bool) preg_match('/^[a-z0-9\-._]{8,}$/', $body)
+            && (bool) preg_match('/[a-z]/', $body)
+            && (bool) preg_match('/\d/', $body);
+
+        if (($hasTrackWord || $looksLikeResi) && $this->_handleTrackingText($phone, $text)) {
+            return 'tracking';
+        }
+
         $isGreeting = $clean === ''
             || (bool) preg_match('/^[0-9]+$/', $body)
             || collect(explode(' ', $clean))->every(fn ($w) => in_array($w, $greetings, true));
@@ -1990,6 +2000,59 @@ class BotOrderController extends Controller
             . "• *Bayar tagihan* — _bayar tagihan listrik_\n\n"
             . "Ketik salah satu contoh di atas ya kak.";
     }
+
+    /**
+ * Ambil nomor resi/invoice dari teks pelanggan.
+ */
+private function _extractResi(string $text): ?string
+{
+    $t = preg_replace('/\b(lacak|cek|tracking|track|resi|paket|status|nomor|no|invoice|order)\b/i', ' ', $text) ?? $text;
+
+    foreach (preg_split('/\s+/', trim($t)) ?: [] as $tok) {
+        $tok = preg_replace('/[^A-Za-z0-9\-._]/', '', $tok) ?? '';
+        if (strlen($tok) >= 8 && preg_match('/\d/', $tok)) {
+            return $tok;
+        }
+    }
+
+    return null;
+}
+
+/**
+ * Lacak resi langsung di dalam alur WhatsApp (tanpa Hermes).
+ * Return true bila sudah membalas pelanggan.
+ */
+private function _handleTrackingText(string $phone, string $text): bool
+{
+    $resi = $this->_extractResi($text);
+    if ($resi === null) {
+        return false;
+    }
+
+    try {
+        $req = Request::create('/internal/bot-cek-resi', 'POST', ['resi' => $resi]);
+        $req->headers->set('X-Bot-Secret', (string) config('services.bot_order.secret'));
+
+        $res  = app(\App\Http\Controllers\TrackingController::class)->botCekResi($req);
+        $data = $res->getData(true);
+    } catch (\Throwable $e) {
+        Log::error('[WA-TRACK] Gagal melacak resi: ' . $e->getMessage(), ['resi' => $resi]);
+        $this->_sendWhatsAppText($phone, "⚠️ Layanan pelacakan sedang bermasalah. Coba lagi sebentar ya kak 🙏");
+
+        return true;
+    }
+
+    if (($data['status'] ?? '') === 'success' && !empty($data['whatsapp_text'])) {
+        $this->_sendWhatsAppText($phone, $data['whatsapp_text']);
+    } else {
+        $this->_sendWhatsAppText(
+            $phone,
+            "Resi *{$resi}* belum ditemukan 🙏\n\nPeriksa penulisannya, lalu kirim lagi. Contoh:\n_lacak resi IDE7002847325168_"
+        );
+    }
+
+    return true;
+}
 
     /**
      * Teks menu layanan utama.
