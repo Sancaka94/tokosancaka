@@ -892,7 +892,16 @@ $lines = [
 if ($ekspedisi !== '') {
     $lines[] = '🚚 Kurir: ' . $ekspedisi;
 }
-$lines[] = '👤 Penerima: ' . $this->_botMaskName($penerima);
+$lines[] = '';
+$lines[] = '📤 *PENGIRIM*';
+$lines[] = (string) ($result['pengirim'] ?? '-');
+$lines[] = '📞 ' . (string) ($result['no_pengirim'] ?? '-');
+$lines[] = '📍 ' . (string) ($result['alamat_pengirim'] ?? '-');
+$lines[] = '';
+$lines[] = '📥 *PENERIMA*';
+$lines[] = $penerima;
+$lines[] = '📞 ' . (string) ($result['no_penerima'] ?? '-');
+$lines[] = '📍 ' . (string) ($result['alamat_penerima'] ?? '-');
 $lines[] = '';
 $lines[] = $icon . ' *' . $lblId . '*';
 if ($det !== '') {
