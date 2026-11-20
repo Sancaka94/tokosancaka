@@ -1,0 +1,15 @@
+🔥 Fitur Baru & Perubahan Besar
+Sistem Auth Terintegrasi: Login tidak lagi hardcoded. Sekarang terhubung langsung ke API Laravel apps.tokosancaka.com menggunakan Email dan Password dari database pusat.
+
+Fitur "Remember Me": Aplikasi mampu menyimpan email terakhir di penyimpanan lokal (Harddisk) agar kasir tidak perlu mengetik ulang saat membuka aplikasi.
+
+Multi-Variant Produk: Menambahkan dukungan penuh untuk produk yang memiliki varian (contoh: Cuci Sprei Kecil/Besar). Modal pilihan varian akan muncul otomatis jika produk terdeteksi memiliki varian di database.
+
+Sinkronisasi SQLite v4: Struktur database lokal diperbarui untuk mendukung kolom has_variant, memastikan data offline tetap sinkron dengan fitur terbaru di server.
+
+🛠 Perbaikan (Bug Fixes)
+Printing Struk: Memperbaiki error “Printer settings invalid” pada printer desktop (Epson L3250) dengan menyesuaikan pengaturan margin dan ukuran kertas standar.
+
+Auto-Print Logic: Menghilangkan kemunculan jendela struk yang menumpuk. Sekarang jendela struk berjalan di background, mencetak, lalu menutup otomatis.
+
+Security Guard: Menambahkan proteksi halaman kasir. User yang belum login atau sesinya habis akan otomatis ditendang kembali ke halaman Login.

@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+    <!-- Halaman Beranda -->
+    <url>
+        <loc>https://tokosancaka.com/</loc>
+        <lastmod>2026-08-30</lastmod>
+        <changefreq>daily</changefreq>
+        <priority>1.0</priority>
+    </url>
+    <!-- Halaman Layanan & Order -->
+    <url>
+        <loc>https://tokosancaka.com/buat-pesanan</loc>
+        <lastmod>2026-08-30</lastmod>
+        <changefreq>weekly</changefreq>
+        <priority>0.9</priority>
+    </url>
+    <url>
+        <loc>https://tokosancaka.com/etalase</loc>
+        <lastmod>2026-08-30</lastmod>
+        <changefreq>weekly</changefreq>
+        <priority>0.8</priority>
+    </url>
+    <!-- Halaman Blog & Info -->
+    <url>
+        <loc>https://tokosancaka.com/blog</loc>
+        <lastmod>2026-08-30</lastmod>
+        <changefreq>daily</changefreq>
+        <priority>0.8</priority>
+    </url>
+    <url>
+        <loc>https://tokosancaka.com/about</loc>
+        <lastmod>2026-08-30</lastmod>
+        <changefreq>monthly</changefreq>
+        <priority>0.7</priority>
+    </url>
+    <!-- Halaman Legal -->
+    <url>
+        <loc>https://tokosancaka.com/privacy-policy</loc>
+        <lastmod>2026-08-30</lastmod>
+        <changefreq>yearly</changefreq>
+        <priority>0.5</priority>
+    </url>
+    <url>
+        <loc>https://tokosancaka.com/terms-and-conditions</loc>
+        <lastmod>2026-08-30</lastmod>
+        <changefreq>yearly</changefreq>
+        <priority>0.5</priority>
+    </url>
+    <!-- Halaman Auth -->
+    <url>
+        <loc>https://tokosancaka.com/login</loc>
+        <lastmod>2026-08-30</lastmod>
+        <changefreq>monthly</changefreq>
+        <priority>0.6</priority>
+    </url>
+    <url>
+        <loc>https://tokosancaka.com/register</loc>
+        <lastmod>2026-08-30</lastmod>
+        <changefreq>monthly</changefreq>
+        <priority>0.6</priority>
+    </url>
+</urlset>

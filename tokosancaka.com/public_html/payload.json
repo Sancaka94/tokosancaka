@@ -1,0 +1,52 @@
+{
+  "service": {
+    "id": "VIRTUAL_ACCOUNT"
+  },
+  "acquirer": {
+    "id": "BCA"
+  },
+  "channel": {
+    "id": "VIRTUAL_ACCOUNT_BCA"
+  },
+  "order": {
+    "invoice_number": "SCK-20261111-5IMQ8F",
+    "amount": 45000
+  },
+  "virtual_account_info": {
+    "virtual_account_number": "1900800000377207"
+  },
+  "virtual_account_payment": {
+    "date": "20261111202057",
+    "systrace_number": "234559",
+    "reference_number": "71738",
+    "channel_code": "",
+    "request_id": "797257",
+    "identifier": [
+      {
+        "name": "REQUEST_ID",
+        "value": "797257"
+      },
+      {
+        "name": "REFERENCE",
+        "value": "71738"
+      },
+      {
+        "name": "CHANNEL_TYPE",
+        "value": "6014"
+      }
+    ]
+  },
+  "transaction": {
+    "status": "SUCCESS",
+    "date": "2026-11-11T13:20:57Z",
+    "original_request_id": "4779b9ff-01be-4d4e-83d5-3f8da0f9422b"
+  },
+  "additional_info": {
+    "origin": {
+      "source": "direct",
+      "system": "mid-jokul-checkout-system",
+      "product": "CHECKOUT",
+      "apiFormat": "JOKUL"
+    }
+  }
+}
