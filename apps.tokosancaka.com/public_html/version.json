@@ -1,126 +1,126 @@
 {
-    "version": "1.0.0.6138",
-    "last_update": "06 Nov 2026 22:53",
+    "version": "1.0.0.6233",
+    "last_update": "20 Nov 2026 20:32",
     "commits": [
         {
-            "hash": "12f1cdbc",
-            "date": "2026-11-06 19:59:52 +0700",
-            "author": "Server Bot",
-            "message": "Auto Bump Version"
-        },
-        {
-            "hash": "5296fa88",
-            "date": "2026-11-06 19:51:45 +0700",
-            "author": "Server Bot",
-            "message": "Auto Bump Version"
-        },
-        {
-            "hash": "977b69cf",
-            "date": "2026-11-06 19:51:45 +0700",
+            "hash": "5cab2609",
+            "date": "2026-11-20 20:32:07 +0700",
             "author": "Server Bot",
             "message": "Update System"
         },
         {
-            "hash": "ebfa9710",
-            "date": "2026-11-06 09:56:17 +0700",
+            "hash": "fa88e198",
+            "date": "2026-11-15 15:30:55 +0700",
             "author": "Sancaka94",
             "message": "Auto commit"
         },
         {
-            "hash": "4cf85dcc",
-            "date": "2026-11-06 09:50:59 +0700",
+            "hash": "c451fa50",
+            "date": "2026-11-15 15:25:09 +0700",
             "author": "Sancaka94",
             "message": "Auto commit"
         },
         {
-            "hash": "2d9a02ce",
-            "date": "2026-11-06 09:45:23 +0700",
-            "author": "Server Bot",
-            "message": "Hapus nama file invalid untuk Windows"
+            "hash": "1985ab11",
+            "date": "2026-11-15 15:17:31 +0700",
+            "author": "Sancaka94",
+            "message": "Auto commit"
         },
         {
-            "hash": "ea5f6e3c",
-            "date": "2026-11-06 09:42:44 +0700",
-            "author": "Server Bot",
-            "message": "Auto Bump Version"
+            "hash": "44cbeec2",
+            "date": "2026-11-15 15:06:07 +0700",
+            "author": "Sancaka94",
+            "message": "Auto commit"
         },
         {
-            "hash": "ee3c3143",
-            "date": "2026-11-06 09:42:44 +0700",
-            "author": "Server Bot",
-            "message": "Update System"
+            "hash": "08588903",
+            "date": "2026-11-15 14:49:24 +0700",
+            "author": "Sancaka94",
+            "message": "Auto commit"
         },
         {
-            "hash": "457e3207",
-            "date": "2026-11-05 15:15:29 +0700",
-            "author": "Amal Ibnu Muharram",
-            "message": "Refactor: 2-model routing (deepseek-coder + guoxuter intent analysis)"
+            "hash": "802b1d1a",
+            "date": "2026-11-11 22:13:25 +0700",
+            "author": "Sancaka94",
+            "message": "Auto commit"
         },
         {
-            "hash": "1c618f43",
-            "date": "2026-11-04 18:09:29 +0700",
-            "author": "Amal Ibnu Muharram",
-            "message": "fix(wa): proses event interaktif sebelum deduplikasi teks agar tombol navigasi tidak terblokir"
+            "hash": "1783f93d",
+            "date": "2026-11-11 21:41:41 +0700",
+            "author": "Sancaka94",
+            "message": "Auto commit"
         },
         {
-            "hash": "899cfe42",
-            "date": "2026-11-04 18:04:57 +0700",
-            "author": "Amal Ibnu Muharram",
-            "message": "ci: add concurrency group deploy-production with cancel-in-progress"
+            "hash": "6eab190d",
+            "date": "2026-11-11 21:29:54 +0700",
+            "author": "Sancaka94",
+            "message": "Auto commit"
         },
         {
-            "hash": "a280c99a",
-            "date": "2026-11-04 17:59:44 +0700",
-            "author": "Amal Ibnu Muharram",
-            "message": "fix(bot): limit section title <=24 chars pada interactive list WA agar tidak 400 validasi"
+            "hash": "d29fa3c2",
+            "date": "2026-11-11 21:26:25 +0700",
+            "author": "Sancaka94",
+            "message": "Auto commit"
         },
         {
-            "hash": "6ce99380",
-            "date": "2026-11-04 17:40:46 +0700",
-            "author": "Amal Ibnu Muharram",
-            "message": "Fix WhatsApp shipping single handler and pagination"
+            "hash": "b8ea8f50",
+            "date": "2026-11-11 20:14:15 +0700",
+            "author": "Sancaka94",
+            "message": "Auto commit"
         },
         {
-            "hash": "60b59d71",
-            "date": "2026-11-04 13:26:31 +0700",
-            "author": "Amal Ibnu Muharram",
-            "message": "fix(wa): tolak kata sampah sebagai wilayah, deteksi batal, rute tanpa kata ongkir"
+            "hash": "18fab703",
+            "date": "2026-11-11 20:06:58 +0700",
+            "author": "Sancaka94",
+            "message": "Auto commit"
         },
         {
-            "hash": "81d739b9",
-            "date": "2026-11-04 04:32:28 +0700",
-            "author": "Amal Ibnu Muharram",
-            "message": "fix(wa): dedupe lintas-jalur + parser ongkir parsial + lanjut konteks percakapan"
+            "hash": "66cc0eea",
+            "date": "2026-11-11 10:38:12 +0700",
+            "author": "Sancaka94",
+            "message": "Auto commit"
         },
         {
-            "hash": "8bf020fb",
-            "date": "2026-11-04 03:43:18 +0700",
-            "author": "Amal Ibnu Muharram",
-            "message": "fix(wa): filter event masuk, dedupe, resolver alamat berskor, balasan luwes, gate keamanan"
+            "hash": "b25b031d",
+            "date": "2026-11-11 10:12:12 +0700",
+            "author": "Sancaka94",
+            "message": "Auto commit"
         },
         {
-            "hash": "2e6cc36f",
-            "date": "2026-11-04 02:57:25 +0700",
-            "author": "Amal Ibnu Muharram",
-            "message": "feat(bot): PRICE_GUARD - validasi harga quote vs real-time sebelum order"
+            "hash": "88af9ea2",
+            "date": "2026-11-10 19:48:56 +0700",
+            "author": "Sancaka94",
+            "message": "Auto commit"
         },
         {
-            "hash": "a643771c",
-            "date": "2026-11-04 02:54:14 +0700",
-            "author": "Amal Ibnu Muharram",
-            "message": "feat(awb): cron followup AWB + endpoint pending\/simpan\/kirim + pakai harga real-time pickup"
+            "hash": "07b0a95f",
+            "date": "2026-11-10 19:22:04 +0700",
+            "author": "Sancaka94",
+            "message": "Auto commit"
         },
         {
-            "hash": "b1106005",
-            "date": "2026-11-04 02:41:10 +0700",
-            "author": "Amal Ibnu Muharram",
-            "message": "feat(bot): parser ongkir teks bebas + menu intent (fix customer mentok di instruksi)"
+            "hash": "9319efb0",
+            "date": "2026-11-10 19:17:29 +0700",
+            "author": "Sancaka94",
+            "message": "Auto commit"
         },
         {
-            "hash": "3bdc3962",
-            "date": "2026-11-04 02:23:31 +0700",
-            "author": "Amal Ibnu Muharram",
-            "message": "feat(bot): endpoint draft-status untuk guard WhatsApp (loloskan customer mid-checkout)"
+            "hash": "fe46d691",
+            "date": "2026-11-10 19:15:00 +0700",
+            "author": "Sancaka94",
+            "message": "Auto commit"
+        },
+        {
+            "hash": "f21c1d13",
+            "date": "2026-11-10 19:02:00 +0700",
+            "author": "Sancaka94",
+            "message": "Auto commit"
+        },
+        {
+            "hash": "7ae7cfdd",
+            "date": "2026-11-10 18:48:48 +0700",
+            "author": "Sancaka94",
+            "message": "Auto commit"
         }
     ]
 }
