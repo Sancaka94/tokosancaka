@@ -109,7 +109,7 @@
                     class="w-7 h-7 sm:w-8 sm:h-8 rounded-lg object-contain shrink-0"
                 >
                 <span class="hidden sm:inline text-[18px] lg:text-[20px] font-semibold text-slate-800 tracking-tight">
-                    Mail
+                    SancakaMail
                 </span>
             </a>
         </div>
