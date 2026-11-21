@@ -3,18 +3,78 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\Email;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
-use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Webklex\IMAP\Facades\Client; // Facade Webklex IMAP
-use App\Models\Email;
-use Illuminate\Support\Facades\DB;
 
 class EmailController extends Controller
 {
+    /**
+     * Helper: Membuat koneksi IMAP dinamis sesuai akun webmail user yang sedang login
+     */
+    private function getUserImapClient()
+    {
+        $user = Auth::user();
+
+        if (!$user || !$user->hasWebmail()) {
+            throw new \Exception('Akun Anda belum terhubung dengan alamat email @tokosancaka.com.');
+        }
+
+        $mailPassword = $user->getDecryptedWebmailPassword();
+        if (empty($mailPassword)) {
+            throw new \Exception('Kredensial password email tidak valid atau gagal didekripsi.');
+        }
+
+        $client = Client::make([
+            'host'          => config('imap.accounts.default.host', 'server4.hostdata.id'),
+            'port'          => (int) config('imap.accounts.default.port', 993),
+            'encryption'    => config('imap.accounts.default.encryption', 'ssl'),
+            'validate_cert' => config('imap.accounts.default.validate_cert', true),
+            'username'      => $user->webmail_email,
+            'password'      => $mailPassword,
+            'protocol'      => 'imap',
+        ]);
+
+        $client->connect();
+
+        return $client;
+    }
+
+    /**
+     * Helper: Membuat mailer SMTP dinamis sesuai akun webmail user yang sedang login
+     */
+    private function getUserMailer()
+    {
+        $user = Auth::user();
+
+        if (!$user || !$user->hasWebmail()) {
+            throw new \Exception('Akun Anda belum memiliki konfigurasi email pengirim (@tokosancaka.com).');
+        }
+
+        $mailPassword = $user->getDecryptedWebmailPassword();
+        if (empty($mailPassword)) {
+            throw new \Exception('Kredensial SMTP email tidak valid.');
+        }
+
+        return Mail::build([
+            'transport'  => 'smtp',
+            'host'       => config('mail.mailers.smtp.host', 'server4.hostdata.id'),
+            'port'       => (int) config('mail.mailers.smtp.port', 465),
+            'encryption' => config('mail.mailers.smtp.scheme', 'ssl'),
+            'username'   => $user->webmail_email,
+            'password'   => $mailPassword,
+        ]);
+    }
+
     /**
      * Menampilkan halaman Blade Kotak Masuk
      */
@@ -36,13 +96,12 @@ class EmailController extends Controller
         Log::info('Memuat daftar email.', ['user_id' => Auth::id(), 'folder' => $folder, 'page' => $page]);
 
         // =========================================================
-        // SKENARIO 1: KOTAK MASUK (MURNI DARI IMAP SERVER)
+        // SKENARIO 1: KOTAK MASUK (MURNI DARI IMAP SERVER PER USER)
         // =========================================================
         if ($folder === 'inbox') {
             ini_set('memory_limit', '512M');
             try {
-                $client = Client::account('default');
-                $client->connect();
+                $client = $this->getUserImapClient();
                 $inboxFolder = $client->getFolder('INBOX');
 
                 $query = $inboxFolder->query()->setFetchBody(false);
@@ -56,35 +115,35 @@ class EmailController extends Controller
                 $paginator = $query->setFetchOrder('desc')->paginate(15, $page, 'page');
 
                 $emails = [];
-                foreach($paginator as $message){
+                foreach ($paginator as $message) {
                     $emails[] = [
-                        'id' => $message->getUid(),
-                        'from_name' => $message->getFrom()[0]->personal ?? $message->getFrom()[0]->mail ?? 'Unknown',
+                        'id'           => $message->getUid(),
+                        'from_name'    => $message->getFrom()[0]->personal ?? $message->getFrom()[0]->mail ?? 'Unknown',
                         'from_address' => $message->getFrom()[0]->mail ?? 'Unknown',
-                        'subject' => mb_decode_mimeheader($message->getSubject()[0] ?? '(Tanpa Subjek)'),
-                        'body' => 'Klik untuk memuat isi pesan...',
-                        'created_at' => !empty($message->getDate()) ? $message->getDate()[0]->format('Y-m-d H:i:s') : now()->format('Y-m-d H:i:s'),
-                        'read_at' => $message->hasFlag('SEEN') ? now() : null,
-                        'is_starred' => $message->hasFlag('FLAGGED'),
+                        'subject'      => mb_decode_mimeheader($message->getSubject()[0] ?? '(Tanpa Subjek)'),
+                        'body'         => 'Klik untuk memuat isi pesan...',
+                        'created_at'   => !empty($message->getDate()) ? $message->getDate()[0]->format('Y-m-d H:i:s') : now()->format('Y-m-d H:i:s'),
+                        'read_at'      => $message->hasFlag('SEEN') ? now() : null,
+                        'is_starred'   => $message->hasFlag('FLAGGED'),
                     ];
                 }
 
-                usort($emails, function($a, $b) {
+                usort($emails, function ($a, $b) {
                     return strtotime($b['created_at']) - strtotime($a['created_at']);
                 });
 
                 return response()->json([
-                    'emails' => $emails,
+                    'emails'       => $emails,
                     'unread_count' => $inboxFolder->query()->unseen()->count(),
-                    'pagination' => [
+                    'pagination'   => [
                         'current_page' => $paginator->currentPage(),
-                        'last_page' => $paginator->lastPage(),
-                        'has_more' => $paginator->hasMorePages()
+                        'last_page'    => $paginator->lastPage(),
+                        'has_more'     => $paginator->hasMorePages()
                     ]
                 ]);
 
             } catch (\Throwable $e) {
-                Log::error('IMAP Fetch Error', ['error' => $e->getMessage()]);
+                Log::error('IMAP Fetch Error', ['user_id' => Auth::id(), 'error' => $e->getMessage()]);
                 return response()->json(['error' => 'Gagal terhubung ke IMAP: ' . $e->getMessage()], 500);
             }
         }
@@ -99,31 +158,31 @@ class EmailController extends Controller
                 // A. Ambil dari DB Lokal (Pesan Terkirim yang dibintangi)
                 $localQuery = Email::where('user_id', Auth::id())->where('is_starred', true);
                 if (!empty($search)) {
-                    $localQuery->where(function($q) use ($search) {
+                    $localQuery->where(function ($q) use ($search) {
                         $q->where('subject', 'like', "%{$search}%")
-                          ->orWhere('from_name', 'like', "%{$search}%");
+                          ->orWhere('from_name', 'like', "%{$search}%")
+                          ->orWhere('to_address', 'like', "%{$search}%");
                     });
                 }
                 $localData = $localQuery->orderBy('created_at', 'desc')->get();
 
-                foreach($localData as $dbEmail) {
+                foreach ($localData as $dbEmail) {
                     $emails[] = [
-                        'id' => $dbEmail->id,
-                        'from_name' => $dbEmail->from_name,
+                        'id'           => $dbEmail->id,
+                        'from_name'    => $dbEmail->from_name,
                         'from_address' => $dbEmail->from_address,
-                        'to_address' => $dbEmail->to_address,
-                        'subject' => $dbEmail->subject,
-                        'body' => $dbEmail->body,
-                        'created_at' => \Carbon\Carbon::parse($dbEmail->created_at)->format('Y-m-d H:i:s'),
-                        'read_at' => $dbEmail->read_at,
-                        'is_starred' => true,
+                        'to_address'   => $dbEmail->to_address,
+                        'subject'      => $dbEmail->subject,
+                        'body'         => $dbEmail->body,
+                        'created_at'   => \Carbon\Carbon::parse($dbEmail->created_at)->format('Y-m-d H:i:s'),
+                        'read_at'      => $dbEmail->read_at,
+                        'is_starred'   => true,
                     ];
                 }
 
                 // B. Ambil dari IMAP Server (Pesan Inbox yang dibintangi)
                 try {
-                    $client = Client::account('default');
-                    $client->connect();
+                    $client = $this->getUserImapClient();
                     $inboxFolder = $client->getFolder('INBOX');
 
                     $imapQuery = $inboxFolder->query()->where('FLAGGED');
@@ -134,24 +193,24 @@ class EmailController extends Controller
 
                     $imapData = $imapQuery->setFetchOrder('desc')->limit(50)->get();
 
-                    foreach($imapData as $message){
+                    foreach ($imapData as $message) {
                         $emails[] = [
-                            'id' => $message->getUid(),
-                            'from_name' => $message->getFrom()[0]->personal ?? $message->getFrom()[0]->mail ?? 'Unknown',
+                            'id'           => $message->getUid(),
+                            'from_name'    => $message->getFrom()[0]->personal ?? $message->getFrom()[0]->mail ?? 'Unknown',
                             'from_address' => $message->getFrom()[0]->mail ?? 'Unknown',
-                            'subject' => mb_decode_mimeheader($message->getSubject()[0] ?? '(Tanpa Subjek)'),
-                            'body' => 'Klik untuk memuat isi pesan...',
-                            'created_at' => !empty($message->getDate()) ? $message->getDate()[0]->format('Y-m-d H:i:s') : now()->format('Y-m-d H:i:s'),
-                            'read_at' => $message->hasFlag('SEEN') ? now() : null,
-                            'is_starred' => true,
+                            'subject'      => mb_decode_mimeheader($message->getSubject()[0] ?? '(Tanpa Subjek)'),
+                            'body'         => 'Klik untuk memuat isi pesan...',
+                            'created_at'   => !empty($message->getDate()) ? $message->getDate()[0]->format('Y-m-d H:i:s') : now()->format('Y-m-d H:i:s'),
+                            'read_at'      => $message->hasFlag('SEEN') ? now() : null,
+                            'is_starred'   => true,
                         ];
                     }
                 } catch (\Throwable $e) {
-                    Log::error('IMAP Starred Fetch Error', ['error' => $e->getMessage()]);
+                    Log::error('IMAP Starred Fetch Error', ['user_id' => Auth::id(), 'error' => $e->getMessage()]);
                 }
 
                 // C. Urutkan gabungan berdasarkan waktu terbaru
-                usort($emails, function($a, $b) {
+                usort($emails, function ($a, $b) {
                     return strtotime($b['created_at']) - strtotime($a['created_at']);
                 });
 
@@ -163,13 +222,13 @@ class EmailController extends Controller
                 $pagedEmails = array_slice($emails, $offset, $perPage);
 
                 return response()->json([
-                    'emails' => array_values($pagedEmails),
-                    'unread_count' => 0,
+                    'emails'        => array_values($pagedEmails),
+                    'unread_count'  => 0,
                     'starred_count' => $total,
-                    'pagination' => [
+                    'pagination'    => [
                         'current_page' => $page,
-                        'last_page' => $lastPage > 0 ? $lastPage : 1,
-                        'has_more' => $page < $lastPage
+                        'last_page'    => $lastPage > 0 ? $lastPage : 1,
+                        'has_more'     => $page < $lastPage
                     ]
                 ]);
             } catch (\Throwable $e) {
@@ -184,7 +243,7 @@ class EmailController extends Controller
         $query = Email::where('user_id', Auth::id())->where('folder', $folder);
 
         if (!empty($search)) {
-            $query->where(function($q) use ($search) {
+            $query->where(function ($q) use ($search) {
                 $q->where('subject', 'like', "%{$search}%")
                   ->orWhere('from_name', 'like', "%{$search}%")
                   ->orWhere('to_address', 'like', "%{$search}%");
@@ -194,12 +253,12 @@ class EmailController extends Controller
         $paginator = $query->orderBy('created_at', 'desc')->paginate(15, ['*'], 'page', $page);
 
         return response()->json([
-            'emails' => $paginator->items(),
+            'emails'       => $paginator->items(),
             'unread_count' => 0,
-            'pagination' => [
+            'pagination'   => [
                 'current_page' => $paginator->currentPage(),
-                'last_page' => $paginator->lastPage(),
-                'has_more' => $paginator->hasMorePages()
+                'last_page'    => $paginator->lastPage(),
+                'has_more'     => $paginator->hasMorePages()
             ]
         ]);
     }
@@ -209,7 +268,7 @@ class EmailController extends Controller
      */
     public function show($id)
     {
-        Log::info('Melihat detail email.', ['email_id' => $id]);
+        Log::info('Melihat detail email.', ['user_id' => Auth::id(), 'email_id' => $id]);
 
         // Cek DB Lokal Dulu
         $localEmail = Email::where('user_id', Auth::id())->find($id);
@@ -221,133 +280,137 @@ class EmailController extends Controller
             return response()->json($localEmail);
         }
 
-       // Cek Server IMAP
-       try {
-           ini_set('memory_limit', '512M');
-           $client = Client::account('default');
-           $client->connect();
-           $inboxFolder = $client->getFolder('INBOX');
-           $message = $inboxFolder->query()->getMessageByUid((int) $id);
+        // Cek Server IMAP Milik User Login
+        try {
+            ini_set('memory_limit', '512M');
+            $user = Auth::user();
+            $client = $this->getUserImapClient();
+            $inboxFolder = $client->getFolder('INBOX');
+            $message = $inboxFolder->query()->getMessageByUid((int) $id);
 
-           if (!$message) {
-               return response()->json(['error' => 'Email tidak ditemukan'], 404);
-           }
+            if (!$message) {
+                return response()->json(['error' => 'Email tidak ditemukan'], 404);
+            }
 
-           if (!$message->hasFlag('SEEN')) {
-               $message->setFlag('SEEN');
-           }
+            if (!$message->hasFlag('SEEN')) {
+                $message->setFlag('SEEN');
+            }
 
-           $body = $message->getHTMLBody() ?? $message->getTextBody() ?? '';
-           $attachmentsArr = [];
+            $body = $message->getHTMLBody() ?? $message->getTextBody() ?? '';
+            $attachmentsArr = [];
+            $userId = Auth::id();
 
-           $attachments = $message->getAttachments();
+            $attachments = $message->getAttachments();
 
-           foreach ($attachments as $attachment) {
-               try {
-                   $name = $attachment->getName() ?? 'Lampiran_Tanpa_Nama';
-                   $mime = $attachment->getMimeType() ?? 'application/octet-stream';
-                   $contentId = $attachment->getContentId();
-                   $cleanCid = $contentId ? str_replace(['<', '>'], '', $contentId) : null;
+            foreach ($attachments as $attachment) {
+                try {
+                    $name = $attachment->getName() ?? 'Lampiran_Tanpa_Nama';
+                    $mime = $attachment->getMimeType() ?? 'application/octet-stream';
+                    $contentId = $attachment->getContentId();
+                    $cleanCid = $contentId ? str_replace(['<', '>'], '', $contentId) : null;
 
-                   $disposition = strtolower($attachment->getDisposition() ?? 'attachment');
+                    $disposition = strtolower($attachment->getDisposition() ?? 'attachment');
 
-                   $extension = pathinfo($name, PATHINFO_EXTENSION);
-                   $filenameWithoutExt = pathinfo($name, PATHINFO_FILENAME);
-                   $cleanName = \Illuminate\Support\Str::slug($filenameWithoutExt, '_') . '.' . strtolower($extension);
+                    $extension = pathinfo($name, PATHINFO_EXTENSION);
+                    $filenameWithoutExt = pathinfo($name, PATHINFO_FILENAME);
+                    $cleanName = Str::slug($filenameWithoutExt, '_') . ($extension ? '.' . strtolower($extension) : '');
 
-                   $folderPath = 'public/email_attachments/' . $id;
-                   $absoluteFolderPath = storage_path('app/' . $folderPath);
+                    // Isolasi folder lampiran per user_id agar tidak bentrok antar akun
+                    $folderPath = 'public/email_attachments/' . $userId . '/' . $id;
+                    $absoluteFolderPath = storage_path('app/' . $folderPath);
 
-                   if (!\Illuminate\Support\Facades\Storage::exists($folderPath)) {
-                       \Illuminate\Support\Facades\Storage::makeDirectory($folderPath, 0755, true);
-                       @chmod($absoluteFolderPath, 0755);
-                   }
+                    if (!Storage::exists($folderPath)) {
+                        Storage::makeDirectory($folderPath, 0755, true);
+                        @chmod($absoluteFolderPath, 0755);
+                    }
 
-                   $path = $folderPath . '/' . $cleanName;
-                   $thumbName = md5($cleanName) . '_thumb.jpg';
-                   $thumbRelPath = $folderPath . '/' . $thumbName;
-                   $absoluteFilePath = storage_path('app/' . $path);
+                    $path = $folderPath . '/' . $cleanName;
+                    $thumbName = md5($cleanName) . '_thumb.jpg';
+                    $thumbRelPath = $folderPath . '/' . $thumbName;
+                    $absoluteFilePath = storage_path('app/' . $path);
 
-                   if (!\Illuminate\Support\Facades\Storage::exists($path)) {
-                       $fileContent = $attachment->getContent();
-                       \Illuminate\Support\Facades\Storage::put($path, $fileContent);
-                       @chmod($absoluteFilePath, 0644);
+                    if (!Storage::exists($path)) {
+                        $fileContent = $attachment->getContent();
+                        Storage::put($path, $fileContent);
+                        @chmod($absoluteFilePath, 0644);
 
-                       if (strtolower($extension) === 'pdf') {
-                           try {
-                               $pdfAbsPath = storage_path('app/' . $path);
-                               $thumbAbsPath = storage_path('app/' . $thumbRelPath);
+                        if (strtolower($extension) === 'pdf') {
+                            try {
+                                $pdfAbsPath = storage_path('app/' . $path);
+                                $thumbAbsPath = storage_path('app/' . $thumbRelPath);
 
-                               $imagick = new \Imagick();
-                               $imagick->setResolution(300, 300);
-                               $imagick->readImage($pdfAbsPath . '[0]');
-                               $imagick->setImageBackgroundColor('white');
-                               $imagick->setImageAlphaChannel(\Imagick::ALPHACHANNEL_REMOVE);
-                               $imagick = $imagick->mergeImageLayers(\Imagick::LAYERMETHOD_FLATTEN);
-                               $imagick->thumbnailImage(600, 0);
-                               $imagick->setImageFormat('jpg');
-                               $imagick->setImageCompressionQuality(85);
-                               $imageBlob = $imagick->getImageBlob();
-                               \Illuminate\Support\Facades\Storage::put($thumbRelPath, $imageBlob);
-                               @chmod($thumbAbsPath, 0644);
+                                $imagick = new \Imagick();
+                                $imagick->setResolution(300, 300);
+                                $imagick->readImage($pdfAbsPath . '[0]');
+                                $imagick->setImageBackgroundColor('white');
+                                $imagick->setImageAlphaChannel(\Imagick::ALPHACHANNEL_REMOVE);
+                                $imagick = $imagick->mergeImageLayers(\Imagick::LAYERMETHOD_FLATTEN);
+                                $imagick->thumbnailImage(600, 0);
+                                $imagick->setImageFormat('jpg');
+                                $imagick->setImageCompressionQuality(85);
+                                $imageBlob = $imagick->getImageBlob();
+                                Storage::put($thumbRelPath, $imageBlob);
+                                @chmod($thumbAbsPath, 0644);
 
-                               $imagick->clear();
-                               $imagick->destroy();
-                           } catch (\Throwable $e) {
-                               Log::warning("Gagal membuat thumbnail PDF Imagick untuk {$cleanName}: " . $e->getMessage());
-                           }
-                       }
-                   }
+                                $imagick->clear();
+                                $imagick->destroy();
+                            } catch (\Throwable $e) {
+                                Log::warning("Gagal membuat thumbnail PDF Imagick untuk {$cleanName}: " . $e->getMessage());
+                            }
+                        }
+                    }
 
-                   $fileUrl = asset('storage/email_attachments/' . $id . '/' . $cleanName);
-                   $thumbUrl = str_starts_with($mime, 'image/') ? $fileUrl : null;
+                    $fileUrl = asset('storage/email_attachments/' . $userId . '/' . $id . '/' . $cleanName);
+                    $thumbUrl = str_starts_with($mime, 'image/') ? $fileUrl : null;
 
-                   if (strtolower($extension) === 'pdf' && \Illuminate\Support\Facades\Storage::exists($thumbRelPath)) {
-                       $thumbUrl = asset('storage/email_attachments/' . $id . '/' . $thumbName);
-                   }
+                    if (strtolower($extension) === 'pdf' && Storage::exists($thumbRelPath)) {
+                        $thumbUrl = asset('storage/email_attachments/' . $userId . '/' . $id . '/' . $thumbName);
+                    }
 
-                   if ($cleanCid && str_contains($body, 'cid:' . $cleanCid)) {
-                       $body = str_replace('cid:' . $cleanCid, $fileUrl, $body);
-                   } elseif (($disposition === 'inline' || $cleanCid) && str_starts_with($mime, 'image/')) {
-                       $body .= "
-                       <div style='margin-top: 20px; padding: 10px; background-color: #f8fafc; border-radius: 8px; border: 1px solid #e2e8f0; display: inline-block;'>
-                           <img src='{$fileUrl}' style='max-width: 100%; height: auto; border-radius: 4px;' alt='{$cleanName}'>
-                       </div><br>";
-                   }
+                    if ($cleanCid && str_contains($body, 'cid:' . $cleanCid)) {
+                        $body = str_replace('cid:' . $cleanCid, $fileUrl, $body);
+                    } elseif (($disposition === 'inline' || $cleanCid) && str_starts_with($mime, 'image/')) {
+                        $body .= "
+                        <div style='margin-top: 20px; padding: 10px; background-color: #f8fafc; border-radius: 8px; border: 1px solid #e2e8f0; display: inline-block;'>
+                            <img src='{$fileUrl}' style='max-width: 100%; height: auto; border-radius: 4px;' alt='{$cleanName}'>
+                        </div><br>";
+                    }
 
-                   $attachmentsArr[] = [
-                       'name'      => $cleanName,
-                       'url'       => $fileUrl,
-                       'thumbnail' => $thumbUrl
-                   ];
+                    $attachmentsArr[] = [
+                        'name'      => $cleanName,
+                        'url'       => $fileUrl,
+                        'thumbnail' => $thumbUrl
+                    ];
 
-               } catch (\Exception $e) {
-                   Log::warning("Gagal memproses lampiran email ID {$id}: " . $e->getMessage());
-               }
-           }
+                } catch (\Exception $e) {
+                    Log::warning("Gagal memproses lampiran email ID {$id}: " . $e->getMessage());
+                }
+            }
 
-           if (empty(trim(strip_tags($body)))) {
-               $body = "<i style='color: #94a3b8; font-family: sans-serif;'>(Email ini tidak berisi teks pesan, hanya melampirkan file)</i>" . $body;
-           }
+            if (empty(trim(strip_tags($body)))) {
+                $body = "<i style='color: #94a3b8; font-family: sans-serif;'>(Email ini tidak berisi teks pesan, hanya melampirkan file)</i>" . $body;
+            }
 
-           return response()->json([
-               'id' => $message->getUid(),
-               'from_name' => $message->getFrom()[0]->personal ?? $message->getFrom()[0]->mail,
-               'from_address' => $message->getFrom()[0]->mail,
-               'subject' => mb_decode_mimeheader($message->getSubject()[0] ?? '(Tanpa Subjek)'),
-               'body' => $body,
-               'attachments' => $attachmentsArr,
-               'created_at' => !empty($message->getDate()) ? $message->getDate()[0]->format('Y-m-d H:i:s') : now()->format('Y-m-d H:i:s'),
-           ]);
+            return response()->json([
+                'id'           => $message->getUid(),
+                'from_name'    => $message->getFrom()[0]->personal ?? $message->getFrom()[0]->mail,
+                'from_address' => $message->getFrom()[0]->mail,
+                'to_address'   => $user->webmail_email,
+                'subject'      => mb_decode_mimeheader($message->getSubject()[0] ?? '(Tanpa Subjek)'),
+                'body'         => $body,
+                'is_starred'   => $message->hasFlag('FLAGGED'),
+                'attachments'  => $attachmentsArr,
+                'created_at'   => !empty($message->getDate()) ? $message->getDate()[0]->format('Y-m-d H:i:s') : now()->format('Y-m-d H:i:s'),
+            ]);
 
-       } catch (\Throwable $e) {
-           Log::error('IMAP Show Detail Error', ['error' => $e->getMessage(), 'line' => $e->getLine()]);
-           return response()->json(['error' => 'Gagal memuat isi pesan: ' . $e->getMessage()], 500);
-       }
+        } catch (\Throwable $e) {
+            Log::error('IMAP Show Detail Error', ['user_id' => Auth::id(), 'error' => $e->getMessage(), 'line' => $e->getLine()]);
+            return response()->json(['error' => 'Gagal memuat isi pesan: ' . $e->getMessage()], 500);
+        }
     }
 
     /**
-     * Mengirim Email (via SMTP Server)
+     * Mengirim Email (via SMTP Server Dinamis per User)
      */
     public function send(Request $request)
     {
@@ -359,20 +422,26 @@ class EmailController extends Controller
         ]);
 
         try {
+            $user = Auth::user();
+            $senderEmail = $user->webmail_email;
+            $senderName = $user->nama_lengkap ?? $senderEmail;
+
             $bodyHtml = $validated['body'];
             $subject = $validated['subject'];
             $to = $validated['to'];
             $attachments = $request->file('attachments');
 
-            Mail::html($bodyHtml, function ($message) use ($to, $subject, $attachments) {
+            $mailer = $this->getUserMailer();
+
+            $mailer->html($bodyHtml, function ($message) use ($to, $subject, $attachments, $senderEmail, $senderName) {
                 $message->to($to)
                         ->subject($subject)
-                        ->from(config('mail.from.address'), config('mail.from.name'));
+                        ->from($senderEmail, $senderName);
 
                 if (!empty($attachments)) {
                     foreach ($attachments as $file) {
                         $message->attach($file->getRealPath(), [
-                            'as' => $file->getClientOriginalName(),
+                            'as'   => $file->getClientOriginalName(),
                             'mime' => $file->getClientMimeType(),
                         ]);
                     }
@@ -382,8 +451,8 @@ class EmailController extends Controller
             $email = Email::create([
                 'user_id'      => Auth::id(),
                 'folder'       => 'sent',
-                'from_name'    => config('mail.from.name', 'Admin Sancaka'),
-                'from_address' => config('mail.from.address', 'admin@tokosancaka.com'),
+                'from_name'    => $senderName,
+                'from_address' => $senderEmail,
                 'to_address'   => $to,
                 'subject'      => $subject,
                 'body'         => $bodyHtml,
@@ -391,11 +460,11 @@ class EmailController extends Controller
                 'read_at'      => now(),
             ]);
 
-            Log::info('Email sukses dikirim via SMTP dengan lampiran.', ['to' => $to]);
+            Log::info('Email sukses dikirim via SMTP dengan lampiran.', ['from' => $senderEmail, 'to' => $to]);
             return response()->json(['success' => true, 'message' => 'Email berhasil dikirim!']);
 
         } catch (\Exception $e) {
-            Log::error('SMTP Error.', ['error' => $e->getMessage()]);
+            Log::error('SMTP Error.', ['user_id' => Auth::id(), 'error' => $e->getMessage()]);
             return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
         }
     }
@@ -408,21 +477,24 @@ class EmailController extends Controller
         $localEmail = Email::where('user_id', Auth::id())->find($id);
 
         if ($localEmail) {
-            if ($request->has('is_starred')) $localEmail->is_starred = $request->is_starred;
-            if ($request->has('folder')) $localEmail->folder = $request->folder;
+            if ($request->has('is_starred')) {
+                $localEmail->is_starred = $request->is_starred;
+            }
+            if ($request->has('folder')) {
+                $localEmail->folder = $request->folder;
+            }
             $localEmail->save();
             return response()->json(['success' => true]);
         } else {
             try {
-                $client = Client::account('default');
-                $client->connect();
+                $client = $this->getUserImapClient();
                 $message = $client->getFolder('INBOX')->query()->getMessageByUid((int) $id);
                 if ($message && $request->has('is_starred')) {
                     $request->is_starred ? $message->setFlag('FLAGGED') : $message->unsetFlag('FLAGGED');
                     return response()->json(['success' => true]);
                 }
             } catch (\Exception $e) {
-                Log::error('IMAP Flag Error', ['error' => $e->getMessage()]);
+                Log::error('IMAP Flag Error', ['user_id' => Auth::id(), 'error' => $e->getMessage()]);
             }
         }
         return response()->json(['error' => 'Gagal memproses'], 500);
@@ -440,10 +512,20 @@ class EmailController extends Controller
         }
 
         $users = DB::table('Pengguna')
-                    ->where('nama_lengkap', 'like', "%{$term}%")
-                    ->orWhere('email', 'like', "%{$term}%")
-                    ->orWhere('no_wa', 'like', "%{$term}%")
-                    ->select('id_pengguna', 'nama_lengkap', 'email', 'no_wa', 'role')
+                    ->whereNull('deleted_at')
+                    ->where(function ($q) use ($term) {
+                        $q->where('nama_lengkap', 'like', "%{$term}%")
+                          ->orWhere('webmail_email', 'like', "%{$term}%")
+                          ->orWhere('email', 'like', "%{$term}%")
+                          ->orWhere('no_wa', 'like', "%{$term}%");
+                    })
+                    ->select(
+                        'id_pengguna',
+                        'nama_lengkap',
+                        DB::raw('COALESCE(webmail_email, email) as email'),
+                        'no_wa',
+                        'role'
+                    )
                     ->limit(10)
                     ->get();
 
@@ -456,7 +538,7 @@ class EmailController extends Controller
     public function destroy(Request $request)
     {
         $request->validate([
-            'ids' => 'required|array',
+            'ids'    => 'required|array',
             'folder' => 'required|string',
         ]);
 
@@ -467,8 +549,7 @@ class EmailController extends Controller
             // === JALUR 1: HAPUS DI SERVER IMAP (KHUSUS INBOX) ===
             if ($folder === 'inbox') {
                 ini_set('memory_limit', '512M');
-                $client = Client::account('default');
-                $client->connect();
+                $client = $this->getUserImapClient();
                 $inboxFolder = $client->getFolder('INBOX');
 
                 foreach ($request->ids as $id) {
@@ -496,10 +577,10 @@ class EmailController extends Controller
             ]);
 
         } catch (\Throwable $e) {
-            Log::error('Hapus Email Masal Error.', ['error' => $e->getMessage(), 'line' => $e->getLine()]);
+            Log::error('Hapus Email Masal Error.', ['user_id' => Auth::id(), 'error' => $e->getMessage(), 'line' => $e->getLine()]);
             return response()->json([
                 'success' => false,
-                'error' => 'Gagal menghapus: ' . $e->getMessage()
+                'error'   => 'Gagal menghapus: ' . $e->getMessage()
             ], 500);
         }
     }
@@ -507,8 +588,8 @@ class EmailController extends Controller
     public function submitContactForm(Request $request)
     {
         $throttleKey = 'contact-form:' . $request->ip();
-        if (\Illuminate\Support\Facades\RateLimiter::tooManyAttempts($throttleKey, 1)) {
-            $seconds = \Illuminate\Support\Facades\RateLimiter::availableIn($throttleKey);
+        if (RateLimiter::tooManyAttempts($throttleKey, 1)) {
+            $seconds = RateLimiter::availableIn($throttleKey);
             Log::warning('Spam form kontak diblokir.', ['ip' => $request->ip()]);
             return response()->json(['success' => false, 'message' => "Tunggu {$seconds} detik sebelum mengirim pesan lagi."], 429);
         }
@@ -522,7 +603,7 @@ class EmailController extends Controller
             'cf-turnstile-response' => 'required|string',
         ]);
 
-        \Illuminate\Support\Facades\RateLimiter::hit($throttleKey, 60);
+        RateLimiter::hit($throttleKey, 60);
 
         try {
             $adminEmail = config('mail.from.address', 'admin@tokosancaka.com');
@@ -667,11 +748,11 @@ class EmailController extends Controller
                 $header = json_encode(['alg' => 'RS256', 'typ' => 'JWT']);
                 $now = time();
                 $claim = json_encode([
-                    'iss' => $keyData['client_email'],
+                    'iss'   => $keyData['client_email'],
                     'scope' => 'https://www.googleapis.com/auth/firebase.messaging',
-                    'aud' => 'https://oauth2.googleapis.com/token',
-                    'exp' => $now + 3600,
-                    'iat' => $now
+                    'aud'   => 'https://oauth2.googleapis.com/token',
+                    'exp'   => $now + 3600,
+                    'iat'   => $now
                 ]);
 
                 $base64UrlHeader = str_replace(['+', '/', '='], ['-', '_', ''], base64_encode($header));
@@ -685,7 +766,7 @@ class EmailController extends Controller
 
                 $response = Http::timeout(5)->asForm()->post('https://oauth2.googleapis.com/token', [
                     'grant_type' => 'urn:ietf:params:oauth:grant-type:jwt-bearer',
-                    'assertion' => $jwt
+                    'assertion'  => $jwt
                 ]);
 
                 if ($response->successful() && $response->json('access_token')) {

@@ -2,10 +2,13 @@
 
 namespace App\Models;
 
+use Illuminate\Contracts\Encryption\DecryptException;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Facades\Crypt;
+use Illuminate\Support\Facades\Log;
 
 class User extends Authenticatable
 {
@@ -32,6 +35,8 @@ class User extends Authenticatable
         'nama_lengkap',
         'nomor_rm',
         'email',
+        'webmail_email',
+        'webmail_password',
         'jenis_kelamin',
         'instansi_perusahaan',
         'no_wa',
@@ -83,6 +88,7 @@ class User extends Authenticatable
 
     protected $hidden = [
         'password_hash',
+        'webmail_password',
         'remember_token',
         'pin',
         'setup_token',
@@ -123,7 +129,10 @@ class User extends Authenticatable
      */
     public function getNameAttribute(): string
     {
-        return $this->nama_lengkap ?? 'Admin Sancaka';
+        return $this->nama_lengkap
+            ?? $this->webmail_email
+            ?? $this->email
+            ?? 'Pengguna Sancaka';
     }
 
     /**
@@ -132,6 +141,34 @@ class User extends Authenticatable
     public function isAdmin(): bool
     {
         return in_array(strtolower((string) $this->role), ['admin', 'koordinator'], true);
+    }
+
+    /**
+     * Mengecek apakah akun pengguna sudah memiliki kredensial webmail @tokosancaka.com
+     */
+    public function hasWebmail(): bool
+    {
+        return !empty($this->webmail_email) && !empty($this->webmail_password);
+    }
+
+    /**
+     * Mengambil password webmail yang sudah didekripsi untuk koneksi IMAP & SMTP
+     */
+    public function getDecryptedWebmailPassword(): ?string
+    {
+        if (empty($this->webmail_password)) {
+            return null;
+        }
+
+        try {
+            return Crypt::decryptString($this->webmail_password);
+        } catch (DecryptException $e) {
+            Log::error('LOG LOG: [WEBMAIL DECRYPT ERROR] Gagal mendekripsi password webmail.', [
+                'user_id' => $this->id_pengguna,
+                'error'   => $e->getMessage(),
+            ]);
+            return null;
+        }
     }
 
     /**
