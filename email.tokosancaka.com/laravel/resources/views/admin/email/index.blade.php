@@ -1,10 +1,17 @@
 <!DOCTYPE html>
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
 <head>
+    @php
+        $currentUserName = Auth::user()->nama_lengkap ?? Auth::user()->name ?? 'Admin Sancaka';
+        $currentUserEmail = Auth::user()->webmail_email ?: (Auth::user()->email ?? config('mail.from.address', 'admin@tokosancaka.com'));
+        $mailServerHost = config('imap.accounts.default.host') ?: config('mail.mailers.smtp.host', 'server4.hostdata.id');
+        $appName = config('app.name', 'Sancaka Mail');
+    @endphp
+
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>{{ config('app.name', 'Sancaka Mail') }} — {{ Auth::user()->email ?? config('mail.from.address', 'admin@tokosancaka.com') }}</title>
+    <title>{{ $appName }} — {{ $currentUserEmail }}</title>
 
     <link rel="icon" type="image/png" href="https://tokosancaka.com/storage/uploads/sancaka.png">
     <link rel="shortcut icon" type="image/png" href="https://tokosancaka.com/storage/uploads/sancaka.png">
@@ -76,13 +83,6 @@
     </style>
 </head>
 <body class="bg-[#f6f8fc] text-slate-800 antialiased h-screen h-dvh flex flex-col overflow-hidden select-none">
-
-    @php
-        $currentUserName = Auth::user()->nama_lengkap ?? Auth::user()->name ?? 'Admin Sancaka';
-        $currentUserEmail = Auth::user()->email ?? config('mail.from.address', 'admin@tokosancaka.com');
-        $mailServerHost = config('imap.accounts.default.host') ?: config('mail.mailers.smtp.host', 'server4.hostdata.id');
-        $appName = config('app.name', 'Sancaka Mail');
-    @endphp
 
     <!-- ===================================================================== -->
     <!-- 1. TOP HEADER BAR (RESPONSIVE HP, TABLET & PC)                        -->
@@ -171,7 +171,7 @@
                 </div>
             </button>
 
-            <!-- Dropdown Account Popover (Responsif untuk HP, Tablet & PC) -->
+            <!-- Dropdown Account Popover -->
             <div
                 id="accountDropdown"
                 class="hidden absolute right-0 top-12 w-72 sm:w-80 bg-white rounded-2xl shadow-xl border border-slate-200/90 p-4 z-50 text-left"
@@ -235,7 +235,7 @@
             class="fixed inset-0 bg-slate-900/40 backdrop-blur-[1px] z-30 hidden lg:hidden transition-opacity"
         ></div>
 
-        <!-- LEFT SIDEBAR (OFF-CANVAS DI HP/TABLET, STATIC DI PC) -->
+        <!-- LEFT SIDEBAR -->
         <aside
             id="sidebar"
             class="fixed inset-y-0 left-0 z-40 w-72 bg-[#f6f8fc] shadow-2xl transform -translate-x-full transition-transform duration-200 ease-out lg:static lg:translate-x-0 lg:w-64 lg:shadow-none shrink-0 flex flex-col justify-between pr-3 pt-3 lg:pt-0 overflow-y-auto"
@@ -268,10 +268,10 @@
                     </button>
                 </div>
 
-                <!-- Navigasi Folder (Dirender Dinamis oleh JS) -->
+                <!-- Navigasi Folder -->
                 <nav id="folderNavContainer" class="space-y-0.5 text-sm"></nav>
 
-                <!-- Label Section Dinamis (Bisa Tambah, Filter & Hapus Label) -->
+                <!-- Label Section Dinamis -->
                 <div class="mt-5 pt-4 border-t border-slate-200/70 pl-6 pr-3">
                     <div class="flex items-center justify-between text-xs font-semibold text-slate-600 mb-2">
                         <span>Label</span>
@@ -285,7 +285,6 @@
                         </button>
                     </div>
 
-                    <!-- Form Tambah Label Baru (Tersembunyi secara default) -->
                     <form id="addLabelForm" onsubmit="createCustomLabel(event)" class="hidden mb-2.5 flex items-center gap-1.5">
                         <input
                             type="text"
@@ -299,12 +298,11 @@
                         </button>
                     </form>
 
-                    <!-- Daftar Label Dinamis -->
                     <div id="dynamicLabelList" class="space-y-1 text-xs text-slate-600"></div>
                 </div>
             </div>
 
-            <!-- Footer Status Server Dinamis -->
+            <!-- Footer Status Server -->
             <div class="pl-6 pr-4 py-3 text-[11px] text-slate-400 flex items-center gap-2 border-t border-slate-200/50 lg:border-none mt-4">
                 <span id="serverStatusDot" class="w-2 h-2 rounded-full bg-emerald-500 shrink-0"></span>
                 <span class="truncate" title="IMAP/SMTP • {{ $mailServerHost }}">IMAP/SMTP • {{ $mailServerHost }}</span>
@@ -330,7 +328,6 @@
                             title="Pilih semua"
                         >
 
-                        <!-- Refresh Button -->
                         <button
                             type="button"
                             id="refreshBtn"
@@ -343,7 +340,6 @@
                             </svg>
                         </button>
 
-                        <!-- Bulk Delete Button -->
                         <button
                             type="button"
                             id="bulkDeleteBtn"
@@ -357,7 +353,6 @@
                             <span>Hapus (<span id="selectedCount">0</span>)</span>
                         </button>
 
-                        <!-- Indikator Folder / Filter Aktif di Mobile & Tablet -->
                         <span id="activeContextBadge" class="lg:hidden truncate text-xs font-semibold text-slate-700 bg-slate-100 px-2.5 py-1 rounded-full">
                             Kotak Masuk
                         </span>
@@ -395,7 +390,7 @@
                     </div>
                 </div>
 
-                <!-- Gmail Category Tabs (Scrollable di HP/Tablet, Dirender Dinamis) -->
+                <!-- Gmail Category Tabs -->
                 <div id="categoryTabs" class="flex border-b border-slate-100 px-1 sm:px-2 shrink-0 overflow-x-auto no-scrollbar"></div>
 
                 <!-- Email Rows Container -->
@@ -478,7 +473,7 @@
                         <div id="detailDate" class="text-[11px] sm:text-xs text-slate-500 shrink-0 pl-13 sm:pl-0"></div>
                     </div>
 
-                    <!-- HTML Message Body -->
+                    <!-- HTML Message Body (Sanitized) -->
                     <div id="detailBody" class="py-5 sm:py-6 text-sm text-slate-800 leading-relaxed overflow-x-auto break-words"></div>
 
                     <!-- Attachments Section -->
@@ -520,7 +515,7 @@
     </button>
 
     <!-- ===================================================================== -->
-    <!-- 3. RESPONSIVE COMPOSE MODAL (FULL-SCREEN DI HP, FLOATING DI PC)       -->
+    <!-- 3. RESPONSIVE COMPOSE MODAL                                           -->
     <!-- ===================================================================== -->
     <div
         id="composeModal"
@@ -545,14 +540,14 @@
 
         <!-- Compose Form -->
         <form id="composeForm" onsubmit="submitSendEmail(event)" class="flex-1 flex flex-col min-h-0">
-            <!-- Dari (Dinamis) -->
+            <!-- Dari -->
             <div class="border-b border-slate-100 px-4 py-2 flex items-center gap-2 text-xs text-slate-500 shrink-0">
                 <span class="w-12 shrink-0">Dari</span>
                 <span class="truncate text-slate-700 font-medium">{{ $currentUserEmail }}</span>
             </div>
 
             <!-- Kepada + Autocomplete -->
-            <div class="relative border-b border-slate-100 px-4 py-2.5 sm:py-2 flex items-center gap-2 shrink-0">
+            <div id="composeToWrapper" class="relative border-b border-slate-100 px-4 py-2.5 sm:py-2 flex items-center gap-2 shrink-0">
                 <label for="composeTo" class="text-xs text-slate-500 w-12 shrink-0">Kepada</label>
                 <input
                     type="email"
@@ -560,8 +555,9 @@
                     name="to"
                     required
                     autocomplete="off"
-                    placeholder="nama@email.com atau cari pengguna..."
+                    placeholder="contoh@gmail.com atau nama@tokosancaka.com"
                     oninput="handleAutocompleteUser(this.value)"
+                    onkeydown="handleComposeToKeydown(event)"
                     class="flex-1 min-w-0 text-sm text-slate-800 outline-none bg-transparent"
                 >
                 <!-- Autocomplete Dropdown -->
@@ -570,18 +566,20 @@
 
             <!-- Subjek -->
             <div class="border-b border-slate-100 px-4 py-2.5 sm:py-2 flex items-center gap-2 shrink-0">
+                <label for="composeSubject" class="text-xs text-slate-500 w-12 shrink-0">Subjek</label>
                 <input
                     type="text"
                     id="composeSubject"
                     name="subject"
                     required
-                    placeholder="Subjek"
-                    class="w-full text-sm text-slate-800 outline-none bg-transparent"
+                    placeholder="Tulis subjek email..."
+                    onfocus="hideAutocompleteList()"
+                    class="flex-1 min-w-0 text-sm text-slate-800 outline-none bg-transparent"
                 >
             </div>
 
             <!-- Quill Rich Text Editor -->
-            <div id="quillEditor" class="flex-1 min-h-0 flex flex-col"></div>
+            <div id="quillEditor" class="flex-1 min-h-0 flex flex-col" onclick="hideAutocompleteList()"></div>
 
             <!-- Preview File Lampiran Terpilih -->
             <div id="composeAttachmentPreview" class="hidden px-4 py-2 bg-slate-50 border-t border-slate-100 flex flex-wrap gap-2 max-h-24 overflow-y-auto shrink-0"></div>
@@ -630,7 +628,6 @@
         const CSRF_TOKEN = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
         const USER_STORAGE_KEY = 'sancaka_mail_labels_{{ md5($currentUserEmail) }}';
 
-        // Konfigurasi Folder Dinamis
         const FOLDERS = [
             {
                 key: 'inbox',
@@ -664,7 +661,6 @@
             }
         ];
 
-        // Konfigurasi Kategori Tab Dinamis
         const CATEGORIES = [
             {
                 key: 'primary',
@@ -705,6 +701,7 @@
         let activeDetailEmail = null;
         let searchTimeout = null;
         let autocompleteTimeout = null;
+        let lastAutocompleteUsers = [];
 
         // Inisialisasi Quill Editor
         const quill = new Quill('#quillEditor', {
@@ -726,12 +723,17 @@
             fetchEmails();
         });
 
-        // Tutup dropdown akun jika klik di luar area
+        // Tutup dropdown akun & autocomplete jika klik di luar area
         document.addEventListener('click', (e) => {
             const wrapper = document.getElementById('accountMenuWrapper');
             const dropdown = document.getElementById('accountDropdown');
             if (wrapper && dropdown && !wrapper.contains(e.target)) {
                 dropdown.classList.add('hidden');
+            }
+
+            const toWrapper = document.getElementById('composeToWrapper');
+            if (toWrapper && !toWrapper.contains(e.target)) {
+                hideAutocompleteList();
             }
         });
 
@@ -748,7 +750,7 @@
         }
 
         // =====================================================================
-        // SIDEBAR RESPONSIVE (DRAWER DI HP/TABLET, COLLAPSE DI PC)
+        // SIDEBAR RESPONSIVE
         // =====================================================================
         function toggleSidebar() {
             const sidebar = document.getElementById('sidebar');
@@ -822,7 +824,6 @@
             renderSidebarFolders();
             renderCustomLabels();
 
-            // Tab kategori hanya tampil untuk inbox
             document.getElementById('categoryTabs').style.display = (folder === 'inbox') ? 'flex' : 'none';
 
             fetchEmails();
@@ -860,7 +861,6 @@
         function filterEmailsByCategoryAndLabel(emails) {
             let filtered = [...emails];
 
-            // Filter kategori jika di Inbox & bukan 'primary'
             if (currentFolder === 'inbox' && currentCategory !== 'primary') {
                 const catObj = CATEGORIES.find(c => c.key === currentCategory);
                 if (catObj && catObj.keywords.length > 0) {
@@ -871,7 +871,6 @@
                 }
             }
 
-            // Filter label kustom jika aktif
             if (currentLabelFilter) {
                 const kw = currentLabelFilter.toLowerCase();
                 filtered = filtered.filter(e => {
@@ -884,7 +883,7 @@
         }
 
         // =====================================================================
-        // SISTEM LABEL KUSTOM DINAMIS (TAMBAH, FILTER, HAPUS)
+        // SISTEM LABEL KUSTOM DINAMIS
         // =====================================================================
         function getSavedLabels() {
             try {
@@ -895,7 +894,6 @@
                 }
             } catch (e) {}
 
-            // Default inisial label
             return [
                 { name: 'Sancaka Express', color: '#0b57d0' },
                 { name: 'Payment', color: '#059669' }
@@ -946,8 +944,12 @@
             renderCustomLabels();
         }
 
-        function filterByLabel(labelName) {
-            currentLabelFilter = (currentLabelFilter === labelName) ? '' : labelName;
+        function filterByLabelIndex(index) {
+            const labels = getSavedLabels();
+            const target = labels[index];
+            if (!target) return;
+
+            currentLabelFilter = (currentLabelFilter === target.name) ? '' : target.name;
             closeEmailDetail();
             closeMobileSidebar();
             renderSidebarFolders();
@@ -972,7 +974,7 @@
                 const isActive = currentLabelFilter === lbl.name;
                 return `
                     <div class="group flex items-center justify-between px-2 py-1.5 rounded-lg cursor-pointer transition ${isActive ? 'bg-[#d3e3fd] text-[#001d35] font-semibold' : 'hover:bg-slate-200/60 text-slate-700'}">
-                        <button type="button" onclick="filterByLabel('${escapeHtml(lbl.name)}')" class="flex items-center gap-2.5 min-w-0 flex-1 text-left">
+                        <button type="button" onclick="filterByLabelIndex(${idx})" class="flex items-center gap-2.5 min-w-0 flex-1 text-left">
                             <span class="w-2.5 h-2.5 rounded-sm shrink-0" style="background-color: ${escapeHtml(lbl.color)}"></span>
                             <span class="truncate">${escapeHtml(lbl.name)}</span>
                         </button>
@@ -1047,7 +1049,6 @@
 
             if (refreshIcon) refreshIcon.classList.add('animate-spin');
 
-            // Skeleton Loading Responsif
             container.innerHTML = Array(7).fill(`
                 <div class="px-3 sm:px-4 py-3.5 flex items-center gap-3 sm:gap-4 animate-pulse">
                     <div class="w-4 h-4 bg-slate-200 rounded shrink-0"></div>
@@ -1074,7 +1075,6 @@
                 updateConnectionIndicator(true);
                 currentEmails = data.emails || [];
 
-                // Sinkronkan jumlah badge folder secara dinamis
                 if (data.counts && typeof data.counts === 'object') {
                     folderCounts = { ...folderCounts, ...data.counts };
                 } else if (currentFolder === 'inbox' && typeof data.unread_count !== 'undefined') {
@@ -1082,7 +1082,6 @@
                 }
                 renderSidebarFolders();
 
-                // Update Pagination UI
                 const pg = data.pagination || { current_page: 1, last_page: 1, has_more: false };
                 document.getElementById('paginationInfo').textContent = `Hal ${pg.current_page} / ${pg.last_page}`;
                 document.getElementById('prevPageBtn').disabled = pg.current_page <= 1;
@@ -1106,7 +1105,7 @@
         }
 
         // =====================================================================
-        // RENDER DAFTAR EMAIL (DUAL LAYOUT: MOBILE STACKED & DESKTOP ROW)
+        // RENDER DAFTAR EMAIL
         // =====================================================================
         function getAvatarColor(name) {
             const colors = [
@@ -1153,6 +1152,7 @@
                 const displayName = escapeHtml(rawName);
                 const initial = escapeHtml((email.from_name || email.to_address || 'A').trim().charAt(0).toUpperCase());
                 const avatarStyle = getAvatarColor(rawName);
+                const isChecked = selectedIds.has(String(email.id)) ? 'checked' : '';
 
                 const plainSnippet = escapeHtml(stripHtml(email.body || '').substring(0, 100));
                 const subjectText = escapeHtml(email.subject || '(Tanpa Subjek)');
@@ -1183,6 +1183,7 @@
                                 <input
                                     type="checkbox"
                                     value="${email.id}"
+                                    ${isChecked}
                                     onclick="event.stopPropagation(); toggleSelectRow('${email.id}', this.checked)"
                                     class="row-checkbox w-4 h-4 rounded border-slate-300 text-[#0b57d0] focus:ring-0 cursor-pointer"
                                 >
@@ -1217,6 +1218,7 @@
                             <input
                                 type="checkbox"
                                 value="${email.id}"
+                                ${isChecked}
                                 onclick="event.stopPropagation(); toggleSelectRow('${email.id}', this.checked)"
                                 class="row-checkbox w-4 h-4 rounded border-slate-300 text-[#0b57d0] focus:ring-0 cursor-pointer shrink-0"
                             >
@@ -1254,7 +1256,7 @@
             document.getElementById('detailAttachmentsWrapper').classList.add('hidden');
 
             try {
-                const res = await fetch(`{{ url('admin/email') }}/${id}`, {
+                const res = await fetch(`{{ url('admin/email') }}/${id}?folder=${encodeURIComponent(currentFolder)}`, {
                     headers: { 'Accept': 'application/json' }
                 });
                 const email = await res.json();
@@ -1271,11 +1273,10 @@
                 document.getElementById('detailAvatar').textContent = (email.from_name || 'A').charAt(0).toUpperCase();
                 document.getElementById('detailToInfo').textContent = email.to_address ? `kepada ${email.to_address}` : 'kepada saya';
                 document.getElementById('detailDate').textContent = email.created_at || '';
-                document.getElementById('detailBody').innerHTML = email.body || '';
+                document.getElementById('detailBody').innerHTML = sanitizeEmailHtml(email.body || '');
 
                 updateDetailStarIcon(Boolean(email.is_starred));
 
-                // Tandai sudah dibaca di state lokal
                 const listItem = currentEmails.find(e => String(e.id) === String(id));
                 if (listItem && !listItem.read_at) {
                     listItem.read_at = new Date().toISOString();
@@ -1285,16 +1286,15 @@
                     }
                 }
 
-                // Render Lampiran jika ada
                 const attWrapper = document.getElementById('detailAttachmentsWrapper');
                 const attGrid = document.getElementById('detailAttachmentsGrid');
                 if (email.attachments && email.attachments.length > 0) {
                     attWrapper.classList.remove('hidden');
                     document.getElementById('detailAttachmentCount').textContent = email.attachments.length;
                     attGrid.innerHTML = email.attachments.map(att => `
-                        <a href="${att.url}" target="_blank" rel="noopener noreferrer" class="group border border-slate-200 rounded-xl overflow-hidden bg-slate-50 hover:border-[#0b57d0] transition flex flex-col">
+                        <a href="${escapeHtml(att.url)}" target="_blank" rel="noopener noreferrer" class="group border border-slate-200 rounded-xl overflow-hidden bg-slate-50 hover:border-[#0b57d0] transition flex flex-col">
                             ${att.thumbnail
-                                ? `<img src="${att.thumbnail}" alt="${escapeHtml(att.name)}" class="h-32 w-full object-cover border-b border-slate-200">`
+                                ? `<img src="${escapeHtml(att.thumbnail)}" alt="${escapeHtml(att.name)}" class="h-32 w-full object-cover border-b border-slate-200">`
                                 : `<div class="h-24 flex items-center justify-center bg-slate-100 text-slate-400 text-xs font-semibold">FILE LAMPIRAN</div>`
                             }
                             <div class="px-3 py-2 text-xs font-medium text-slate-700 truncate group-hover:text-[#0b57d0]">
@@ -1337,7 +1337,10 @@
         function replyCurrentEmail() {
             if (!activeDetailEmail) return;
             openComposeModal();
-            document.getElementById('composeTo').value = activeDetailEmail.from_address || '';
+            const replyTarget = (currentFolder === 'sent' && activeDetailEmail.to_address)
+                ? activeDetailEmail.to_address
+                : (activeDetailEmail.from_address || '');
+            document.getElementById('composeTo').value = replyTarget;
             const subj = activeDetailEmail.subject || '';
             document.getElementById('composeSubject').value = subj.startsWith('Re:') ? subj : `Re: ${subj}`;
             quill.focus();
@@ -1395,6 +1398,12 @@
             const count = selectedIds.size;
             document.getElementById('selectedCount').textContent = count;
             document.getElementById('bulkDeleteBtn').classList.toggle('hidden', count === 0);
+
+            const master = document.getElementById('selectAllCheckbox');
+            const totalVisible = filterEmailsByCategoryAndLabel(currentEmails).length;
+            if (master) {
+                master.checked = totalVisible > 0 && count >= totalVisible;
+            }
         }
 
         async function deleteSelectedEmails() {
@@ -1433,12 +1442,13 @@
         function openComposeModal() {
             document.getElementById('composeModal').classList.remove('hidden');
             document.getElementById('mobileComposeFab').classList.add('hidden');
+            hideAutocompleteList();
             document.getElementById('composeTo').focus();
         }
 
         function closeComposeModal(reset = false) {
             document.getElementById('composeModal').classList.add('hidden');
-            document.getElementById('userAutocompleteList').classList.add('hidden');
+            hideAutocompleteList();
             if (!activeDetailEmail) {
                 document.getElementById('mobileComposeFab').classList.remove('hidden');
             }
@@ -1447,6 +1457,20 @@
                 quill.setContents([]);
                 document.getElementById('composeAttachmentPreview').innerHTML = '';
                 document.getElementById('composeAttachmentPreview').classList.add('hidden');
+            }
+        }
+
+        function hideAutocompleteList() {
+            const dropdown = document.getElementById('userAutocompleteList');
+            if (dropdown) {
+                dropdown.classList.add('hidden');
+                dropdown.innerHTML = '';
+            }
+        }
+
+        function handleComposeToKeydown(e) {
+            if (e.key === 'Escape' || e.key === 'Tab') {
+                hideAutocompleteList();
             }
         }
 
@@ -1467,52 +1491,65 @@
         }
 
         function handleAutocompleteUser(query) {
-            const dropdown = document.getElementById('userAutocompleteList');
             clearTimeout(autocompleteTimeout);
+            const trimmed = query.trim();
 
-            if (query.trim().length < 2) {
-                dropdown.classList.add('hidden');
+            // Tutup saran kontak internal otomatis jika mengetik domain luar (misal @gmail.com)
+            if (trimmed.length < 2 || (trimmed.includes('@') && !trimmed.includes('@tokosancaka.com'))) {
+                hideAutocompleteList();
                 return;
             }
 
             autocompleteTimeout = setTimeout(async () => {
                 try {
-                    const res = await fetch(`{{ route('admin.email.searchUsers') }}?q=${encodeURIComponent(query)}`);
+                    const res = await fetch(`{{ route('admin.email.searchUsers') }}?q=${encodeURIComponent(trimmed)}`, {
+                        headers: { 'Accept': 'application/json' }
+                    });
                     const users = await res.json();
+                    const dropdown = document.getElementById('userAutocompleteList');
 
-                    if (!users.length) {
-                        dropdown.classList.add('hidden');
+                    if (!Array.isArray(users) || !users.length) {
+                        hideAutocompleteList();
                         return;
                     }
 
-                    dropdown.innerHTML = users.map(u => `
-                        <button type="button" onclick="selectAutocompleteEmail('${escapeHtml(u.email)}')" class="w-full text-left px-4 py-2.5 hover:bg-slate-50 flex items-center justify-between gap-2 text-xs">
-                            <div class="min-w-0">
-                                <div class="font-semibold text-slate-800 truncate">${escapeHtml(u.nama_lengkap || u.name || u.email)}</div>
-                                <div class="text-slate-500 truncate">${escapeHtml(u.email)}</div>
-                            </div>
-                            <span class="px-2 py-0.5 rounded bg-slate-100 text-slate-600 text-[10px] shrink-0">${escapeHtml(u.role || 'User')}</span>
-                        </button>
-                    `).join('');
+                    lastAutocompleteUsers = users;
+
+                    dropdown.innerHTML = users.map((u, idx) => {
+                        const mailAddr = u.webmail_email || u.email || '';
+                        const fullName = u.nama_lengkap || u.name || mailAddr;
+                        return `
+                            <button type="button" onclick="selectAutocompleteIndex(${idx})" class="w-full text-left px-4 py-2.5 hover:bg-slate-50 flex items-center justify-between gap-2 text-xs">
+                                <div class="min-w-0">
+                                    <div class="font-semibold text-slate-800 truncate">${escapeHtml(fullName)}</div>
+                                    <div class="text-slate-500 truncate">${escapeHtml(mailAddr)}</div>
+                                </div>
+                                <span class="px-2 py-0.5 rounded bg-slate-100 text-slate-600 text-[10px] shrink-0">${escapeHtml(u.role || 'User')}</span>
+                            </button>
+                        `;
+                    }).join('');
                     dropdown.classList.remove('hidden');
                 } catch (e) {
-                    dropdown.classList.add('hidden');
+                    hideAutocompleteList();
                 }
             }, 300);
         }
 
-        function selectAutocompleteEmail(email) {
-            document.getElementById('composeTo').value = email;
-            document.getElementById('userAutocompleteList').classList.add('hidden');
+        function selectAutocompleteIndex(index) {
+            const user = lastAutocompleteUsers[index];
+            if (!user) return;
+            document.getElementById('composeTo').value = user.webmail_email || user.email || '';
+            hideAutocompleteList();
             document.getElementById('composeSubject').focus();
         }
 
         async function submitSendEmail(e) {
             e.preventDefault();
+            hideAutocompleteList();
             const btn = document.getElementById('sendSubmitBtn');
             const htmlBody = quill.root.innerHTML;
 
-            if (quill.getText().trim().length === 0) {
+            if (quill.getText().trim().length === 0 && !htmlBody.includes('<img')) {
                 showToast('Isi pesan email tidak boleh kosong.', true);
                 return;
             }
@@ -1550,8 +1587,36 @@
         }
 
         // =====================================================================
-        // UTILITIES
+        // UTILITIES & HTML SANITIZER
         // =====================================================================
+        function sanitizeEmailHtml(dirtyHtml) {
+            if (!dirtyHtml) return '';
+            try {
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(String(dirtyHtml), 'text/html');
+                const blockedTags = ['script', 'iframe', 'object', 'embed', 'form', 'base', 'meta', 'link'];
+                blockedTags.forEach(tag => {
+                    doc.querySelectorAll(tag).forEach(el => el.remove());
+                });
+                doc.querySelectorAll('*').forEach(el => {
+                    Array.from(el.attributes).forEach(attr => {
+                        const name = attr.name.toLowerCase();
+                        const val = attr.value.trim().toLowerCase();
+                        if (name.startsWith('on') || val.startsWith('javascript:') || val.startsWith('data:text/html')) {
+                            el.removeAttribute(attr.name);
+                        }
+                    });
+                    if (el.tagName === 'A' && el.getAttribute('href')) {
+                        el.setAttribute('target', '_blank');
+                        el.setAttribute('rel', 'noopener noreferrer');
+                    }
+                });
+                return doc.body.innerHTML;
+            } catch (e) {
+                return escapeHtml(dirtyHtml);
+            }
+        }
+
         function escapeHtml(str) {
             return String(str ?? '')
                 .replace(/&/g, '&amp;')
