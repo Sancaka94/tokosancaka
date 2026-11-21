@@ -10,7 +10,7 @@ Route::get('/', function () {
 
 // Halaman Kotak Masuk Email (Wajib Login)
 Route::middleware(['auth'])->group(function () {
-    Route::get('/dashboard', [EmailController::class, 'index'])->name('home');
+    Route::get('/dashboard', [EmailController::class, 'index'])->name('dashboard');
 
     Route::prefix('admin/email')->name('admin.email.')->group(function () {
         Route::get('/', [EmailController::class, 'index'])->name('index');
