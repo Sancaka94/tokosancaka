@@ -6,6 +6,9 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Sancaka Mail — {{ config('mail.from.address', 'admin@tokosancaka.com') }}</title>
 
+    <link rel="icon" type="image/png" href="https://tokosancaka.com/storage/uploads/sancaka.png">
+    <link rel="shortcut icon" type="image/png" href="https://tokosancaka.com/storage/uploads/sancaka.png">
+
     <!-- Inter Font (Next.js / Clean UI Standard) -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -98,23 +101,39 @@
             </div>
         </div>
 
-        <!-- Kanan: Info Akun & Pintasan Toko Sancaka -->
-        <div class="flex items-center gap-2 shrink-0">
+       <!-- Kanan: Info Akun, Pintasan & Tombol Keluar -->
+        <div class="flex items-center gap-2.5 shrink-0">
             <a href="https://tokosancaka.com" target="_blank" class="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium text-slate-600 hover:bg-slate-200/70 border border-slate-200/80 bg-white transition">
                 <span>tokosancaka.com</span>
                 <svg class="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
                 </svg>
             </a>
-            <div class="flex items-center gap-2 pl-2">
+
+            <div class="flex items-center gap-2 pl-1">
                 <div class="text-right hidden md:block">
                     <div class="text-xs font-medium text-slate-800">{{ Auth::user()->nama_lengkap ?? 'Admin Sancaka' }}</div>
-                    <div class="text-[11px] text-slate-500">{{ config('mail.from.address', 'admin@tokosancaka.com') }}</div>
+                    <div class="text-[11px] text-slate-500">{{ Auth::user()->email ?? config('mail.from.address', 'admin@tokosancaka.com') }}</div>
                 </div>
-                <div class="w-9 h-9 rounded-full bg-slate-800 text-white flex items-center justify-center text-xs font-semibold">
+                <div class="w-9 h-9 rounded-full bg-[#0b57d0] text-white flex items-center justify-center text-xs font-semibold">
                     {{ strtoupper(substr(Auth::user()->nama_lengkap ?? 'A', 0, 1)) }}
                 </div>
             </div>
+
+            <!-- Form Logout Breeze -->
+            <form method="POST" action="{{ route('logout') }}" class="ml-1">
+                @csrf
+                <button
+                    type="submit"
+                    title="Keluar dari Sancaka Mail"
+                    class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium text-red-600 hover:bg-red-50 border border-red-200/80 bg-white transition cursor-pointer"
+                >
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+                    </svg>
+                    <span class="hidden sm:inline">Keluar</span>
+                </button>
+            </form>
         </div>
     </header>
 
