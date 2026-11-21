@@ -42,7 +42,7 @@
                         class="h-12 w-auto object-contain mb-3"
                     >
                     <span class="text-lg font-semibold text-slate-900 tracking-tight">Buat Akun Sancaka Mail</span>
-                    <span class="text-xs text-slate-500 mt-0.5">Dapatkan alamat email @{{ $mailDomain }} gratis</span>
+                    <span class="text-xs text-slate-500 mt-0.5">Dapatkan alamat email {{ '@' . $mailDomain }} gratis</span>
                 </a>
             </div>
 
@@ -89,7 +89,7 @@
                             class="flex-1 min-w-0 px-3.5 py-2.5 text-sm text-slate-900 bg-transparent border-0 placeholder-slate-400 outline-none"
                         />
                         <span class="inline-flex items-center px-3 bg-slate-50 text-slate-600 text-xs sm:text-sm font-medium border-l border-slate-200 select-none shrink-0">
-                            @{{ $mailDomain }}
+                            {{ '@' . $mailDomain }}
                         </span>
                     </div>
                     <p id="emailPreviewText" class="mt-1 text-[11px] text-slate-500">
