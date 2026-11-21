@@ -48,12 +48,13 @@ class RegisteredUserController extends Controller
             'nama_lengkap'   => ['required', 'string', 'max:255'],
             'clean_username' => ['required', 'string', 'min:3', 'max:30', 'regex:/^[a-z0-9._-]+$/'],
             'webmail_email'  => ['required', 'string', 'email', 'max:191', Rule::unique('Pengguna', 'webmail_email'), Rule::unique('Pengguna', 'email')],
-            'no_wa'          => ['required', 'string', 'min:9', 'max:20', 'regex:/^[0-9+]+$/'],
+            'no_wa'          => ['required', 'string', 'min:9', 'max:20', 'regex:/^[0-9+]+$/', Rule::unique('Pengguna', 'no_wa')],
             'password'       => ['required', 'confirmed', Rules\Password::min(8)->mixedCase()->numbers()],
         ], [
             'clean_username.regex' => 'Username email hanya boleh berisi huruf kecil, angka, titik (.), strip (-), atau garis bawah (_).',
             'webmail_email.unique' => "Alamat {$fullWebmail} sudah digunakan. Silakan pilih username lain.",
             'no_wa.regex'          => 'Nomor WhatsApp hanya boleh berisi angka.',
+            'no_wa.unique'         => 'Nomor WhatsApp ini sudah terdaftar pada akun lain.',
             'password.mixed'       => 'Password harus mengandung minimal 1 huruf besar dan 1 huruf kecil.',
             'password.numbers'     => 'Password harus mengandung minimal 1 angka.',
         ]);
