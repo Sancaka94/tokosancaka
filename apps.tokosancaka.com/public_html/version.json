@@ -1,124 +1,124 @@
 {
-    "version": "1.0.0.6236",
-    "last_update": "20 Nov 2026 20:57",
+    "version": "1.0.0.6240",
+    "last_update": "21 Nov 2026 11:51",
     "commits": [
         {
-            "hash": "377907cd",
+            "hash": "e616f2e4c",
+            "date": "2026-11-21 11:51:23 +0700",
+            "author": "Server Bot",
+            "message": "Update System"
+        },
+        {
+            "hash": "ca410cc71",
+            "date": "2026-11-21 11:43:00 +0700",
+            "author": "Sancaka94",
+            "message": "Auto commit"
+        },
+        {
+            "hash": "99d370e9c",
+            "date": "2026-11-21 11:21:54 +0700",
+            "author": "Sancaka94",
+            "message": "Auto commit"
+        },
+        {
+            "hash": "b454b836c",
+            "date": "2026-11-20 20:57:47 +0700",
+            "author": "Server Bot",
+            "message": "Auto Bump Version"
+        },
+        {
+            "hash": "377907cdd",
             "date": "2026-11-20 20:57:46 +0700",
             "author": "Server Bot",
             "message": "Update System"
         },
         {
-            "hash": "f9786c71",
+            "hash": "f9786c719",
             "date": "2026-11-20 20:39:39 +0700",
             "author": "Server Bot",
             "message": "Auto Bump Version"
         },
         {
-            "hash": "a56dde55",
+            "hash": "a56dde557",
             "date": "2026-11-20 20:32:10 +0700",
             "author": "Server Bot",
             "message": "Auto Bump Version"
         },
         {
-            "hash": "5cab2609",
+            "hash": "5cab26094",
             "date": "2026-11-20 20:32:07 +0700",
             "author": "Server Bot",
             "message": "Update System"
         },
         {
-            "hash": "fa88e198",
+            "hash": "fa88e198b",
             "date": "2026-11-15 15:30:55 +0700",
             "author": "Sancaka94",
             "message": "Auto commit"
         },
         {
-            "hash": "c451fa50",
+            "hash": "c451fa50d",
             "date": "2026-11-15 15:25:09 +0700",
             "author": "Sancaka94",
             "message": "Auto commit"
         },
         {
-            "hash": "1985ab11",
+            "hash": "1985ab119",
             "date": "2026-11-15 15:17:31 +0700",
             "author": "Sancaka94",
             "message": "Auto commit"
         },
         {
-            "hash": "44cbeec2",
+            "hash": "44cbeec24",
             "date": "2026-11-15 15:06:07 +0700",
             "author": "Sancaka94",
             "message": "Auto commit"
         },
         {
-            "hash": "08588903",
+            "hash": "085889030",
             "date": "2026-11-15 14:49:24 +0700",
             "author": "Sancaka94",
             "message": "Auto commit"
         },
         {
-            "hash": "802b1d1a",
+            "hash": "802b1d1a6",
             "date": "2026-11-11 22:13:25 +0700",
             "author": "Sancaka94",
             "message": "Auto commit"
         },
         {
-            "hash": "1783f93d",
+            "hash": "1783f93d7",
             "date": "2026-11-11 21:41:41 +0700",
             "author": "Sancaka94",
             "message": "Auto commit"
         },
         {
-            "hash": "6eab190d",
+            "hash": "6eab190dd",
             "date": "2026-11-11 21:29:54 +0700",
             "author": "Sancaka94",
             "message": "Auto commit"
         },
         {
-            "hash": "d29fa3c2",
+            "hash": "d29fa3c20",
             "date": "2026-11-11 21:26:25 +0700",
             "author": "Sancaka94",
             "message": "Auto commit"
         },
         {
-            "hash": "b8ea8f50",
+            "hash": "b8ea8f502",
             "date": "2026-11-11 20:14:15 +0700",
             "author": "Sancaka94",
             "message": "Auto commit"
         },
         {
-            "hash": "18fab703",
+            "hash": "18fab7035",
             "date": "2026-11-11 20:06:58 +0700",
             "author": "Sancaka94",
             "message": "Auto commit"
         },
         {
-            "hash": "66cc0eea",
+            "hash": "66cc0eeab",
             "date": "2026-11-11 10:38:12 +0700",
-            "author": "Sancaka94",
-            "message": "Auto commit"
-        },
-        {
-            "hash": "b25b031d",
-            "date": "2026-11-11 10:12:12 +0700",
-            "author": "Sancaka94",
-            "message": "Auto commit"
-        },
-        {
-            "hash": "88af9ea2",
-            "date": "2026-11-10 19:48:56 +0700",
-            "author": "Sancaka94",
-            "message": "Auto commit"
-        },
-        {
-            "hash": "07b0a95f",
-            "date": "2026-11-10 19:22:04 +0700",
-            "author": "Sancaka94",
-            "message": "Auto commit"
-        },
-        {
-            "hash": "9319efb0",
-            "date": "2026-11-10 19:17:29 +0700",
             "author": "Sancaka94",
             "message": "Auto commit"
         }
