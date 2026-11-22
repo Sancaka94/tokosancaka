@@ -22,7 +22,24 @@ return [
     | Set to 'false' [boolean] to disable this functionality.
     |
     */
-    'default' => env('IMAP_DEFAULT_ACCOUNT', 'default'),
+    'default' => [// account identifier
+            'host'           => env('IMAP_HOST', env('IMAP_ACCOUNT_DEFAULT_HOST', 'server4.hostdata.id')),
+            'port'           => env('IMAP_PORT', env('IMAP_ACCOUNT_DEFAULT_PORT', 993)),
+            'protocol'       => env('IMAP_PROTOCOL', env('IMAP_ACCOUNT_DEFAULT_PROTOCOL', 'imap')),
+            'encryption'     => env('IMAP_ENCRYPTION', env('IMAP_ACCOUNT_DEFAULT_ENCRYPTION', 'ssl')),
+            'validate_cert'  => env('IMAP_VALIDATE_CERT', env('IMAP_ACCOUNT_DEFAULT_VALIDATE_CERT', false)),
+            'username'       => env('IMAP_USERNAME', env('IMAP_ACCOUNT_DEFAULT_USERNAME', 'admin@tokosancaka.com')),
+            'password'       => env('IMAP_PASSWORD', env('IMAP_ACCOUNT_DEFAULT_PASSWORD', '')),
+            'authentication' => env('IMAP_AUTHENTICATION', null),
+            'proxy'          => [
+                'socket'          => null,
+                'request_fulluri' => false,
+                'username'        => null,
+                'password'        => null,
+            ],
+            "timeout"        => 30,
+            "extensions"     => []
+        ],
 
     /*
     |--------------------------------------------------------------------------
