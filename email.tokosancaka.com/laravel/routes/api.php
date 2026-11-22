@@ -31,4 +31,3 @@ Route::middleware(['auth:sanctum'])->prefix('mobile/email')->name('api.mobile.em
     Route::put('/{id}', [EmailController::class, 'update'])->whereNumber('id')->name('update');
 });
 
-require __DIR__ . '/sancaka.app.php';
