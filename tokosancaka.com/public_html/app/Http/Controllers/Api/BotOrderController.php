@@ -118,6 +118,8 @@ class BotOrderController extends Controller
                 'sender_district_id'      => $senderLocation['district_id'],
                 'sender_subdistrict_id'   => $senderLocation['subdistrict_id'],
                 'sender_postal_code'      => $senderLocation['postal_code'],
+                'sender_lat'              => $senderLocation['lat'] ?? null, // <-- TAMBAHKAN INI
+                'sender_lng'              => $senderLocation['lng'] ?? null, // <-- TAMBAHKAN INI
 
                 'receiver_name'           => $draft->receiver_name,
                 'receiver_phone'          => $this->_sanitizePhoneNumber((string) $draft->receiver_phone),
@@ -125,6 +127,8 @@ class BotOrderController extends Controller
                 'receiver_district_id'    => $receiverLocation['district_id'],
                 'receiver_subdistrict_id' => $receiverLocation['subdistrict_id'],
                 'receiver_postal_code'    => $receiverLocation['postal_code'],
+                'receiver_lat'            => $receiverLocation['lat'] ?? null, // <-- TAMBAHKAN INI
+                'receiver_lng'            => $receiverLocation['lng'] ?? null, // <-- TAMBAHKAN INI
 
                 'item_description'        => $draft->item_description,
 
@@ -3204,12 +3208,58 @@ private function _handleTrackingText(string $phone, string $text): bool
                 return null;
             }
 
+            // OTOMATIS TEMBAK NOMINATIM UNTUK DAPAT LAT & LNG
+            $geoQuery = $best['full_text'] ?: $addressText;
+            $geo = $this->_geocodeNominatim($geoQuery);
+            $best['lat'] = $geo['lat'];
+            $best['lng'] = $geo['lng'];
+
             return $best;
         } catch (Exception $e) {
             Log::error("Geocoding API KiriminAja Gagal: " . $e->getMessage());
 
             return null;
         }
+    }
+
+    /**
+     * Ambil koordinat lat & lng dari Nominatim OpenStreetMap (dengan Cache 30 hari).
+     */
+    private function _geocodeNominatim(string $query): array
+    {
+        $cleanQuery = trim($query);
+        if ($cleanQuery === '') {
+            return ['lat' => null, 'lng' => null];
+        }
+
+        $cacheKey = 'nominatim_bot_geo_' . md5(strtolower($cleanQuery));
+
+        return Cache::remember($cacheKey, now()->addDays(30), function () use ($cleanQuery) {
+            try {
+                $response = Http::withHeaders([
+                    'User-Agent' => 'SancakaExpressBot/1.0 (admin@tokosancaka.com)',
+                ])->timeout(5)->get('https://nominatim.openstreetmap.org/search', [
+                    'q'            => $cleanQuery . ', Indonesia',
+                    'format'       => 'json',
+                    'limit'        => 1,
+                    'countrycodes' => 'id',
+                ]);
+
+                if ($response->successful()) {
+                    $data = $response->json();
+                    if (!empty($data[0]['lat']) && !empty($data[0]['lon'])) {
+                        return [
+                            'lat' => (float) $data[0]['lat'],
+                            'lng' => (float) $data[0]['lon'],
+                        ];
+                    }
+                }
+            } catch (\Throwable $e) {
+                Log::warning('[NOMINATIM] Gagal geocode alamat: ' . $e->getMessage(), ['query' => $cleanQuery]);
+            }
+
+            return ['lat' => null, 'lng' => null];
+        });
     }
 
     /** Pecah teks alamat menjadi kata kunci bermakna. */
@@ -4583,6 +4633,8 @@ private function _createKiriminPickup($pesanan, $draft): ?array
             'kecamatan_id' => $senderDistrict,
             'kelurahan_id' => $senderSub,
             'zipcode' => $senderZipcode,
+            'latitude' => (float) $senderLat,   // <-- TAMBAHKAN INI
+            'longitude' => (float) $senderLng, // <-- TAMBAHKAN INI
             'schedule' => $scheduleClock,
             'platform_name' => 'tokosancaka.com',
             'category' => $category,
@@ -4613,6 +4665,8 @@ private function _createKiriminPickup($pesanan, $draft): ?array
                 'destination_kecamatan_id' => $receiverDistrict,
                 'destination_kelurahan_id' => $receiverSub,
                 'destination_zipcode' => $receiverZipcode,
+                'destination_latitude' => (float) $receiverLat,   // <-- TAMBAHKAN INI
+                'destination_longitude' => (float) $receiverLng, // <-- TAMBAHKAN INI
 
                 'weight' => $weight,
                 'width' => $width,
