@@ -698,6 +698,58 @@ class EmailController extends Controller
     }
 
     /**
+     * Kirim notifikasi pesanan sukses ke salafy94@gmail.com
+     */
+    public static function kirimNotifikasiPesananSukses($pesanan)
+    {
+        try {
+            $tujuan = 'salafy94@gmail.com';
+            $invoice = $pesanan->nomor_invoice ?? '-';
+            $resi = $pesanan->resi ?? 'Menunggu Resi';
+            $subject = "✅ Pesanan Sukses #{$invoice} ({$resi}) - Sancaka Express";
+
+            $ongkir = number_format((int) ($pesanan->shipping_cost ?? $pesanan->ongkir ?? 0), 0, ',', '.');
+            $hargaBarang = number_format((int) ($pesanan->total_harga_barang ?? $pesanan->item_price ?? 0), 0, ',', '.');
+
+            $bodyHtml = "
+            <div style='font-family: Arial, sans-serif; background-color: #f3f4f6; padding: 24px;'>
+                <div style='max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 10px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.06);'>
+                    <div style='background: #dc2626; color: #ffffff; padding: 20px; text-align: center;'>
+                        <h2 style='margin: 0; font-size: 20px;'>PESANAN BARU SUKSES</h2>
+                        <p style='margin: 6px 0 0 0; font-size: 13px;'>Invoice: <strong>{$invoice}</strong></p>
+                    </div>
+                    <div style='padding: 24px; font-size: 14px; color: #1f2937;'>
+                        <table style='width: 100%; border-collapse: collapse;'>
+                            <tr><td style='padding: 6px 0; color: #6b7280; width: 140px;'>No. Resi</td><td>: <strong>{$resi}</strong></td></tr>
+                            <tr><td style='padding: 6px 0; color: #6b7280;'>Ekspedisi</td><td>: " . htmlspecialchars($pesanan->expedition ?? '-') . "</td></tr>
+                            <tr><td style='padding: 6px 0; color: #6b7280;'>Metode Bayar</td><td>: " . htmlspecialchars($pesanan->payment_method ?? '-') . "</td></tr>
+                            <tr><td style='padding: 6px 0; color: #6b7280;'>Pengirim</td><td>: " . htmlspecialchars($pesanan->sender_name ?? '-') . " (" . htmlspecialchars($pesanan->sender_phone ?? '-') . ")</td></tr>
+                            <tr><td style='padding: 6px 0; color: #6b7280;'>Penerima</td><td>: " . htmlspecialchars($pesanan->receiver_name ?? '-') . " (" . htmlspecialchars($pesanan->receiver_phone ?? '-') . ")</td></tr>
+                            <tr><td style='padding: 6px 0; color: #6b7280;'>Alamat Tujuan</td><td>: " . htmlspecialchars($pesanan->receiver_address ?? '-') . "</td></tr>
+                            <tr><td style='padding: 6px 0; color: #6b7280;'>Barang</td><td>: " . htmlspecialchars($pesanan->item_description ?? '-') . " (Rp {$hargaBarang})</td></tr>
+                            <tr><td style='padding: 6px 0; color: #6b7280;'>Ongkir</td><td>: <strong>Rp {$ongkir}</strong></td></tr>
+                            <tr><td style='padding: 6px 0; color: #6b7280;'>Status</td><td>: <strong>" . htmlspecialchars($pesanan->status ?? $pesanan->status_pesanan ?? 'Sukses') . "</strong></td></tr>
+                        </table>
+                    </div>
+                    <div style='background: #f9fafb; padding: 14px; text-align: center; font-size: 12px; color: #9ca3af;'>
+                        Dikirim otomatis oleh sistem Sancaka Express • " . now()->format('d M Y H:i') . " WIB
+                    </div>
+                </div>
+            </div>";
+
+            Mail::html($bodyHtml, function ($message) use ($tujuan, $subject) {
+                $message->to($tujuan)
+                        ->subject($subject)
+                        ->from(config('mail.from.address'), config('mail.from.name'));
+            });
+
+            Log::info("LOG LOG: [EMAIL PESANAN SUKSES] Terkirim ke {$tujuan} untuk Invoice {$invoice} / Resi {$resi}");
+        } catch (\Throwable $e) {
+            Log::error("LOG LOG: [EMAIL PESANAN GAGAL] Invoice " . ($pesanan->nomor_invoice ?? '-') . " - " . $e->getMessage());
+        }
+    }
+
+    /**
      * Helper: Generate Access Token FCM V1
      */
     private function getGoogleAccessToken()
@@ -749,3 +801,4 @@ class EmailController extends Controller
         });
     }
 }
+

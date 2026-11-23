@@ -1,195 +1,105 @@
 <?php
 
-
-
 namespace App\Models;
 
-
-
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-
 use Illuminate\Database\Eloquent\Model;
-
-
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\Cache;
 
 class Pesanan extends Model
-
 {
-
     use HasFactory;
 
-
-
     //======================================================================
-
     //== PENGATURAN DASAR MODEL
-
     //======================================================================
-
-
-
-    /**
-
-     * Nama tabel database yang terhubung dengan model ini.
-
-     * @var string
-
-     */
 
     protected $table = 'Pesanan';
 
-
-
-    /**
-
-     * Primary key dari tabel.
-
-     * @var string
-
-     */
-
     protected $primaryKey = 'id_pesanan';
-
-
-
-    /**
-
-     * ✅ PERBAIKAN: Mengaktifkan pengelolaan timestamp otomatis (created_at & updated_at)
-
-     * karena tabel Anda memiliki kedua kolom tersebut.
-
-     * @var bool
-
-     */
 
     public $timestamps = true;
 
-
-
-    /**
-
-     * ✅ PERBAIKAN: Menggunakan $guarded untuk keamanan Mass Assignment.
-
-     * Ini berarti semua kolom boleh diisi kecuali 'id_pesanan'.
-
-     * @var array
-
-     */
-
     protected $guarded = ['id_pesanan'];
 
-
-
-    /**
-
-     * Mengubah tipe data kolom tertentu secara otomatis.
-
-     * @var array
-
-     */
-
     protected $casts = [
-
         'kelengkapan' => 'array',
-
         'total_harga_barang' => 'float',
-
         'tanggal_pesanan' => 'datetime',
-
         'created_at' => 'datetime',
-
         'updated_at' => 'datetime',
-
         'telah_dilihat' => 'boolean',
-
         'is_agreed' => 'boolean',
-
     ];
 
-
-
+    //======================================================================
+    //== AUTO NOTIFIKASI EMAIL PESANAN SUKSES KE salafy94@gmail.com
     //======================================================================
 
+    protected static function booted()
+    {
+        static::created(function ($pesanan) {
+            if (self::isPesananSukses($pesanan)) {
+                $cacheKey = 'notified_order_email_' . ($pesanan->id_pesanan ?? $pesanan->nomor_invoice);
+                if (Cache::add($cacheKey, true, now()->addDays(7))) {
+                    \App\Http\Controllers\Admin\EmailController::kirimNotifikasiPesananSukses($pesanan);
+                }
+            }
+        });
+
+        static::updated(function ($pesanan) {
+            if (self::isPesananSukses($pesanan)) {
+                $cacheKey = 'notified_order_email_' . ($pesanan->id_pesanan ?? $pesanan->nomor_invoice);
+                if (Cache::add($cacheKey, true, now()->addDays(7))) {
+                    \App\Http\Controllers\Admin\EmailController::kirimNotifikasiPesananSukses($pesanan);
+                }
+            }
+        });
+    }
+
+    private static function isPesananSukses($pesanan): bool
+    {
+        $status = strtolower((string) ($pesanan->status ?? $pesanan->status_pesanan ?? ''));
+        $resi = trim((string) ($pesanan->resi ?? ''));
+
+        if (str_contains($status, 'gagal') || str_contains($status, 'batal') || str_contains($status, 'pending') || str_contains($status, 'menunggu')) {
+            return false;
+        }
+
+        $punyaResiValid = ($resi !== '' && $resi !== ($pesanan->nomor_invoice ?? ''));
+        $statusSukses = in_array($status, ['sukses', 'success', 'paid', 'lunas', 'diproses', 'terkirim', 'siap dikirim', 'pickup']);
+
+        return $punyaResiValid || $statusSukses;
+    }
+
+    //======================================================================
     //== RELASI DATABASE
-
     //======================================================================
 
-
-
-    /**
-
-     * Relasi ke model User (sebagai pembeli).
-
-     */
-
-   public function pembeli()
-{
-    // Mengacu pada id_pengguna di tabel Pengguna
-    return $this->belongsTo(User::class, 'customer_id', 'id_pengguna');
-}
-
-
-
-    /**
-
-     * Relasi ke model ScanHistory.
-
-     */
+    public function pembeli()
+    {
+        return $this->belongsTo(User::class, 'customer_id', 'id_pengguna');
+    }
 
     public function scanHistories()
-
     {
-
         return $this->hasMany(ScanHistory::class, 'resi', 'resi')->latest();
-
     }
-
-
-
-    /**
-
-     * Relasi ke model Toko (jika digunakan).
-
-     */
 
     public function toko()
-
     {
-
         return $this->belongsTo(Toko::class, 'id_toko', 'id_toko');
-
     }
-
-
-
-    /**
-
-     * Relasi ke model Kontak (sebagai pengirim).
-
-     */
 
     public function pengirim()
-
     {
-
         return $this->belongsTo(Kontak::class, 'kontak_pengirim_id');
-
     }
 
-
-
-    /**
-
-     * Relasi ke model Kontak (sebagai penerima).
-
-     */
-
     public function penerima()
-
     {
-
         return $this->belongsTo(Kontak::class, 'kontak_penerima_id');
-
     }
 
     public function kolis(): HasMany
@@ -197,13 +107,8 @@ class Pesanan extends Model
         return $this->hasMany(Koli::class, 'pesanan_id', 'id_pesanan');
     }
 
-    /**
-     * Relasi ke OrderItem (Detail Produk yang dibeli)
-     */
     public function items()
     {
-        // Sesuaikan 'order_id' dengan nama foreign key yang ada di tabel order_items Anda.
-        // Jika di tabel order_items kolomnya bernama 'pesanan_id', ganti 'order_id' menjadi 'pesanan_id'.
         return $this->hasMany(\App\Models\OrderItem::class, 'order_id', 'id');
     }
 
@@ -211,6 +116,4 @@ class Pesanan extends Model
     {
         return $this->belongsTo(Store::class, 'store_id');
     }
-
 }
-
