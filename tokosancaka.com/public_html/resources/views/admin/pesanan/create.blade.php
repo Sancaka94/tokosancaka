@@ -1234,6 +1234,12 @@ document.addEventListener('DOMContentLoaded', function () {
             return repo.nama_lengkap + ' (Saldo: Rp ' + saldoFormat + ')';
         }
     });
+
+    // Tambahkan ini tepat setelah blok $('#customer_id').select2({...});
+    $('#customer_id').on('select2:select select2:clear change', function () {
+        document.getElementById('payment_method').dispatchEvent(new Event('change'));
+    });
+
 });
 </script>
 
