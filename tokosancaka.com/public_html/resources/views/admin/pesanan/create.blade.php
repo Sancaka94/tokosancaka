@@ -587,6 +587,10 @@ document.addEventListener('DOMContentLoaded', function () {
         const searchInput = document.getElementById(`${prefix}_address_search`);
         const debouncedSearch = debounce(() => {
             document.getElementById(`${prefix}_address_check`).classList.add('hidden');
+            document.getElementById(`${prefix}_lat`).value = '';
+            document.getElementById(`${prefix}_lng`).value = '';
+            document.getElementById(`${prefix}_district_id`).value = '';
+            document.getElementById(`${prefix}_subdistrict_id`).value = '';
             performAddressSearch(prefix, searchInput.value, null);
         }, 400);
         searchInput.addEventListener('input', debouncedSearch);
