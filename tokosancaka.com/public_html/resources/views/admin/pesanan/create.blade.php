@@ -308,10 +308,10 @@
                                     <option value="COD">🚚 COD Ongkir Saja</option>
                                     <option value="CODBARANG">📦 COD Barang + Ongkir</option>
                                 </select>
-                                
+
                                 <!-- Icon Dompet di Kiri -->
                                 <i class="fas fa-wallet text-gray-400 absolute top-1/2 left-3 transform -translate-y-1/2 pointer-events-none"></i>
-                                
+
                                 <!-- Icon Panah Custom di Kanan -->
                                 <i class="fas fa-chevron-down text-gray-400 absolute top-1/2 right-3 transform -translate-y-1/2 pointer-events-none text-xs"></i>
                             </div>
@@ -328,7 +328,7 @@
 
                                 @endforeach
                             </select>
-                        </div> --}} 
+                        </div> --}}
 
                         <!-- WADAH PENCARIAN CUSTOMER (AJAX SELECT2) -->
                         <div id="customer_container" class="md:col-span-2 hidden mt-2">
@@ -536,6 +536,8 @@ document.addEventListener('DOMContentLoaded', function () {
         document.getElementById(`${prefix}_subdistrict_id`).value = item.subdistrict_id;
         document.getElementById(`${prefix}_address_results`).classList.add('hidden');
         document.getElementById(`${prefix}_address_check`).classList.remove('hidden');
+        document.getElementById(`${prefix}_lat`).value = item.lat || '';
+        document.getElementById(`${prefix}_lng`).value = item.lng || '';
         runValidityChecks();
     }
 
@@ -1074,10 +1076,13 @@ applyStrictInsurance(true);
     // --- 3. PASANG EVENT LISTENER ---
 
     // Saat tombol "Pilih Metode Pembayaran" diklik -> Buka Modal & Load API
-    document.getElementById('paymentMethodButton').addEventListener('click', () => {
-        document.getElementById('paymentMethodModal').classList.remove('hidden');
-        loadTripayChannels(); // <--- INI PENTING
-    });
+    const paymentMethodBtn = document.getElementById('paymentMethodButton');
+    if (paymentMethodBtn) {
+        paymentMethodBtn.addEventListener('click', () => {
+            document.getElementById('paymentMethodModal').classList.remove('hidden');
+            loadTripayChannels();
+        });
+    }
 
     // Pasang listener untuk metode MANUAL yang sudah ada di HTML (Saldo, COD, Doku)
     // Gunakan selector khusus 'payment-option' yang ada di dalam list statis
@@ -1169,7 +1174,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 select.prop('required', false);
                 select.val(null).trigger('change'); // Kosongkan jika batal potong saldo
             }
-            
+
             if (typeof runValidityChecks === "function") runValidityChecks();
         });
     }
@@ -1180,7 +1185,7 @@ document.addEventListener('DOMContentLoaded', function () {
         placeholder: 'Ketik nama / toko / no WA...',
         allowClear: true,
         ajax: {
-            url: "{{ route('admin.pesanan.search_customer') }}", 
+            url: "{{ route('admin.pesanan.search_customer') }}",
             dataType: 'json',
             delay: 300,
             data: function (params) {
@@ -1204,10 +1209,10 @@ document.addEventListener('DOMContentLoaded', function () {
         // Desain daftar yang muncul ke bawah saat diketik
         templateResult: function(repo) {
             if (repo.loading) return "Mencari data...";
-            
+
             let toko = repo.store_name ? `<span class="text-xs text-gray-500 block mt-0.5"><i class="fas fa-store text-gray-400 mr-1"></i> ${repo.store_name}</span>` : '';
             let saldoFormat = new Intl.NumberFormat('id-ID').format(repo.saldo || 0);
-            
+
             return $(`
                 <div class="p-2 border-b border-gray-100">
                     <div class="font-bold text-gray-800">${repo.nama_lengkap}</div>
