@@ -328,4 +328,65 @@ class KiriminAjaService
         Log::info('KiriminAja createOrder Sukses:', ['response' => $response]);
         return $response;
     }
+
+    /**
+     * Memastikan jadwal pickup valid untuk semua kurir (khususnya SPX yang cut-off lebih awal dari jam 17:00).
+     */
+    private function normalizeExpressSchedule(array $data): array
+    {
+        $now = \Carbon\Carbon::now('Asia/Jakarta');
+
+        // Deteksi apakah ada paket yang memakai kurir SPX
+        $hasSpx = false;
+        if (!empty($data['packages']) && is_array($data['packages'])) {
+            foreach ($data['packages'] as $pkg) {
+                $courier = strtolower((string) ($pkg['service'] ?? ''));
+                if (str_contains($courier, 'spx') || str_contains($courier, 'shopee')) {
+                    $hasSpx = true;
+                    break;
+                }
+            }
+        }
+
+        // Batas maksimal jam pickup hari yang sama: SPX = 15:00, kurir lain = 17:00
+        $maxHour = $hasSpx ? 15 : 17;
+
+        $rawSchedule = $data['schedule'] ?? ($data['packages'][0]['schedule'] ?? null);
+        try {
+            $scheduledAt = $rawSchedule
+                ? \Carbon\Carbon::parse($rawSchedule, 'Asia/Jakarta')
+                : $now->copy()->setTime($maxHour, 0, 0);
+        } catch (\Throwable $e) {
+            $scheduledAt = $now->copy()->setTime($maxHour, 0, 0);
+        }
+
+        // Jika hari Minggu, atau waktu sekarang sudah melewati batas cut-off, atau jam jadwal melebihi maxHour di hari ini
+        if (
+            $scheduledAt->isSunday()
+            || $now->hour >= $maxHour
+            || ($scheduledAt->isSameDay($now) && $scheduledAt->hour > $maxHour)
+            || $scheduledAt->lte($now->copy()->addMinutes(15))
+        ) {
+            if ($now->isSunday() || $now->hour >= $maxHour) {
+                $pickupDate = $now->copy()->addDay();
+                if ($pickupDate->isSunday()) {
+                    $pickupDate->addDay();
+                }
+                $scheduledAt = $pickupDate->setTime(9, 0, 0);
+            } else {
+                $scheduledAt = $now->copy()->setTime($maxHour, 0, 0);
+            }
+        }
+
+        $safeSchedule = $scheduledAt->format('Y-m-d H:i:s');
+        $data['schedule'] = $safeSchedule;
+
+        if (!empty($data['packages']) && is_array($data['packages'])) {
+            foreach ($data['packages'] as $i => $pkg) {
+                $data['packages'][$i]['schedule'] = $safeSchedule;
+            }
+        }
+
+        return $data;
+    }
 }
