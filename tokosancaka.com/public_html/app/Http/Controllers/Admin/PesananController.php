@@ -879,16 +879,37 @@ class PesananController extends Controller
     }
 
     public function searchAddressApi(Request $request, KiriminAjaService $kirimaja)
-    {
-        $request->validate(['search' => 'required|string|min:3']);
-        try {
-            $results = $kirimaja->searchAddress($request->input('search'));
-            return response()->json($results['data'] ?? []);
-        } catch (Exception $e) {
-            Log::channel('daily')->error('KiriminAja Address Search Failed: ' . $e->getMessage());
-            return response()->json(['error' => 'Gagal mengambil data alamat.'], 500);
+{
+    $request->validate(['search' => 'required|string|min:3']);
+
+    try {
+        $results = $kirimaja->searchAddress($request->input('search'));
+        $addresses = $results['data'] ?? [];
+
+        // Otomatis ambil lat & lng dari Nominatim untuk hasil teratas (dengan Cache 30 hari)
+        if (!empty($addresses)) {
+            $first = $addresses[0];
+            $queryNominatim = implode(', ', array_filter([
+                $first['subdistrict_name'] ?? '',
+                $first['district_name'] ?? '',
+                $first['city_name'] ?? '',
+            ]));
+
+            $cacheKey = 'nominatim_geo_' . md5(strtolower($queryNominatim));
+            $geo = \Illuminate\Support\Facades\Cache::remember($cacheKey, now()->addDays(30), function () use ($queryNominatim) {
+                return $this->geocode($queryNominatim);
+            });
+
+            $addresses[0]['lat'] = $geo['lat'] ?? null;
+            $addresses[0]['lng'] = $geo['lng'] ?? null;
         }
+
+        return response()->json($addresses);
+    } catch (Exception $e) {
+        Log::channel('daily')->error('KiriminAja Address Search Failed: ' . $e->getMessage());
+        return response()->json(['error' => 'Gagal mengambil data alamat.'], 500);
     }
+}
 
     public function searchKontak(Request $request)
     {
