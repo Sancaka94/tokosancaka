@@ -148,7 +148,7 @@ class KiriminAjaService
 
     public function createExpressOrder(array $data)
     {
-        // Ganti ke $this->request() agar konsisten
+        $data = $this->normalizeExpressSchedule($data);
         return $this->request('POST', '/api/mitra/v6.1/request_pickup', $data);
     }
 
@@ -185,10 +185,10 @@ class KiriminAjaService
             if (!$response->successful()) {
                 Log::error("KiriminAja API Error: {$method} {$endpoint}", [
                     'status' => $response->status(),
-                    'response' => $response->body(), // Gunakan body() untuk teks mentah
+                    'response' => $response->body(),
                     'payload' => $payload
                 ]);
-                return null; // Kembalikan null untuk di-handle oleh pemanggil
+                return $response->json() ?? ['status' => false, 'text' => 'HTTP Error ' . $response->status()];
             }
 
             // Jika sukses, kembalikan data JSON
@@ -307,11 +307,11 @@ class KiriminAjaService
      * @param array $dataPayload Payload lengkap yang berisi detail pengirim, penerima, dan paket
      * @return array|null Response dari KiriminAja API atau null jika gagal
      */
-    public function createOrder(array $dataPayload)
+   public function createOrder(array $dataPayload)
     {
+        $dataPayload = $this->normalizeExpressSchedule($dataPayload);
         Log::info('KiriminAja createOrder Payload:', $dataPayload);
 
-        // Kita bisa memanfaatkan private method $this->request() yang sudah Anda buat sebelumnya
         $response = $this->request('POST', '/api/mitra/v6.1/request_pickup', $dataPayload);
 
         if (!$response) {
