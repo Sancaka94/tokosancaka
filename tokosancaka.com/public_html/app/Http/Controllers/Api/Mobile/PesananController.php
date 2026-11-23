@@ -602,12 +602,21 @@ class PesananController extends Controller
         // JIKA LAYANAN REGULAR / EXPRESS / CARGO
         // =========================================================
         $now = \Carbon\Carbon::now('Asia/Jakarta');
-        if ($now->isSunday() || $now->hour >= 17) {
+        $isSpx = str_contains(strtolower((string) $courier), 'spx');
+
+        // SPX punya batas cut-off pickup lebih awal (jam 15:00) dibanding kurir lain (jam 17:00)
+        $cutoffHour = $isSpx ? 15 : 17;
+
+        if ($now->isSunday() || $now->hour >= $cutoffHour) {
             $pickupDate = $now->copy()->addDay();
-            if ($pickupDate->isSunday()) $pickupDate->addDay();
+            if ($pickupDate->isSunday()) {
+                $pickupDate->addDay();
+            }
             $scheduleClock = $pickupDate->setTime(9, 0, 0)->format('Y-m-d H:i:s');
         } else {
-            $scheduleClock = $now->setTime(17, 0, 0)->format('Y-m-d H:i:s');
+            // Untuk SPX, set ke jam 15:00 (atau +1 jam dari sekarang jika sudah lewat jam 14:00)
+            $targetHour = $isSpx ? 15 : 17;
+            $scheduleClock = $now->copy()->setTime($targetHour, 0, 0)->format('Y-m-d H:i:s');
         }
 
         $category = ($data['service_type'] ?? $serviceGroup) === 'cargo' ? 'trucking' : 'regular';
@@ -1284,13 +1293,29 @@ TEXT;
      */
     private function _prepareKiriminAjaPayload($order)
     {
-        // Sesuaikan mapping data dengan kebutuhan API KiriminAja Anda
+        $parts = explode('-', $order->expedition ?? '');
+        $courier = $parts[1] ?? 'jne';
+        $serviceType = $parts[2] ?? 'REG';
+
+        $now = \Carbon\Carbon::now('Asia/Jakarta');
+        $isSpx = str_contains(strtolower((string) $courier), 'spx');
+        $cutoffHour = $isSpx ? 15 : 17;
+
+        if ($now->isSunday() || $now->hour >= $cutoffHour) {
+            $pickupDate = $now->copy()->addDay();
+            if ($pickupDate->isSunday()) $pickupDate->addDay();
+            $scheduleClock = $pickupDate->setTime(9, 0, 0)->format('Y-m-d H:i:s');
+        } else {
+            $scheduleClock = $now->copy()->setTime($cutoffHour, 0, 0)->format('Y-m-d H:i:s');
+        }
+
         return [
             'address' => $order->sender_address,
             'phone'   => $order->sender_phone,
             'name'    => $order->sender_name,
             'kecamatan_id' => $order->sender_district_id,
             'kelurahan_id' => $order->sender_subdistrict_id,
+            'schedule' => $scheduleClock,
             'packages' => [[
                 'order_id' => $order->nomor_invoice,
                 'destination_name' => $order->receiver_name,
@@ -1300,8 +1325,9 @@ TEXT;
                 'destination_kelurahan_id' => $order->receiver_subdistrict_id,
                 'weight' => (int)$order->weight,
                 'item_name' => $order->item_description,
-                'service' => explode('-', $order->expedition)[1] ?? 'jne',
-                'service_type' => explode('-', $order->expedition)[2] ?? 'REG',
+                'schedule' => $scheduleClock,
+                'service' => $courier,
+                'service_type' => $serviceType,
                 'shipping_cost' => (int)$order->shipping_cost,
             ]],
             'platform_name' => 'TOKOSANCAKA.COM'
