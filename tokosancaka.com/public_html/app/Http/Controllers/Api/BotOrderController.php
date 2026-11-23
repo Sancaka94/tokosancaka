@@ -2060,7 +2060,7 @@ private function _handleTrackingText(string $phone, string $text): bool
      */
     private function _menuText(): string
     {
-        return "Halo kak! 👋 Saya asisten Ai Robot *Sancaka Express*.\n\n"
+        return "Halo kak! Selamat Datang Di *Sancaka Express* 👋 Saya asisten Ai Robot *Sancaka Express*.\n\n"
             . "Silakan pilih layanan dengan mengetik angkanya:\n\n"
             . "*1* — Cek ongkir pengiriman\n"
             . "*2* — Lacak resi / tracking paket\n"
