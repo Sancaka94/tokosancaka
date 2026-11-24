@@ -914,21 +914,25 @@ TEXT;
         ]);
     }
 
-  public function cancelOrder(Request $request)
+    public function cancelOrder(Request $request)
     {
         \Illuminate\Support\Facades\Log::info('[API MOBILE] Memulai proses cancelOrder. Data Request:', $request->all());
 
-        // 0. WAJIB CEK AUTENTIKASI DI AWAL (Cegah bypass jika token null)
+        // 0. WAJIB CEK AUTENTIKASI DI AWAL (Cegah bypass jika token null/expired)
         $user = auth('sanctum')->user() ?? \Illuminate\Support\Facades\Auth::user();
         if (!$user) {
             \Illuminate\Support\Facades\Log::warning('[API MOBILE] CancelOrder DITOLAK: User tidak terotentikasi.');
-            return response()->json(['success' => false, 'message' => 'Sesi login berakhir. Silakan login ulang.'], 401);
+            return response()->json([
+                'success' => false,
+                'message' => 'Sesi login berakhir. Silakan login ulang.'
+            ], 401);
         }
 
         // 1. VALIDASI INPUT KETAT
         try {
             $validatedData = $request->validate([
                 'awb'             => 'required|string|min:3|max:50',
+                'invoice'         => 'nullable|string|max:50',
                 'reason'          => 'required|string|min:5|max:200',
                 'idempotency_key' => 'nullable|string|max:100',
             ]);
@@ -942,7 +946,7 @@ TEXT;
             ], 422);
         }
 
-        $awb = trim($validatedData['awb']);
+        $awb    = trim($validatedData['awb']);
         $reason = trim($validatedData['reason']);
 
         // 2. IDEMPOTENCY LOCK (Mencegah double-submit / request bersamaan untuk AWB yang sama)
@@ -958,8 +962,12 @@ TEXT;
         }
 
         try {
-            // 3. CARI PESANAN (Tanpa N+1 query tambahan)
-            $order = Pesanan::where('resi', $awb)->first();
+            // 3. CARI PESANAN (Single query, tanpa N+1)
+            $order = Pesanan::where('resi', $awb)
+                ->when(!empty($validatedData['invoice']), function ($q) use ($validatedData) {
+                    $q->orWhere('nomor_invoice', trim($validatedData['invoice']));
+                })
+                ->first();
 
             if (!$order) {
                 \Illuminate\Support\Facades\Log::warning("[API MOBILE] CancelOrder gagal: Pesanan dengan resi {$awb} tidak ditemukan.");
@@ -968,21 +976,22 @@ TEXT;
 
             // 4. VALIDASI KEPEMILIKAN USER (Anti Salah User)
             $isAdmin = (strtolower((string) ($user->role ?? '')) === 'admin' || (int) $user->id_pengguna === 4);
-            $isOwner = ((int) $order->id_pengguna_pembeli === (int) $user->id_pengguna);
+            $ownerId = (int) ($order->id_pengguna_pembeli ?? $order->customer_id ?? 0);
+            $isOwner = ($ownerId > 0 && $ownerId === (int) $user->id_pengguna);
 
             if (!$isOwner && !$isAdmin) {
-                \Illuminate\Support\Facades\Log::warning("[API MOBILE] CancelOrder DITOLAK: User ID {$user->id_pengguna} mencoba membatalkan pesanan milik ID {$order->id_pengguna_pembeli}.");
+                \Illuminate\Support\Facades\Log::warning("[API MOBILE] CancelOrder DITOLAK: User ID {$user->id_pengguna} mencoba membatalkan pesanan milik ID {$ownerId}.");
                 return response()->json(['success' => false, 'message' => 'Anda tidak memiliki akses untuk membatalkan pesanan ini.'], 403);
             }
 
             // 5. VALIDASI STATUS PESANAN (Hanya status aktif sebelum dikirim yang boleh dibatalkan)
-            $currentStatus = trim((string) $order->status_pesanan);
-            if (in_array(strtolower($currentStatus), ['dibatalkan', 'batal'])) {
+            $currentStatus = trim((string) ($order->status_pesanan ?: $order->status));
+            if (in_array(strtolower($currentStatus), ['dibatalkan', 'batal'], true)) {
                 return response()->json(['success' => false, 'message' => 'Pesanan ini sudah dibatalkan sebelumnya.'], 400);
             }
 
             $allowedStatuses = ['Pesanan Dibuat', 'Menunggu Pickup', 'Diproses'];
-            if (!in_array($currentStatus, $allowedStatuses)) {
+            if (!in_array($currentStatus, $allowedStatuses, true)) {
                 \Illuminate\Support\Facades\Log::warning("[API MOBILE] CancelOrder DITOLAK: Status pesanan {$order->nomor_invoice} adalah '{$currentStatus}'.");
                 return response()->json([
                     'success' => false,
@@ -998,7 +1007,12 @@ TEXT;
                     $pkName = $order->getKeyName(); // Aman untuk 'id' maupun 'id_pesanan'
                     $lockedOrder = Pesanan::where($pkName, $order->getKey())->lockForUpdate()->first();
 
-                    if (!$lockedOrder || in_array(strtolower((string) $lockedOrder->status_pesanan), ['dibatalkan', 'batal'])) {
+                    if (!$lockedOrder) {
+                        return 0;
+                    }
+
+                    $statusSebelumnya = trim((string) ($lockedOrder->status_pesanan ?: $lockedOrder->status));
+                    if (in_array(strtolower($statusSebelumnya), ['dibatalkan', 'batal'], true)) {
                         return 0;
                     }
 
@@ -1006,64 +1020,34 @@ TEXT;
                     $lockedOrder->status_pesanan = 'Dibatalkan';
                     $lockedOrder->save();
 
-                    $refundAmount = 0;
-                    $pm = strtoupper(trim((string) $lockedOrder->payment_method));
-
-                    // Kembalikan saldo HANYA jika pembayaran awal memotong Saldo
-                    if (in_array($pm, ['#SALDO', 'POTONG SALDO', 'SALDO'])) {
-                        // Cek idempotency di tabel Transaction: pastikan belum pernah ada refund untuk invoice ini
-                        $sudahPernahRefund = Transaction::where('reference_id', $lockedOrder->nomor_invoice)
-                            ->where('type', 'refund')
-                            ->exists();
-
-                        if ($sudahPernahRefund) {
-                            \Illuminate\Support\Facades\Log::warning("[API MOBILE] Refund dilewati karena mutasi refund untuk {$lockedOrder->nomor_invoice} sudah tercatat.");
-                            return 0;
-                        }
-
-                        // Wajib refund ke id_pengguna_pembeli (pemilik asli order, bukan Auth::id() jika admin yang membatalkan)
-                        $targetUserId = $lockedOrder->id_pengguna_pembeli;
-                        if (empty($targetUserId)) {
-                            throw new \Exception("Data pemilik pesanan (id_pengguna_pembeli) kosong pada invoice {$lockedOrder->nomor_invoice}.");
-                        }
-
-                        $pemilikSaldo = User::where('id_pengguna', $targetUserId)->lockForUpdate()->first();
-                        if (!$pemilikSaldo) {
-                            throw new \Exception("User pemilik saldo (ID: {$targetUserId}) tidak ditemukan di database.");
-                        }
-
-                        // Hitung ulang nominal exact sesuai rumus pemotongan di storeSingle()
-                        $komponenTagihan = (float) ($lockedOrder->total_harga_barang ?? $lockedOrder->item_price ?? 0)
-                                         + (float) ($lockedOrder->shipping_cost ?? 0)
-                                         + (float) ($lockedOrder->insurance_cost ?? 0);
-                        $hargaTercatat = (float) ($lockedOrder->price ?? 0);
-
-                        // Ambil nilai yang valid dan cegah over-refund
-                        if ($hargaTercatat > 0 && $komponenTagihan > 0) {
-                            $nominal = min($hargaTercatat, $komponenTagihan);
-                        } else {
-                            $nominal = max($hargaTercatat, $komponenTagihan);
-                        }
-
-                        if ($nominal > 0) {
-                            $pemilikSaldo->increment('saldo', $nominal);
-                            $refundAmount = $nominal;
-
-                            \Illuminate\Support\Facades\Log::info("[API MOBILE] Saldo user {$pemilikSaldo->id_pengguna} berhasil dikembalikan (refund) sebesar {$refundAmount} untuk Invoice: {$lockedOrder->nomor_invoice}");
-
-                            Transaction::create([
-                                'user_id'        => $pemilikSaldo->id_pengguna,
-                                'amount'         => $refundAmount,
-                                'type'           => 'refund',
-                                'status'         => 'success',
-                                'payment_method' => 'SALDO',
-                                'reference_id'   => $lockedOrder->nomor_invoice,
-                                'description'    => 'Refund Pembatalan Pesanan ' . $lockedOrder->nomor_invoice,
-                            ]);
-                        }
+                    // Wajib refund ke pemilik asli order (bukan Auth::id() jika admin yang membatalkan)
+                    $targetUserId = $lockedOrder->id_pengguna_pembeli ?? $lockedOrder->customer_id;
+                    if (empty($targetUserId)) {
+                        throw new \Exception("Data pemilik pesanan (id_pengguna_pembeli) kosong pada invoice {$lockedOrder->nomor_invoice}.");
                     }
 
-                    return $refundAmount;
+                    // Hitung ulang nominal exact sesuai rumus pemotongan/tagihan di storeSingle()
+                    $komponenTagihan = (float) ($lockedOrder->total_harga_barang ?? $lockedOrder->item_price ?? 0)
+                                     + (float) ($lockedOrder->shipping_cost ?? 0)
+                                     + (float) ($lockedOrder->insurance_cost ?? 0);
+                    $hargaTercatat = (float) ($lockedOrder->price ?? 0);
+
+                    // Ambil nilai yang valid dan cegah over-refund
+                    if ($hargaTercatat > 0 && $komponenTagihan > 0) {
+                        $nominal = min($hargaTercatat, $komponenTagihan);
+                    } else {
+                        $nominal = max($hargaTercatat, $komponenTagihan);
+                    }
+
+                    // Delegasikan ke OrderRefundService (berlaku untuk Saldo & Payment Gateway, kecuali CASH & COD)
+                    return app(\App\Services\OrderRefundService::class)->refundToUserSaldo(
+                        $lockedOrder->nomor_invoice,
+                        (int) $targetUserId,
+                        $nominal,
+                        $lockedOrder->payment_method,
+                        $statusSebelumnya,
+                        'API-MOBILE'
+                    );
                 });
             };
 
@@ -1087,6 +1071,13 @@ TEXT;
             // =========================================================================
 
             $apiKey = env('KIRIMINAJA_API_KEY');
+            if (empty($apiKey)) {
+                \Illuminate\Support\Facades\Log::error('[API MOBILE] KIRIMINAJA_API_KEY kosong di .env.');
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Konfigurasi API ekspedisi belum lengkap.'
+                ], 500);
+            }
 
             // 6. LOGIKA URL DINAMIS (Berdasarkan mode di .env)
             $isProduction = env('KIRIMINAJA_MODE', 'sandbox') === 'production';

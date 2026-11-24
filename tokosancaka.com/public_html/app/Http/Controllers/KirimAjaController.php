@@ -9,13 +9,15 @@ use App\Models\Store;
 use App\Models\User;
 use App\Models\TopUp;
 use App\Models\OrderMarketplace;
+use App\Services\OrderRefundService;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Carbon\Carbon;
 
 class KirimAjaController extends Controller
 {
-    public function handle(Request $request)
+    public function handle(Request $request, OrderRefundService $refundService)
     {
         $payload = $request->all();
         $method = $payload['method'] ?? null;
@@ -61,6 +63,9 @@ class KirimAjaController extends Controller
             $statusPesananIndo = $pesananStatusMap[$method] ?? null;
             $statusGeneral     = $generalStatusMap[$method] ?? null;
 
+            $hasStatusPesananCol = Schema::hasColumn('Pesanan', 'status_pesanan');
+            $pendingPushItems = [];
+
             foreach ($dataArray as $data) {
                 if (!$data) continue;
 
@@ -83,11 +88,8 @@ class KirimAjaController extends Controller
                 // =========================================================================
                 // 🔥 LOGIKA TANGKAP RESI RETUR
                 // =========================================================================
-                // PERBAIKAN 1: Sanitasi Input Mencegah SQL Injection di KirimAjaController
-                // Lokasi: function handle()
                 if (strpos($orderId, '-RTR-') !== false || strpos($orderId, 'RTR-') !== false) {
                     if ($awb) {
-                        // Sanitasi $awb untuk keamanan Anti-Hacker
                         $safeAwb = preg_replace('/[^a-zA-Z0-9-]/', '', $awb);
 
                         $returnOrder = \App\Models\ReturnOrder::where('new_resi', 'PROSES-PICKUP')->latest()->first();
@@ -110,14 +112,16 @@ class KirimAjaController extends Controller
                 }
 
                 $foundInMainDB = false;
+                $buyerId = null;
 
                 // =========================================================================
-                // BAGIAN 1: CEK DI SYSTEM A (MARKETPLACE)
+                // BAGIAN 1: CEK DI SYSTEM A (MARKETPLACE - TABEL ORDERS)
                 // =========================================================================
                 $order = Order::where('invoice_number', $orderId)->lockForUpdate()->first();
 
                 if ($order) {
                     $foundInMainDB = true;
+                    $buyerId = $order->user_id;
                     $oldStatus = $order->status;
                     $updateOrderData = ['updated_at' => $updateTime];
 
@@ -125,11 +129,11 @@ class KirimAjaController extends Controller
                         $updateOrderData['shipping_reference'] = $awb;
                     }
 
-                    $finalStatus = $oldStatus; // Default fallback
+                    $finalStatus = $oldStatus;
                     if ($statusGeneral) {
                         $finalStatus = ($statusGeneral === 'shipment') ? 'shipped' : $statusGeneral;
                         if ($order->status !== 'completed' && $order->status !== 'canceled') {
-                             $updateOrderData['status'] = $finalStatus;
+                            $updateOrderData['status'] = $finalStatus;
                         }
                     }
 
@@ -156,33 +160,23 @@ class KirimAjaController extends Controller
                     }
 
                     // =========================================================================
-                    // 💸 [BARU] LOGIKA PENGEMBALIAN DANA (MARKETPLACE CANCEL)
+                    // 💸 PENGEMBALIAN DANA OTOMATIS (SEMUA METODE KECUALI CASH & COD)
                     // =========================================================================
-                    if ($finalStatus === 'canceled' && $oldStatus !== 'canceled') {
+                    if ($finalStatus === 'canceled') {
                         try {
-                            // 1. Batalkan Escrow (jika terlanjur ada)
-                            \App\Models\Escrow::where('order_id', $order->id)->where('status_dana', 'ditahan')->update(['status_dana' => 'dibatalkan']);
+                            \App\Models\Escrow::where('order_id', $order->id)
+                                ->where('status_dana', 'ditahan')
+                                ->update(['status_dana' => 'dibatalkan']);
 
-                            // 2. Refund ke akun user jika menggunakan Saldo (Sesuaikan string 'Potong Saldo' / 'Saldo' dengan metodemu)
-                            if (in_array(strtolower($order->payment_method), ['potong saldo', 'saldo', 'wallet'])) {
-                                $buyer = User::where('id_pengguna', $order->user_id)->lockForUpdate()->first();
-                                if ($buyer) {
-                                    $refundAmount = $order->total_amount ?? $order->total_price ?? $order->subtotal ?? 0;
-                                    $buyer->saldo += $refundAmount;
-                                    $buyer->save();
-
-                                    TopUp::create([
-                                        'customer_id'    => $buyer->id_pengguna,
-                                        'amount'         => $refundAmount,
-                                        'status'         => 'success',
-                                        'payment_method' => 'Refund Batal',
-                                        'transaction_id' => 'RFND-' . $order->invoice_number,
-                                        'reference_id'   => $order->invoice_number,
-                                        'created_at'     => $updateTime,
-                                    ]);
-                                    Log::info("[WEBHOOK-KA] 💸 Refund Saldo Marketplace BERHASIL: $orderId sejumlah Rp $refundAmount");
-                                }
-                            }
+                            $refundAmount = (float) ($order->total_amount ?? $order->total_price ?? $order->subtotal ?? 0);
+                            $refundService->refundToUserSaldo(
+                                $order->invoice_number,
+                                $order->user_id,
+                                $refundAmount,
+                                $order->payment_method,
+                                $order->payment_status ?? $oldStatus,
+                                'WEBHOOK-KA'
+                            );
                         } catch (\Exception $e) {
                             Log::error("[WEBHOOK-KA] ❌ Gagal Refund Saldo Marketplace: " . $e->getMessage());
                         }
@@ -194,7 +188,7 @@ class KirimAjaController extends Controller
                 }
 
                 // =========================================================================
-                // BAGIAN 1.B: CEK PESANAN MANUAL (FIX DOBEL INPUT KEUANGAN)
+                // BAGIAN 1.B: CEK PESANAN MANUAL, WEB & MOBILE (TABEL PESANAN)
                 // =========================================================================
                 $cekPesanan = DB::table('Pesanan')
                                 ->where('nomor_invoice', $orderId)
@@ -203,6 +197,7 @@ class KirimAjaController extends Controller
 
                 if ($cekPesanan) {
                     $foundInMainDB = true;
+                    $buyerId = $buyerId ?? ($cekPesanan->id_pengguna_pembeli ?? $cekPesanan->customer_id);
                     $updateData = ['updated_at' => now()];
                     $statusLamaPesanan = $cekPesanan->status;
                     $perluUpdate = false;
@@ -216,7 +211,7 @@ class KirimAjaController extends Controller
                     // 2. CEK PERUBAHAN STATUS
                     if ($statusPesananIndo && $cekPesanan->status !== $statusPesananIndo) {
                         $updateData['status'] = $statusPesananIndo;
-                        if (\Illuminate\Support\Facades\Schema::hasColumn('Pesanan', 'status_pesanan')) {
+                        if ($hasStatusPesananCol) {
                             $updateData['status_pesanan'] = $statusPesananIndo;
                         }
 
@@ -228,31 +223,31 @@ class KirimAjaController extends Controller
                     }
 
                     // =========================================================================
-                    // 💸 [BARU] LOGIKA PENGEMBALIAN DANA (PESANAN MANUAL ADMIN)
+                    // 💸 PENGEMBALIAN DANA OTOMATIS (SEMUA METODE KECUALI CASH & COD)
                     // =========================================================================
-                    $isJustCanceled = ($statusPesananIndo === 'Dibatalkan' && $statusLamaPesanan !== 'Dibatalkan');
-
-                    if ($isJustCanceled && $cekPesanan->payment_method === 'Potong Saldo') {
+                    if ($statusPesananIndo === 'Dibatalkan') {
                         try {
-                            $customer = User::where('id_pengguna', $cekPesanan->customer_id)->lockForUpdate()->first();
-                            if ($customer) {
-                                $refundAmount = $cekPesanan->price; // Total yang dipotong di awal
-                                $customer->saldo += $refundAmount;
-                                $customer->save();
+                            $targetUserId = $cekPesanan->id_pengguna_pembeli ?? $cekPesanan->customer_id;
 
-                                TopUp::create([
-                                    'customer_id'    => $customer->id_pengguna,
-                                    'amount'         => $refundAmount,
-                                    'status'         => 'success',
-                                    'payment_method' => 'Refund Batal',
-                                    'transaction_id' => 'RFND-' . $cekPesanan->nomor_invoice,
-                                    'reference_id'   => $cekPesanan->nomor_invoice,
-                                    'created_at'     => $updateTime,
-                                ]);
-                                Log::info("[WEBHOOK-KA] 💸 Refund Saldo Admin BERHASIL: $orderId sejumlah Rp $refundAmount");
-                            }
+                            $komponenTagihan = (float) ($cekPesanan->total_harga_barang ?? $cekPesanan->item_price ?? 0)
+                                             + (float) ($cekPesanan->shipping_cost ?? 0)
+                                             + (float) ($cekPesanan->insurance_cost ?? 0);
+                            $hargaTercatat = (float) ($cekPesanan->price ?? 0);
+
+                            $refundAmount = ($hargaTercatat > 0 && $komponenTagihan > 0)
+                                ? min($hargaTercatat, $komponenTagihan)
+                                : max($hargaTercatat, $komponenTagihan);
+
+                            $refundService->refundToUserSaldo(
+                                $cekPesanan->nomor_invoice,
+                                $targetUserId,
+                                $refundAmount,
+                                $cekPesanan->payment_method,
+                                $statusLamaPesanan,
+                                'WEBHOOK-KA'
+                            );
                         } catch (\Exception $e) {
-                            Log::error("[WEBHOOK-KA] ❌ Gagal Refund Saldo Admin: " . $e->getMessage());
+                            Log::error("[WEBHOOK-KA] ❌ Gagal Refund Saldo Pesanan: " . $e->getMessage());
                         }
                     }
                     // =========================================================================
@@ -277,46 +272,64 @@ class KirimAjaController extends Controller
                             Log::error("[WEBHOOK-KA] ❌ Gagal Catat Keuangan: " . $th->getMessage());
                         }
                     } else {
-                         if ($statusPesananIndo === 'Selesai' && $statusLamaPesanan === 'Selesai') {
-                             Log::info("[WEBHOOK-KA] 🛡️ Keuangan di-skip karena pesanan $orderId sudah berstatus Selesai sebelumnya.");
-                         }
+                        if ($statusPesananIndo === 'Selesai' && $statusLamaPesanan === 'Selesai') {
+                            Log::info("[WEBHOOK-KA] 🛡️ Keuangan di-skip karena pesanan $orderId sudah berstatus Selesai sebelumnya.");
+                        }
                     }
                 }
 
                 // =========================================================================
-                // BAGIAN 1.C & 2 (ORDER MARKETPLACE & PERCETAKAN)
+                // BAGIAN 1.C: ORDER MARKETPLACE
                 // =========================================================================
-                $orderMarketplace = OrderMarketplace::where('invoice_number', $orderId)->first();
+                $orderMarketplace = OrderMarketplace::where('invoice_number', $orderId)->lockForUpdate()->first();
                 if ($orderMarketplace) {
                     $foundInMainDB = true;
+                    $mpUserId = $orderMarketplace->user_id ?? $orderMarketplace->customer_id ?? null;
+                    $buyerId = $buyerId ?? $mpUserId;
+                    $oldMpStatus = $orderMarketplace->status;
                     $updateMpData = ['updated_at' => $updateTime];
 
                     if ($awb) $updateMpData['shipping_resi'] = $awb;
 
+                    $finalMpStatus = $oldMpStatus;
                     if ($statusGeneral && $orderMarketplace->status !== 'completed') {
-                        $finalStatus = ($statusGeneral === 'shipment') ? 'shipped' : $statusGeneral;
-                        $updateMpData['status'] = $finalStatus;
+                        $finalMpStatus = ($statusGeneral === 'shipment') ? 'shipped' : $statusGeneral;
+                        $updateMpData['status'] = $finalMpStatus;
+                    }
+
+                    // Refund otomatis jika OrderMarketplace dibatalkan
+                    if ($finalMpStatus === 'canceled') {
+                        try {
+                            $mpRefundAmount = (float) ($orderMarketplace->total_amount ?? $orderMarketplace->total_price ?? $orderMarketplace->subtotal ?? $orderMarketplace->price ?? 0);
+                            $refundService->refundToUserSaldo(
+                                $orderMarketplace->invoice_number,
+                                $mpUserId,
+                                $mpRefundAmount,
+                                $orderMarketplace->payment_method ?? null,
+                                $orderMarketplace->payment_status ?? $oldMpStatus,
+                                'WEBHOOK-KA'
+                            );
+                        } catch (\Exception $e) {
+                            Log::error("[WEBHOOK-KA] ❌ Gagal Refund OrderMarketplace: " . $e->getMessage());
+                        }
                     }
 
                     $tableName = $orderMarketplace->getTable();
                     DB::table($tableName)->where('id', $orderMarketplace->id)->update($updateMpData);
                 }
 
-               // =========================================================================
+                // =========================================================================
                 // LOGIKA WEBHOOK RSUD SOEROTO NGAWI (MURNI SCK)
                 // =========================================================================
-
                 $rsudOrder = \App\Models\RsudOrderObat::where('kode_booking', $orderId)->first();
 
                 if ($rsudOrder) {
                     $foundInMainDB = true;
 
-                    // Update Resi jika dikirim
                     if ($awb) {
                         $rsudOrder->resi = $awb;
                     }
 
-                    // Update Status berdasarkan method webhook
                     if ($statusPesananIndo) {
                         $rsudOrder->status_racik = $statusPesananIndo;
                     }
@@ -325,65 +338,62 @@ class KirimAjaController extends Controller
                     Log::info("[WEBHOOK-KA] ✅ Updated RSUD Order: $orderId | Status: " . ($rsudOrder->status_racik));
                 }
 
-
-                // ============================ Looping untuk pencarian pemilik order id =====================
-
                 if (!$foundInMainDB) {
                     $this->updatePercetakanDB($orderId, $awb, $statusGeneral);
                 }
 
-                // 👇 2. TARUH KODEMU TEPAT DI SINI 👇
-                $buyerId = null;
-
-                // KITA CARI TAHU DULU INI MILIK SIAPA BERDASARKAN DATABASE
-                if (isset($order) && $order) {
-                    $buyerId = $order->user_id;
-                } elseif (isset($cekPesanan) && $cekPesanan) {
-                    $buyerId = $cekPesanan->customer_id;
-                } elseif (isset($orderMarketplace) && $orderMarketplace) {
-                    $buyerId = $orderMarketplace->user_id ?? $orderMarketplace->customer_id ?? null;
-                }
-
-                // JIKA PEMILIKNYA KETEMU
                 if ($buyerId) {
-                    $customer = DB::table('Pengguna')->where('id_pengguna', $buyerId)->first();
+                    $pendingPushItems[] = [
+                        'user_id'  => $buyerId,
+                        'order_id' => $orderId,
+                        'status'   => $pesananStatusMap[$method] ?? $method,
+                    ];
+                }
+            } // End Foreach
 
-                    if ($customer && !empty($customer->expo_token)) {
-                        $statusText = $pesananStatusMap[$method] ?? $method;
+            // =========================================================================
+            // BATCH QUERY EXPO TOKEN & KIRIM NOTIFIKASI (ANTI N+1)
+            // =========================================================================
+            try {
+                $pushMessages = [];
+                $userIdsToFetch = collect($pendingPushItems)->pluck('user_id')->push(4)->unique()->filter()->values();
+
+                $tokensByUser = DB::table('Pengguna')
+                    ->whereIn('id_pengguna', $userIdsToFetch)
+                    ->whereNotNull('expo_token')
+                    ->where('expo_token', '!=', '')
+                    ->pluck('expo_token', 'id_pengguna');
+
+                foreach ($pendingPushItems as $item) {
+                    $token = $tokensByUser[$item['user_id']] ?? null;
+                    if ($token) {
                         $pushMessages[] = [
-                            'to' => $customer->expo_token,
+                            'to'    => $token,
                             'title' => 'Update Pesananmu! 📦',
-                            'body' => "Pesanan $orderId statusnya sekarang: $statusText",
+                            'body'  => "Pesanan {$item['order_id']} statusnya sekarang: {$item['status']}",
                             'sound' => 'default',
                         ];
                     }
                 }
-                // 👆 SELESAI TARUH KODE DI SINI 👆
 
-            } // End Foreach
-
-                // 👇 3. GANTI BLOK NOTIFIKASI LAMA DENGAN INI 👇
-            try {
-                // Tambahkan Notifikasi Rekap Khusus untuk Admin ID 4
-                $admin = DB::table('Pengguna')->where('id_pengguna', 4)->first();
-                if ($admin && !empty($admin->expo_token)) {
+                $adminToken = $tokensByUser[4] ?? null;
+                if ($adminToken) {
                     $statusTextSummary = $pesananStatusMap[$method] ?? $method;
                     $jumlahResi = count($dataArray);
 
                     $pushMessages[] = [
-                        'to' => $admin->expo_token,
+                        'to'    => $adminToken,
                         'title' => 'Update Sancaka Express 📦',
-                        'body' => "Ada update status '$statusTextSummary' untuk $jumlahResi resi pengiriman.",
+                        'body'  => "Ada update status '$statusTextSummary' untuk $jumlahResi resi pengiriman.",
                         'sound' => 'default',
                     ];
                 }
 
-                // Tembak Semua Notifikasi (Customer + Admin) ke Expo
                 if (!empty($pushMessages)) {
-                    $chunks = array_chunk($pushMessages, 100); // Pecah per 100 agar aman
+                    $chunks = array_chunk($pushMessages, 100);
                     foreach ($chunks as $chunk) {
                         \Illuminate\Support\Facades\Http::withHeaders([
-                            'Accept' => 'application/json',
+                            'Accept'       => 'application/json',
                             'Content-Type' => 'application/json',
                         ])->post('https://exp.host/--/api/v2/push/send', $chunk);
                     }
@@ -392,7 +402,6 @@ class KirimAjaController extends Controller
             } catch (\Exception $notifError) {
                 Log::error('[WEBHOOK-KA] Gagal kirim barisan notifikasi: ' . $notifError->getMessage());
             }
-            // 👆 SAMPAI SINI 👆
 
             DB::commit();
             return response()->json(['success' => true]);
