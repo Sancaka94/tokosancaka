@@ -914,107 +914,241 @@ TEXT;
         ]);
     }
 
-   public function cancelOrder(Request $request)
+  public function cancelOrder(Request $request)
     {
         \Illuminate\Support\Facades\Log::info('[API MOBILE] Memulai proses cancelOrder. Data Request:', $request->all());
 
+        // 0. WAJIB CEK AUTENTIKASI DI AWAL (Cegah bypass jika token null)
+        $user = auth('sanctum')->user() ?? \Illuminate\Support\Facades\Auth::user();
+        if (!$user) {
+            \Illuminate\Support\Facades\Log::warning('[API MOBILE] CancelOrder DITOLAK: User tidak terotentikasi.');
+            return response()->json(['success' => false, 'message' => 'Sesi login berakhir. Silakan login ulang.'], 401);
+        }
+
+        // 1. VALIDASI INPUT KETAT
         try {
-            // 1. Validasi Input
             $validatedData = $request->validate([
-                'awb'    => 'required|string|max:30',
-                'reason' => 'required|string|min:5|max:200',
+                'awb'             => 'required|string|min:3|max:50',
+                'reason'          => 'required|string|min:5|max:200',
+                'idempotency_key' => 'nullable|string|max:100',
             ]);
             \Illuminate\Support\Facades\Log::info('[API MOBILE] Validasi cancelOrder berhasil dilewati.', $validatedData);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            \Illuminate\Support\Facades\Log::warning('[API MOBILE] Validasi gagal saat cancelOrder:', $e->errors());
+            return response()->json([
+                'success' => false,
+                'message' => 'Input tidak valid. Pastikan nomor resi valid dan alasan pembatalan minimal 5 karakter.',
+                'errors'  => $e->errors()
+            ], 422);
+        }
 
-            // 2. Cari Pesanan
-            $order = Pesanan::where('resi', $validatedData['awb'])->first();
+        $awb = trim($validatedData['awb']);
+        $reason = trim($validatedData['reason']);
+
+        // 2. IDEMPOTENCY LOCK (Mencegah double-submit / request bersamaan untuk AWB yang sama)
+        $lockKey = 'cancel_order_lock:' . md5($awb);
+        $lock = \Illuminate\Support\Facades\Cache::lock($lockKey, 15);
+
+        if (!$lock->get()) {
+            \Illuminate\Support\Facades\Log::warning("[API MOBILE] CancelOrder DITAHAN (Idempotency Lock aktif) untuk resi: {$awb}");
+            return response()->json([
+                'success' => false,
+                'message' => 'Permintaan pembatalan untuk resi ini sedang diproses. Mohon tunggu beberapa detik.'
+            ], 429);
+        }
+
+        try {
+            // 3. CARI PESANAN (Tanpa N+1 query tambahan)
+            $order = Pesanan::where('resi', $awb)->first();
 
             if (!$order) {
-                \Illuminate\Support\Facades\Log::warning("[API MOBILE] CancelOrder gagal: Pesanan dengan resi {$validatedData['awb']} tidak ditemukan.");
+                \Illuminate\Support\Facades\Log::warning("[API MOBILE] CancelOrder gagal: Pesanan dengan resi {$awb} tidak ditemukan.");
                 return response()->json(['success' => false, 'message' => 'Pesanan tidak ditemukan.'], 404);
             }
 
-            // 3. KEAMANAN: Pastikan pesanan ini milik user yang sedang login!
-            $user = auth('sanctum')->user();
-            if ($user && $order->id_pengguna_pembeli != $user->id_pengguna && strtolower($user->role) !== 'admin') {
-                \Illuminate\Support\Facades\Log::warning("[API MOBILE] CancelOrder DITOLAK: User ID {$user->id_pengguna} mencoba membatalkan pesanan ID {$order->id_pengguna_pembeli}.");
+            // 4. VALIDASI KEPEMILIKAN USER (Anti Salah User)
+            $isAdmin = (strtolower((string) ($user->role ?? '')) === 'admin' || (int) $user->id_pengguna === 4);
+            $isOwner = ((int) $order->id_pengguna_pembeli === (int) $user->id_pengguna);
+
+            if (!$isOwner && !$isAdmin) {
+                \Illuminate\Support\Facades\Log::warning("[API MOBILE] CancelOrder DITOLAK: User ID {$user->id_pengguna} mencoba membatalkan pesanan milik ID {$order->id_pengguna_pembeli}.");
                 return response()->json(['success' => false, 'message' => 'Anda tidak memiliki akses untuk membatalkan pesanan ini.'], 403);
+            }
+
+            // 5. VALIDASI STATUS PESANAN (Hanya status aktif sebelum dikirim yang boleh dibatalkan)
+            $currentStatus = trim((string) $order->status_pesanan);
+            if (in_array(strtolower($currentStatus), ['dibatalkan', 'batal'])) {
+                return response()->json(['success' => false, 'message' => 'Pesanan ini sudah dibatalkan sebelumnya.'], 400);
+            }
+
+            $allowedStatuses = ['Pesanan Dibuat', 'Menunggu Pickup', 'Diproses'];
+            if (!in_array($currentStatus, $allowedStatuses)) {
+                \Illuminate\Support\Facades\Log::warning("[API MOBILE] CancelOrder DITOLAK: Status pesanan {$order->nomor_invoice} adalah '{$currentStatus}'.");
+                return response()->json([
+                    'success' => false,
+                    'message' => "Pesanan dengan status '{$currentStatus}' tidak dapat dibatalkan."
+                ], 422);
             }
 
             \Illuminate\Support\Facades\Log::info("[API MOBILE] Pesanan ditemukan. Melanjutkan pembatalan untuk ID/Invoice: {$order->nomor_invoice}");
 
+            // Helper closure atomik untuk update status & refund saldo dengan idempotency DB
+            $prosesUpdateDanRefund = function () use ($order) {
+                return DB::transaction(function () use ($order) {
+                    $pkName = $order->getKeyName(); // Aman untuk 'id' maupun 'id_pesanan'
+                    $lockedOrder = Pesanan::where($pkName, $order->getKey())->lockForUpdate()->first();
+
+                    if (!$lockedOrder || in_array(strtolower((string) $lockedOrder->status_pesanan), ['dibatalkan', 'batal'])) {
+                        return 0;
+                    }
+
+                    $lockedOrder->status = 'Dibatalkan';
+                    $lockedOrder->status_pesanan = 'Dibatalkan';
+                    $lockedOrder->save();
+
+                    $refundAmount = 0;
+                    $pm = strtoupper(trim((string) $lockedOrder->payment_method));
+
+                    // Kembalikan saldo HANYA jika pembayaran awal memotong Saldo
+                    if (in_array($pm, ['#SALDO', 'POTONG SALDO', 'SALDO'])) {
+                        // Cek idempotency di tabel Transaction: pastikan belum pernah ada refund untuk invoice ini
+                        $sudahPernahRefund = Transaction::where('reference_id', $lockedOrder->nomor_invoice)
+                            ->where('type', 'refund')
+                            ->exists();
+
+                        if ($sudahPernahRefund) {
+                            \Illuminate\Support\Facades\Log::warning("[API MOBILE] Refund dilewati karena mutasi refund untuk {$lockedOrder->nomor_invoice} sudah tercatat.");
+                            return 0;
+                        }
+
+                        // Wajib refund ke id_pengguna_pembeli (pemilik asli order, bukan Auth::id() jika admin yang membatalkan)
+                        $targetUserId = $lockedOrder->id_pengguna_pembeli;
+                        if (empty($targetUserId)) {
+                            throw new \Exception("Data pemilik pesanan (id_pengguna_pembeli) kosong pada invoice {$lockedOrder->nomor_invoice}.");
+                        }
+
+                        $pemilikSaldo = User::where('id_pengguna', $targetUserId)->lockForUpdate()->first();
+                        if (!$pemilikSaldo) {
+                            throw new \Exception("User pemilik saldo (ID: {$targetUserId}) tidak ditemukan di database.");
+                        }
+
+                        // Hitung ulang nominal exact sesuai rumus pemotongan di storeSingle()
+                        $komponenTagihan = (float) ($lockedOrder->total_harga_barang ?? $lockedOrder->item_price ?? 0)
+                                         + (float) ($lockedOrder->shipping_cost ?? 0)
+                                         + (float) ($lockedOrder->insurance_cost ?? 0);
+                        $hargaTercatat = (float) ($lockedOrder->price ?? 0);
+
+                        // Ambil nilai yang valid dan cegah over-refund
+                        if ($hargaTercatat > 0 && $komponenTagihan > 0) {
+                            $nominal = min($hargaTercatat, $komponenTagihan);
+                        } else {
+                            $nominal = max($hargaTercatat, $komponenTagihan);
+                        }
+
+                        if ($nominal > 0) {
+                            $pemilikSaldo->increment('saldo', $nominal);
+                            $refundAmount = $nominal;
+
+                            \Illuminate\Support\Facades\Log::info("[API MOBILE] Saldo user {$pemilikSaldo->id_pengguna} berhasil dikembalikan (refund) sebesar {$refundAmount} untuk Invoice: {$lockedOrder->nomor_invoice}");
+
+                            Transaction::create([
+                                'user_id'        => $pemilikSaldo->id_pengguna,
+                                'amount'         => $refundAmount,
+                                'type'           => 'refund',
+                                'status'         => 'success',
+                                'payment_method' => 'SALDO',
+                                'reference_id'   => $lockedOrder->nomor_invoice,
+                                'description'    => 'Refund Pembatalan Pesanan ' . $lockedOrder->nomor_invoice,
+                            ]);
+                        }
+                    }
+
+                    return $refundAmount;
+                });
+            };
+
             // =========================================================================
             // 🔥 LOGIKA BYPASS UNTUK RESI MOCK (TESTING) 🔥
             // =========================================================================
-            if (\Illuminate\Support\Str::startsWith($validatedData['awb'], 'MOCK')) {
+            if (\Illuminate\Support\Str::startsWith($awb, 'MOCK')) {
                 \Illuminate\Support\Facades\Log::info("[API MOBILE] Resi MOCK terdeteksi. Membatalkan pesanan secara lokal tanpa hit API KiriminAja.");
 
-                $order->status = 'Dibatalkan';
-                $order->status_pesanan = 'Dibatalkan';
-                $order->save();
+                $refunded = $prosesUpdateDanRefund();
+                $msg = $refunded > 0
+                    ? 'Pesanan (Testing) berhasil dibatalkan & saldo Rp ' . number_format($refunded, 0, ',', '.') . ' telah dikembalikan.'
+                    : 'Pesanan (Testing) berhasil dibatalkan secara lokal.';
 
                 return response()->json([
-                    'success' => true,
-                    'message' => 'Pesanan (Testing) berhasil dibatalkan secara lokal.'
+                    'success'       => true,
+                    'message'       => $msg,
+                    'refund_amount' => $refunded
                 ], 200);
             }
             // =========================================================================
 
+            $apiKey = env('KIRIMINAJA_API_KEY');
 
-            $apiKey = env('KIRIMINAJA_API_KEY'); // Pastikan API Key di .env sudah benar
-
-            // 4. LOGIKA URL DINAMIS (Berdasarkan mode di .env)
+            // 6. LOGIKA URL DINAMIS (Berdasarkan mode di .env)
             $isProduction = env('KIRIMINAJA_MODE', 'sandbox') === 'production';
             $domain = $isProduction ? 'https://client.kiriminaja.com' : 'https://tdev.kiriminaja.com';
             $endpoint = $domain . '/api/mitra/v3/cancel_shipment';
 
             \Illuminate\Support\Facades\Log::info('[API MOBILE] Mengirim payload pembatalan ke API KiriminAja...', [
                 'endpoint' => $endpoint,
-                'awb' => $validatedData['awb'],
-                'reason' => $validatedData['reason']
+                'awb'      => $awb,
+                'reason'   => $reason
             ]);
 
-            // 5. Tembak API Ekspedisi
-            $response = \Illuminate\Support\Facades\Http::withHeaders([
+            // 7. TEMBAK API EKSPEDISI
+            $response = \Illuminate\Support\Facades\Http::timeout(20)->withHeaders([
                 'Authorization' => "Bearer {$apiKey}",
                 'Accept'        => 'application/json',
                 'Content-Type'  => 'application/json'
             ])->post($endpoint, [
-                'awb'    => $validatedData['awb'],
-                'reason' => $validatedData['reason']
+                'awb'    => $awb,
+                'reason' => $reason
             ]);
 
             $jsonResponse = $response->json();
             \Illuminate\Support\Facades\Log::info('[API MOBILE] Response dari KiriminAja (cancel_shipment):', is_array($jsonResponse) ? $jsonResponse : ['response' => $jsonResponse]);
 
-            // 6. Evaluasi Respons
+            // 8. EVALUASI RESPONS
             if (isset($jsonResponse['status']) && $jsonResponse['status'] === true) {
-                $order->status = 'Dibatalkan';
-                $order->status_pesanan = 'Dibatalkan';
-                $order->save();
+                $refunded = $prosesUpdateDanRefund();
 
                 \Illuminate\Support\Facades\Log::info("[API MOBILE] Status pesanan {$order->nomor_invoice} berhasil diupdate menjadi 'Dibatalkan' di database.");
-                return response()->json(['success' => true, 'message' => $jsonResponse['text'] ?? 'Pesanan berhasil dibatalkan.'], 200);
+
+                $message = $jsonResponse['text'] ?? 'Pesanan berhasil dibatalkan.';
+                if ($refunded > 0) {
+                    $message .= ' Saldo Rp ' . number_format($refunded, 0, ',', '.') . ' telah dikembalikan ke akun Anda.';
+                }
+
+                return response()->json([
+                    'success'       => true,
+                    'message'       => $message,
+                    'refund_amount' => $refunded
+                ], 200);
             }
 
             \Illuminate\Support\Facades\Log::error('[API MOBILE] Gagal membatalkan di sistem ekspedisi KiriminAja.', $jsonResponse ?? []);
-            return response()->json(['success' => false, 'message' => $jsonResponse['text'] ?? 'Gagal di sistem ekspedisi.'], 400);
-
-        } catch (\Illuminate\Validation\ValidationException $e) {
-            \Illuminate\Support\Facades\Log::warning('[API MOBILE] Validasi gagal saat cancelOrder:', $e->errors());
             return response()->json([
                 'success' => false,
-                'message' => 'Input tidak valid. Pastikan alasan pembatalan minimal 5 karakter.',
-                'errors' => $e->errors()
-            ], 422);
+                'message' => $jsonResponse['text'] ?? 'Gagal di sistem ekspedisi.'
+            ], 400);
 
         } catch (\Exception $e) {
             \Illuminate\Support\Facades\Log::error('[API MOBILE] Exception pada cancelOrder: ' . $e->getMessage(), [
-                'file' => $e->getFile(),
-                'line' => $e->getLine(),
+                'file'  => $e->getFile(),
+                'line'  => $e->getLine(),
                 'trace' => $e->getTraceAsString()
             ]);
-            return response()->json(['success' => false, 'message' => 'Terjadi kesalahan sistem: ' . $e->getMessage()], 500);
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan sistem: ' . $e->getMessage()
+            ], 500);
+        } finally {
+            // Lepas lock agar request berikutnya tidak tersangkut jika terjadi error
+            optional($lock)->release();
         }
     }
 
