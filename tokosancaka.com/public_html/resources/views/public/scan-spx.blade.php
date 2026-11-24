@@ -20,12 +20,12 @@
 
     <style>
         /* Desain Clean Minimalist Next.js Style (Black & White) */
-        body { 
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
-            background-color: #ffffff; 
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: #ffffff;
             color: #111111;
         }
-        
+
         .form-control, .form-select {
             border-radius: 6px;
             border: 1px solid #d1d5db;
@@ -35,16 +35,16 @@
             box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.1);
         }
 
-        .btn-black { 
-            background-color: #000000; 
-            border-color: #000000; 
-            color: #ffffff; 
+        .btn-black {
+            background-color: #000000;
+            border-color: #000000;
+            color: #ffffff;
             border-radius: 6px;
         }
-        .btn-black:hover, .btn-black:focus { 
-            background-color: #333333; 
-            border-color: #333333; 
-            color: #ffffff; 
+        .btn-black:hover, .btn-black:focus {
+            background-color: #333333;
+            border-color: #333333;
+            color: #ffffff;
         }
 
         .btn-outline-black {
@@ -60,7 +60,7 @@
         }
 
         #reader { border: 2px dashed #d1d5db; border-radius: 0.75rem; }
-        
+
         .scan-history-item, .flash-message { animation: fadeIn 0.5s ease-in-out; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; translateY(0); } }
 
@@ -172,11 +172,11 @@
         <div class="spx-alert-content">
             <strong>INFORMASI PENTING:</strong>
             <p style="margin-top: 5px;">
-                1. FOKUSKAN KAMERA ATAU KETIK DI KOLOM RESI, LALU TEKAN (ENTER).<br>
-                2. PASTIKAN HANYA SCAN <span class="highlight">BARCODE 2D (QR)</span> ATAU RESI BERAWALAN <span class="highlight">SPX / ID</span>.<br>
-                3. TANDA BERHASIL ADALAH SUARA "BEEP" DAN NOTIFIKASI PADA LAYAR.<br>
-                4. PASTIKAN GPS AKTIF DAN JUMLAH PAKET BERTAMBAH.<br>
-                5. KLIK TOMBOL SURAT JALAN JIKA SCAN SELESAI.
+1. FOKUSKAN KAMERA ATAU KETIK DI KOLOM RESI, LALU TEKAN (ENTER).<br>
+2. PASTIKAN HANYA SCAN <span class="highlight">BARCODE 2D (QR)</span> ATAU RESI BERAWALAN <span class="highlight">SPX / ID</span>.<br>
+3. TANDA BERHASIL ADALAH SUARA "BEEP" DAN NOTIFIKASI PADA LAYAR.<br>
+4. PASTIKAN GPS AKTIF DAN JUMLAH PAKET BERTAMBAH.<br>
+5. KLIK TOMBOL SURAT JALAN JIKA SCAN SELESAI.
             </p>
         </div>
 
@@ -240,9 +240,9 @@
                 <div class="mb-3"><label for="reg-nama" class="form-label">Nama Lengkap</label><input type="text" id="reg-nama" class="form-control" required></div>
                 <div class="mb-3"><label for="reg-no_hp" class="form-label">No. HP (WhatsApp)</label><input type="tel" id="reg-no_hp" class="form-control" required></div>
                 <div class="mb-3"><label for="reg-alamat" class="form-label">Alamat Lengkap</label><textarea id="reg-alamat" rows="2" class="form-control" required></textarea></div>
-                
+
                 <div class="mb-3"><label for="reg-email" class="form-label">Email Valid</label><input type="email" id="reg-email" class="form-control" placeholder="nama@email.com" required></div>
-                
+
                 <!-- OPSI GENDER / INSTANSI BARU -->
                 <div class="mb-3">
                     <label for="reg-jk" class="form-label">Tipe Pengirim</label>
@@ -434,7 +434,7 @@
         const galleryFileInput = document.getElementById('gallery-file-input');
         const cameraModalEl = document.getElementById('camera-modal');
         const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
-        
+
         // Elemen status GPS
         const gpsStatusContainer = document.getElementById('gps-status-container');
 
@@ -462,6 +462,9 @@
         let html5QrCode = null;
         let cameraModal = null;
         let generatedSuratJalan = null;
+        let isScanningResi = false;
+        let lastScannedCode = '';
+        let lastScannedTime = 0;
 
         // State Geolocation
         let latitude = null;
@@ -474,8 +477,8 @@
 
         const updateGpsStatusUI = (message, type = 'secondary') => {
             let icon = 'fa-spinner fa-spin';
-            if (type === 'dark') icon = 'fa-map-marker-alt'; // success -> dark for clean look
-            if (type === 'danger') icon = 'fa-exclamation-triangle'; // danger -> keep alert color or use custom border
+            if (type === 'dark') icon = 'fa-map-marker-alt';
+            if (type === 'danger') icon = 'fa-exclamation-triangle';
 
             gpsStatusContainer.innerHTML = `
                 <div class="alert alert-light border border-${type === 'danger' ? 'danger' : 'dark'} d-flex align-items-center" role="alert" style="color: #000;">
@@ -504,7 +507,7 @@
                     locationError = '';
 
                     updateGpsStatusUI('Lokasi GPS didapat. Silakan cari nama Anda.', 'dark');
-                    searchInput.disabled = false; 
+                    searchInput.disabled = false;
                     searchInput.placeholder = 'Ketik nama atau nomor HP Anda...';
 
                     setTimeout(() => {
@@ -525,15 +528,44 @@
                         default:
                             locationError = 'Terjadi kesalahan saat mengambil lokasi. Coba refresh halaman.';
                     }
-                    updateGpsStatusUI(locationError, 'danger'); 
+                    updateGpsStatusUI(locationError, 'danger');
                     searchInput.placeholder = 'GPS Gagal. Harap izinkan lokasi.';
                     isLoadingLocation = false;
                 }
             );
         };
 
-        const showAlert = (message, type='dark') => {
-            alertContainer.innerHTML = `<div class="alert alert-light border border-${type === 'danger' ? 'danger' : 'dark'}" style="color:#000;">${message}</div>`;
+        const showAlert = (message, type = 'dark') => {
+            const isDanger = type === 'danger';
+            const alertClass = isDanger
+                ? 'alert-danger border-danger text-danger fw-semibold'
+                : 'alert-light border-dark text-dark';
+            const iconHtml = isDanger
+                ? '<i class="fas fa-exclamation-circle me-2"></i>'
+                : '<i class="fas fa-info-circle me-2"></i>';
+
+            const alertHtml = `
+                <div class="alert ${alertClass} border shadow-sm d-flex align-items-center" role="alert">
+                    ${iconHtml}
+                    <div>${message}</div>
+                </div>
+            `;
+
+            alertContainer.innerHTML = alertHtml;
+
+            const modalBody = cameraModalEl ? cameraModalEl.querySelector('.modal-body') : null;
+            if (modalBody && cameraModalEl.classList.contains('show')) {
+                let modalAlert = document.getElementById('modal-scan-alert');
+                if (!modalAlert) {
+                    modalAlert = document.createElement('div');
+                    modalAlert.id = 'modal-scan-alert';
+                    modalAlert.className = 'mt-3';
+                    modalBody.appendChild(modalAlert);
+                }
+                modalAlert.innerHTML = alertHtml;
+                setTimeout(() => { if (modalAlert) modalAlert.innerHTML = ''; }, 3500);
+            }
+
             setTimeout(() => { alertContainer.innerHTML = ''; }, 4000);
         };
 
@@ -542,21 +574,20 @@
             else beepFail.play();
         };
 
-       const selectKontak = (kontak) => {
+        const selectKontak = (kontak) => {
             if (isLoadingLocation || locationError) {
                 showAlert('Lokasi GPS wajib diaktifkan. ' + (locationError || 'Tunggu GPS selesai loading.'), 'dark');
                 return;
             }
 
-            // Memeriksa kelengkapan data (termasuk tipe pengirim)
             if (!kontak.email || !kontak.jenis_kelamin) {
                 searchInput.value = kontak.nama;
                 searchInput.disabled = true;
                 searchResultsContainer.classList.add('d-none');
                 completionFormContainer.classList.remove('d-none');
-                
+
                 document.getElementById('comp-id').value = kontak.id;
-                return; 
+                return;
             }
 
             selectedKontak = kontak;
@@ -567,12 +598,12 @@
                 let belakang = hpSensor.substring(hpSensor.length - 3);
                 hpSensor = `${depan} *** *** ${belakang}`;
             }
-            
+
             searchInput.value = `${kontak.nama} (${hpSensor})`;
             searchInput.disabled = true;
             searchResultsContainer.classList.add('d-none');
             registrationFormContainer.classList.add('d-none');
-            completionFormContainer.classList.add('d-none'); 
+            completionFormContainer.classList.add('d-none');
             scanResiSection.classList.remove('opacity-50');
             scanResiSection.style.pointerEvents = 'auto';
             resiInput.focus();
@@ -580,14 +611,33 @@
         };
 
         const handleScan = async (resiValue) => {
-            if(!selectedKontak) return showAlert('Pilih atau daftar kontak dulu.', 'dark');
-            if(!resiValue) return;
+            resiValue = (resiValue || '').trim();
+            if (!selectedKontak) return showAlert('Pilih atau daftar kontak dulu.', 'dark');
+            if (!resiValue) return;
+
+            const now = Date.now();
+            if (isScanningResi || (resiValue === lastScannedCode && (now - lastScannedTime) < 2500)) {
+                return;
+            }
+
+            if (scannedResiArray.includes(resiValue)) {
+                lastScannedCode = resiValue;
+                lastScannedTime = now;
+                playBeep(false);
+                showAlert(`Resi <strong>${resiValue}</strong> sudah ada di daftar scan Anda!`, 'danger');
+                resiInput.value = '';
+                return;
+            }
 
             if (isLoadingLocation || locationError) {
                 playBeep(false);
                 showAlert('Lokasi GPS wajib diaktifkan. ' + (locationError || 'Tunggu GPS selesai loading.'), 'danger');
                 return;
             }
+
+            isScanningResi = true;
+            lastScannedCode = resiValue;
+            lastScannedTime = now;
 
             try {
                 const response = await fetch("{{ route('scan.spx.handle') }}", {
@@ -605,22 +655,22 @@
                     })
                 });
 
+                const result = await response.json();
+
                 if (response.status === 422) {
-                    const result = await response.json();
-                    let errorMsg = result.message || 'Data tidak valid.';
+                    let errorMsg = result.message || `Resi ${resiValue} sudah pernah di-scan.`;
                     if (result.errors) {
-                        if (result.errors.latitude) errorMsg = 'Data latitude wajib diisi.';
-                        if (result.errors.longitude) errorMsg = 'Data longitude wajib diisi.';
+                        if (result.errors.resi) errorMsg = result.errors.resi[0];
+                        if (result.errors.latitude || result.errors.longitude) errorMsg = 'Lokasi GPS wajib diisi.';
                     }
                     playBeep(false);
                     showAlert(errorMsg, 'danger');
                     return;
                 }
 
-                const result = await response.json();
-                if(response.ok && result.success){
+                if (response.ok && result.success) {
                     playBeep(true);
-                    if(scanHistoryContainer.querySelector('p')) scanHistoryContainer.innerHTML = '';
+                    if (scanHistoryContainer.querySelector('p')) scanHistoryContainer.innerHTML = '';
                     const html = `<div class="scan-history-item d-flex justify-content-between p-2 border-bottom">
                                     <span class="fw-medium text-dark">${result.data.nomor_resi}</span>
                                     <small class="text-muted">${result.data.waktu_scan}</small>
@@ -629,16 +679,19 @@
                     scannedResiArray.push(result.data.nomor_resi);
                     pickupCountEl.textContent = scannedResiArray.length;
                     suratJalanBtn.disabled = false;
+                    showAlert(`Berhasil scan resi <strong>${result.data.nomor_resi}</strong>.`, 'dark');
                 } else {
                     playBeep(false);
-                    showAlert(result.message || 'Resi gagal atau sudah di-scan.', 'danger');
+                    showAlert(result.message || `Resi ${resiValue} gagal atau sudah pernah di-scan.`, 'danger');
                 }
             } catch (err) {
                 playBeep(false);
-                showAlert('Koneksi error.', 'danger');
+                showAlert('Koneksi error atau resi duplikat terdeteksi.', 'danger');
+            } finally {
+                isScanningResi = false;
+                resiInput.value = '';
+                resiInput.focus();
             }
-            resiInput.value = '';
-            resiInput.focus();
         };
 
         searchInput.addEventListener('keyup', () => {
@@ -687,9 +740,9 @@
                 nama: document.getElementById('reg-nama').value,
                 no_hp: document.getElementById('reg-no_hp').value,
                 alamat: document.getElementById('reg-alamat').value,
-                email: document.getElementById('reg-email').value, 
+                email: document.getElementById('reg-email').value,
                 jenis_kelamin: document.getElementById('reg-jk').value,
-                instansi_perusahaan: document.getElementById('reg-instansi').value // Data instansi
+                instansi_perusahaan: document.getElementById('reg-instansi').value
             };
             try {
                 const response = await fetch("{{ route('kontak.register') }}", {
@@ -719,9 +772,9 @@
             const formData = {
                 email: document.getElementById('comp-email').value,
                 jenis_kelamin: document.getElementById('comp-jk').value,
-                instansi_perusahaan: document.getElementById('comp-instansi').value // Data instansi
+                instansi_perusahaan: document.getElementById('comp-instansi').value
             };
-            
+
             try {
                 const url = `/kontak/${idKontak}/lengkapi-profil`;
                 const response = await fetch(url, {
@@ -734,7 +787,7 @@
                     body: JSON.stringify(formData)
                 });
                 const result = await response.json();
-                
+
                 if(response.ok && result.success){
                     completionFormContainer.classList.add('d-none');
                     selectKontak(result.data);

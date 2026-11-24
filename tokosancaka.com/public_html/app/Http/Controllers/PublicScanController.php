@@ -16,7 +16,9 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Notification;
-use Illuminate\Support\Facades\Mail; // Ditambahkan untuk pengiriman Email
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Database\UniqueConstraintViolationException;
 use App\Notifications\NotifikasiUmum;
 use Exception;
 
@@ -48,7 +50,7 @@ class PublicScanController extends Controller
      */
     public function registerKontak(Request $request)
     {
-       $validated = $request->validate([
+        $validated = $request->validate([
             'nama' => 'required|string|max:255',
             'no_hp' => 'required|string|unique:kontaks,no_hp',
             'alamat' => 'required|string',
@@ -57,7 +59,6 @@ class PublicScanController extends Controller
             'instansi_perusahaan' => 'nullable|string|max:255',
         ]);
 
-        // Menambahkan nilai default untuk kolom yang tidak boleh null
         $validated['tipe'] = 'Pengirim';
         $validated['province'] = '';
         $validated['regency'] = '';
@@ -96,26 +97,47 @@ class PublicScanController extends Controller
      */
     public function handleScan(Request $request)
     {
-        $validated = $request->validate([
+        $validator = Validator::make($request->all(), [
             'kontak_id' => 'required|exists:kontaks,id',
-            'resi' => 'required|string|unique:scanned_packages,resi_number',
-            'latitude' => 'required|numeric',
+            'resi'      => 'required|string|unique:scanned_packages,resi_number',
+            'latitude'  => 'required|numeric',
             'longitude' => 'required|numeric',
+        ], [
+            'kontak_id.required' => 'Pilih nama pengirim terlebih dahulu.',
+            'resi.required'      => 'Nomor resi tidak boleh kosong.',
+            'resi.unique'        => "Resi '{$request->resi}' sudah pernah di-scan sebelumnya!",
+            'latitude.required'  => 'Lokasi GPS wajib diaktifkan.',
+            'longitude.required' => 'Lokasi GPS wajib diaktifkan.',
         ]);
 
-        $package = ScannedPackage::create([
-            'kontak_id' => $validated['kontak_id'],
-            'resi_number' => $validated['resi'],
-            'ip_address' => $request->ip(),
-            'user_agent' => $request->userAgent(),
-            'latitude' => $validated['latitude'],
-            'longitude' => $validated['longitude'],
-            'status' => 'Proses Pickup',
-        ]);
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => $validator->errors()->first(),
+            ], 422);
+        }
+
+        $validated = $validator->validated();
+
+        try {
+            $package = ScannedPackage::create([
+                'kontak_id'   => $validated['kontak_id'],
+                'resi_number' => $validated['resi'],
+                'ip_address'  => $request->ip(),
+                'user_agent'  => $request->userAgent(),
+                'latitude'    => $validated['latitude'],
+                'longitude'   => $validated['longitude'],
+                'status'      => 'Proses Pickup',
+            ]);
+        } catch (UniqueConstraintViolationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => "Resi '{$validated['resi']}' sudah pernah di-scan sebelumnya!",
+            ], 422);
+        }
 
         $kontak = Kontak::find($validated['kontak_id']);
 
-        // Menyiapkan data untuk notifikasi real-time
         $title = 'Scan Resi Baru (Publik)';
         $message = "Resi '{$package->resi_number}' dari '{$kontak->nama}' telah di-scan.";
         $url = url('admin/spx-scans');
@@ -141,9 +163,9 @@ class PublicScanController extends Controller
         return response()->json([
             'success' => true,
             'data' => [
-                'nomor_resi' => $package->resi_number,
+                'nomor_resi'    => $package->resi_number,
                 'nama_pengirim' => $kontak->nama,
-                'waktu_scan' => Carbon::now()->format('H:i:s'),
+                'waktu_scan'    => Carbon::now()->format('H:i:s'),
             ]
         ]);
     }
@@ -172,15 +194,12 @@ class PublicScanController extends Controller
             'longitude' => $validated['longitude'],
         ]);
 
-        // Update paket-paket yang di-scan dengan ID surat jalan
         ScannedPackage::whereIn('resi_number', $validated['resi_list'])
             ->whereNull('surat_jalan_id')
             ->update(['surat_jalan_id' => $suratJalan->id]);
 
-        // Kirim Notifikasi Email ke Admin Sancaka
         $this->_sendSuratJalanEmail($suratJalan);
 
-        // Notifikasi Panel Admin
         try {
             $admins = User::where('role', 'admin')->get();
             if ($admins->isNotEmpty()) {
@@ -211,7 +230,7 @@ class PublicScanController extends Controller
         ]);
     }
 
-  public function generateSuratJalan(Request $request)
+    public function generateSuratJalan(Request $request)
     {
         $kodeSuratJalan = $request->query('kode');
 
@@ -221,11 +240,8 @@ class PublicScanController extends Controller
 
         $packages = ScannedPackage::where('surat_jalan_id', $suratJalan->id)->get();
 
-        // Tetap jalankan notifikasi Telegram Anda
         $this->_sendTelegramNotificationLengkap($suratJalan);
 
-        // HAPUS BAGIAN DOMPDF ($pdf = Pdf::loadView...)
-        // DAN GANTI MENJADI return view() BIASA SEPERTI DI BAWAH INI:
         return view('public.scan.pdf.surat-jalan-spx', [
             'suratJalan' => $suratJalan,
             'packages' => $packages
@@ -249,11 +265,9 @@ class PublicScanController extends Controller
         $timestamp = $suratJalan->created_at->setTimezone('Asia/Jakarta')->translatedFormat('l, d F Y - H:i');
 
         $packages = ScannedPackage::where('surat_jalan_id', $suratJalan->id)->get();
-        // Gabungkan resi dengan tag <br> agar rapi di email HTML
         $resiList = $packages->pluck('resi_number')->implode("<br>");
         $googleMapsUrl = "https://www.google.com/maps?q={$suratJalan->latitude},{$suratJalan->longitude}";
 
-        // Membuat Body HTML langsung di sini tanpa file Blade
         $htmlBody = "
             <div style='font-family: Arial, sans-serif; color: #333;'>
                 <h2 style='color: #d9534f;'>⚠ Surat Jalan Baru Dibuat ⚠</h2>
@@ -282,12 +296,10 @@ class PublicScanController extends Controller
         ";
 
         try {
-            // Eksekusi pengiriman email HTML ke alamat statis & CC ke customer
             Mail::html($htmlBody, function ($message) use ($suratJalan, $kontak) {
                 $message->to('salafy1995@gmail.com')
                         ->subject("Surat Jalan Baru Dibuat - {$suratJalan->kode_surat_jalan}");
 
-                // Tambahkan CC ke email customer jika datanya ada
                 if (!empty($kontak->email)) {
                     $message->cc($kontak->email);
                 }
@@ -306,11 +318,10 @@ class PublicScanController extends Controller
     private function _sendTelegramNotificationLengkap(SuratJalan $suratJalan)
     {
         $botToken = config('services.telegram.token');
-        $chatId = '1885140247'; // ID Telegram Anda (TokoSancaka.Com)
+        $chatId = '1885140247';
 
         if (empty($botToken)) return;
 
-        // Pastikan relasi kontak dimuat untuk mengambil WA dan Alamat
         $suratJalan->load('kontak');
         $kontak = $suratJalan->kontak;
         $namaPengirim = $kontak ? $kontak->nama : '-';
@@ -320,14 +331,12 @@ class PublicScanController extends Controller
         $waktu = \Carbon\Carbon::parse($suratJalan->created_at)->timezone('Asia/Jakarta')->format('d-m-Y H:i:s');
         $googleMapsUrl = "https://www.google.com/maps?q={$suratJalan->latitude},{$suratJalan->longitude}";
 
-        // Ambil daftar resi
         $packages = \App\Models\ScannedPackage::where('surat_jalan_id', $suratJalan->id)->get();
         $resiList = "";
         foreach ($packages as $pkg) {
             $resiList .= "▪️ <code>{$pkg->resi_number}</code>\n";
         }
 
-        // Format Pesan Teks Telegram (Mirip Email)
         $pesan = "🚨 <b>SURAT JALAN BARU DIUNDUH</b> 🚨\n\n";
         $pesan .= "Telah diproses surat jalan oleh <b>{$namaPengirim}</b>.\n\n";
 
@@ -354,7 +363,7 @@ class PublicScanController extends Controller
                 'disable_web_page_preview' => true
             ]);
         } catch (\Exception $e) {
-            // Sengaja dibiarkan kosong agar jika Telegram error, pelanggan tetap bisa download PDF dengan lancar
+            // Dibiarkan kosong agar download PDF tetap lancar jika Telegram error
         }
     }
 }
