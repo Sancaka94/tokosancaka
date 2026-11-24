@@ -1,16 +1,37 @@
 {{-- resources/views/admin/logs/viewer.blade.php --}}
-@extends('layouts.admin') 
+@extends('layouts.admin')
 
 @section('title', 'Raw Log Viewer')
 
 @push('styles')
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<style>
+    /* Hilangkan kotak putih & margin bawaan tag <pre> dari CSS global */
+    #logCardsContainer pre {
+        background-color: transparent !important;
+        border: none !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        color: #86efac !important;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace !important;
+        font-size: 13px !important;
+        line-height: 1.5 !important;
+    }
+
+    /* Kembalikan tombol copy, hapus, & read-more ke bentuk icon/teks bersih */
+    #logCardsContainer button {
+        background-color: transparent !important;
+        border: none !important;
+        padding: 4px 6px !important;
+        box-shadow: none !important;
+    }
+</style>
 @endpush
 
 @section('content')
 <div class="flex justify-between items-center mb-6">
     <h1 class="text-2xl font-bold">📂 Isi Log ({{ $maxLines }} Baris Terakhir)</h1>
-    
+
     <div class="flex space-x-2">
         {{-- TOMBOL BULK DELETE --}}
         <button id="bulkDeleteBtn" class="hidden px-4 py-2 bg-yellow-600 text-white font-semibold rounded-lg hover:bg-yellow-700 transition duration-150">
@@ -72,38 +93,38 @@ document.addEventListener('DOMContentLoaded', function() {
     const container = document.getElementById('logCardsContainer');
     const selectAllCheckbox = document.getElementById('selectAll');
     const bulkDeleteBtn = document.getElementById('bulkDeleteBtn');
-    
+
     const logPattern = /\[(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})\] ([\s\S]*?)(?=\n\[\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\]|$)/g;
-    
+
     let match;
     let index = 0;
     let tempGroups = {};
 
     while ((match = logPattern.exec(rawText)) !== null) {
-        let fullTimeStr = match[1]; 
-        let fullText = match[0];    
-        
-        let timeParts = fullTimeStr.split(':'); 
-        let hourStr = timeParts[0];          
-        let minute = parseInt(timeParts[1]); 
-        
+        let fullTimeStr = match[1];
+        let fullText = match[0];
+
+        let timeParts = fullTimeStr.split(':');
+        let hourStr = timeParts[0];
+        let minute = parseInt(timeParts[1]);
+
         let bucketMin = Math.floor(minute / 5) * 5;
         let bucketMinStr = bucketMin.toString().padStart(2, '0');
-        let bucketEndMinStr = (bucketMin + 4).toString().padStart(2, '0'); 
-        
+        let bucketEndMinStr = (bucketMin + 4).toString().padStart(2, '0');
+
         let groupKey = `${hourStr}:${bucketMinStr} - ${hourStr}:${bucketEndMinStr}`;
-        
+
         if (!tempGroups[groupKey]) {
             tempGroups[groupKey] = {
                 id: index++,
                 timeLabel: groupKey,
                 content: '',
-                full_texts: [] 
+                full_texts: []
             };
         }
-        
-        tempGroups[groupKey].content += fullText + "\n"; 
-        tempGroups[groupKey].full_texts.push(fullText);  
+
+        tempGroups[groupKey].content += fullText + "\n";
+        tempGroups[groupKey].full_texts.push(fullText);
     }
 
     parsedLogs = Object.values(tempGroups);
@@ -117,12 +138,12 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function renderCards() {
         container.innerHTML = '';
-        
+
         parsedLogs.forEach(log => {
             const card = document.createElement('div');
             card.className = "bg-gray-800 border border-gray-700 rounded-lg shadow-sm transition hover:border-gray-500 log-card-item";
             card.id = `log-card-${log.id}`;
-            
+
             card.innerHTML = `
                 <div class="flex justify-between items-center p-3 border-b border-gray-700 bg-gray-900 rounded-t-lg">
                     <div class="flex items-center space-x-3">
@@ -139,11 +160,11 @@ document.addEventListener('DOMContentLoaded', function() {
                         </button>
                     </div>
                 </div>
-                
+
                 <div id="log-content-${log.id}" class="p-3 overflow-hidden text-green-300 max-h-32 transition-all duration-300 relative" style="font-family: monospace; font-size: 13px;">
                     <pre class="whitespace-pre-wrap break-words">${log.content}</pre>
                 </div>
-                
+
                 <div id="btn-container-${log.id}" class="px-3 pb-2 pt-1 bg-gray-900 rounded-b-lg border-t border-gray-700 text-center">
                     <button onclick="toggleReadMore(${log.id})" id="btn-readmore-${log.id}" class="text-xs text-blue-400 hover:text-blue-300 font-semibold focus:outline-none">
                         <i class="fas fa-chevron-down mr-1"></i> Tampilkan Lebih Banyak
@@ -172,7 +193,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function attachCheckboxListeners() {
         const checkboxes = document.querySelectorAll('.log-checkbox');
-        
+
         selectAllCheckbox.addEventListener('change', (e) => {
             checkboxes.forEach(cb => cb.checked = e.target.checked);
             toggleBulkButton();
@@ -239,13 +260,13 @@ window.addEventListener('resize', checkScrollPosition);
 scrollTopBtn.addEventListener('click', () => { window.scrollTo({ top: 0, behavior: 'smooth' }); });
 scrollBottomBtn.addEventListener('click', () => {
     const documentHeight = Math.max(document.body.scrollHeight, document.documentElement.scrollHeight);
-    window.scrollTo({ top: documentHeight, behavior: 'smooth' }); 
+    window.scrollTo({ top: documentHeight, behavior: 'smooth' });
 });
 
 window.toggleReadMore = function(id) {
     const contentDiv = document.getElementById(`log-content-${id}`);
     const btn = document.getElementById(`btn-readmore-${id}`);
-    
+
     if (contentDiv.classList.contains('max-h-32')) {
         contentDiv.classList.remove('max-h-32');
         contentDiv.classList.add('max-h-full');
@@ -307,13 +328,13 @@ window.deleteSingleLog = function(id) {
 document.getElementById('bulkDeleteBtn').addEventListener('click', function() {
     const checkedBoxes = document.querySelectorAll('.log-checkbox:checked');
     const selectedIds = Array.from(checkedBoxes).map(cb => parseInt(cb.value));
-    
+
     let allTextsToDelete = [];
-    
+
     selectedIds.forEach(id => {
         const log = parsedLogs.find(l => l.id === id);
         if(log) {
-            allTextsToDelete = allTextsToDelete.concat(log.full_texts); 
+            allTextsToDelete = allTextsToDelete.concat(log.full_texts);
             document.getElementById(`log-card-${id}`).remove();
         }
     });
