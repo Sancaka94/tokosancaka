@@ -9,11 +9,12 @@ use App\Models\Api;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 
 class InvoicePesananController extends Controller
 {
-    public function show($nomor_invoice)
+    public function show(Request $request, $nomor_invoice)
     {
         // 1. CARI DI PESANAN REGULER DULU
         $pesanan = Pesanan::where('nomor_invoice', $nomor_invoice)
@@ -23,13 +24,59 @@ class InvoicePesananController extends Controller
 
         // 2. JIKA TIDAK KETEMU, CARI DI PESANAN AUTOKIRIM
         $isAutokirim = false;
+        $autokirim = null;
         if (!$pesanan) {
             $autokirim = PesananAutokirim::where('order_id', $nomor_invoice)
                 ->orWhere('awb_number', $nomor_invoice)
                 ->firstOrFail(); // Jika di Autokirim juga tidak ada, baru 404
 
             $isAutokirim = true;
+        }
 
+        // =========================================================================
+        // 3. AUTO-CAPTURE PAYPAL SAAT CUSTOMER REDIRECT BALIK DARI HALAMAN PAYPAL
+        // =========================================================================
+        if ($request->filled('token') && $request->filled('PayerID')) {
+            $paypalOrderId = $request->query('token');
+            $this->_captureAndProcessPayPal($paypalOrderId, $pesanan, $autokirim, $isAutokirim);
+
+            if (!$isAutokirim && $pesanan) {
+                $pesanan->refresh();
+            } elseif ($isAutokirim && $autokirim) {
+                $autokirim->refresh();
+            }
+        }
+
+        // =========================================================================
+        // 4. AUTO-INQUIRY BCA QRIS SAAT HALAMAN INVOICE DIBUKA / DI-REFRESH
+        // =========================================================================
+        if (!$isAutokirim && $pesanan && strtoupper($pesanan->payment_method) === 'BCA_QRIS' && $pesanan->status === 'Menunggu Pembayaran') {
+            try {
+                $bcaService = app(\App\Http\Controllers\BcaController::class);
+                $bcaReference = date('Ymd', strtotime($pesanan->tanggal_pesanan)) . str_pad($pesanan->id, 8, '0', STR_PAD_LEFT);
+
+                $inquiry = $bcaService->queryQrisMpm([
+                    'originalPartnerReferenceNo' => $bcaReference,
+                    'originalReferenceNo'        => $pesanan->shipping_ref,
+                    'merchantId'                 => '123456789',
+                    'terminalId'                 => 'A1234567'
+                ]);
+
+                if (isset($inquiry['latestTransactionStatus']) && $inquiry['latestTransactionStatus'] === '00') {
+                    \App\Http\Controllers\Admin\PesananController::processPesananCallback(
+                        $pesanan->nomor_invoice,
+                        'PAID',
+                        $inquiry
+                    );
+                    $pesanan->refresh();
+                }
+            } catch (\Exception $e) {
+                Log::error("Gagal inquiry BCA QRIS di Invoice: " . $e->getMessage());
+            }
+        }
+
+        // LAKUKAN MAPPING JIKA PESANAN AUTOKIRIM
+        if ($isAutokirim && $autokirim) {
             // LAKUKAN MAPPING (Persis seperti di PesananAutokirimController@cetakInvoice)
             // Agar view tidak error dan nama, alamat, dsb bisa dirender dengan sempurna
             $pesanan = (object)[
@@ -81,16 +128,17 @@ class InvoicePesananController extends Controller
             ];
         }
 
-        // Tentukan status lunas atau belum
+        // Tentukan status lunas atau belum (termasuk jika sudah lunas namun resi perlu retry admin)
         $statusLunas = in_array(strtoupper($isAutokirim ? $pesanan->status : $pesanan->status_pesanan), [
             'PAID', 'LUNAS', 'SELESAI', 'TERKIRIM', 'BOOKING_CREATED',
             'MENUNGGU PICKUP', 'PESANAN DIBUAT', 'DIPROSES', 'SEDANG DIKIRIM',
-            'PICKUP', 'ON SHIPMENT', 'DELIVERED', 'SUCCESS' // Tambahan status API
+            'PICKUP', 'ON SHIPMENT', 'DELIVERED', 'SUCCESS',
+            'PEMBAYARAN LUNAS (GAGAL AUTO-RESI)', 'PEMBAYARAN LUNAS (ERROR KIRIM API)'
         ]);
 
         // Tarik daftar Tripay Channels
         $tripayChannels = [];
-        if (!$statusLunas && empty($pesanan->payment_url) && !in_array($pesanan->payment_method, ['COD', 'CODBARANG', 'Cash', 'Potong Saldo'])) {
+        if (!$statusLunas && empty($pesanan->payment_url) && !in_array($pesanan->payment_method, ['COD', 'CODBARANG', 'Cash', 'Cash / Tunai', 'Potong Saldo'])) {
             $mode = Api::getValue('TRIPAY_MODE', 'global', 'sandbox');
             $apiKey = Api::getValue('TRIPAY_API_KEY', $mode);
             $baseUrl = $mode === 'production' ? 'https://tripay.co.id/api/merchant/payment-channel' : 'https://tripay.co.id/api-sandbox/merchant/payment-channel';
@@ -108,7 +156,7 @@ class InvoicePesananController extends Controller
         return view('invoice_pesanan.show', compact('pesanan', 'statusLunas', 'tripayChannels'));
     }
 
-   public function prosesPembayaran(Request $request, $nomor_invoice)
+    public function prosesPembayaran(Request $request, $nomor_invoice)
     {
         $request->validate(['payment_method' => 'required|string']);
 
@@ -126,6 +174,14 @@ class InvoicePesananController extends Controller
                 ->firstOrFail(); // Jika di Autokirim juga tidak ada, baru 404
 
             $isAutokirim = true;
+        }
+
+        // Cegah proses ulang jika pesanan sudah lunas / sudah terbit booking
+        $currentStatusUpper = strtoupper($isAutokirim ? $pesanan->status : $pesanan->status_pesanan);
+        if (in_array($currentStatusUpper, ['PAID', 'LUNAS', 'BOOKING_CREATED', 'PESANAN DIBUAT', 'MENUNGGU PICKUP', 'DIPROSES', 'TERKIRIM', 'SELESAI'])) {
+            $nomorInvoiceRedirect = $isAutokirim ? $pesanan->order_id : $pesanan->nomor_invoice;
+            return redirect()->route('invoice.show', ['nomor_invoice' => $nomorInvoiceRedirect])
+                ->with('success', 'Pesanan ini sudah lunas dan diproses.');
         }
 
         $gateway = $request->input('payment_method');
@@ -157,12 +213,12 @@ class InvoicePesananController extends Controller
         if (strtolower($gateway) === 'cash') {
             if (auth()->check() && (auth()->id() == 4 || optional(auth()->user())->id_pengguna == 4 || strtolower(optional(auth()->user())->role) == 'admin')) {
 
-               if ($isAutokirim) {
+                if ($isAutokirim) {
                     try {
-                       // ========================================================
+                        // ========================================================
                         // 1. CARI DATA ORIGIN (PENGIRIM)
                         // ========================================================
-                        \Illuminate\Support\Facades\Log::info("LOG LOG: [INVOICE - CASH] Mencari Origin. District ID: {$pesanan->pengirim_district_id}, Kodepos: {$pesanan->pengirim_kodepos}");
+                        Log::info("LOG LOG: [INVOICE - CASH] Mencari Origin. District ID: {$pesanan->pengirim_district_id}, Kodepos: {$pesanan->pengirim_kodepos}");
 
                         $origin = AutoKirim::where('district_id', $pesanan->pengirim_district_id)
                                     ->orWhere('zip', trim($pesanan->pengirim_kodepos))
@@ -171,13 +227,13 @@ class InvoicePesananController extends Controller
                         // ========================================================
                         // 2. CARI DATA DESTINATION (PENERIMA)
                         // ========================================================
-                        \Illuminate\Support\Facades\Log::info("LOG LOG: [INVOICE - CASH] Mencari Destination. District ID: {$pesanan->penerima_district_id}, Kodepos: {$pesanan->penerima_kodepos}");
+                        Log::info("LOG LOG: [INVOICE - CASH] Mencari Destination. District ID: {$pesanan->penerima_district_id}, Kodepos: {$pesanan->penerima_kodepos}");
 
                         $destination = AutoKirim::where('district_id', $pesanan->penerima_district_id)
                                     ->orWhere('zip', trim($pesanan->penerima_kodepos))
                                     ->first();
 
-                        \Illuminate\Support\Facades\Log::info("LOG LOG: [INVOICE - CASH] Hasil Pencarian -> Origin ID: " . ($origin->id ?? 'NULL') . ", Destination ID: " . ($destination->id ?? 'NULL'));
+                        Log::info("LOG LOG: [INVOICE - CASH] Hasil Pencarian -> Origin ID: " . ($origin->id ?? 'NULL') . ", Destination ID: " . ($destination->id ?? 'NULL'));
 
                         // ========================================================
                         // 3. VALIDASI FINAL (Cegah Crash "Attempt to read property")
@@ -201,6 +257,9 @@ class InvoicePesananController extends Controller
 
                         // 🔥 Gunakan metode_pembayaran
                         $pesanan->metode_pembayaran = 'cash';
+                        $pesanan->save();
+
+                        return redirect($returnUrl)->with('success', 'Pembayaran tunai berhasil diverifikasi oleh Admin & Resi diterbitkan.');
 
                     } catch (\Exception $e) {
                         // Menangkap error dengan rapi tanpa membuat halaman blank
@@ -219,10 +278,6 @@ class InvoicePesananController extends Controller
 
                     return redirect($returnUrl)->with('success', 'Pembayaran tunai berhasil diverifikasi oleh Admin & Resi diterbitkan.');
                 }
-
-                $pesanan->save();
-
-                return redirect($returnUrl)->with('success', 'Pembayaran tunai berhasil diverifikasi oleh Admin & Resi diterbitkan.');
             } else {
                 return back()->with('error', 'Akses ditolak! Metode Cash hanya dapat digunakan oleh Admin.');
             }
@@ -272,21 +327,23 @@ class InvoicePesananController extends Controller
                         $pesanan->payment_url = $bcaResponse['qrContent'];
                     } else {
                         // Cek apakah tabel autokirim punya kolom payment_url agar tidak error 1054 lagi
-                        if (\Illuminate\Support\Facades\Schema::hasColumn('pesanan_autokirims', 'payment_url')) {
+                        if (Schema::hasColumn('pesanan_autokirims', 'payment_url')) {
                             $pesanan->payment_url = $bcaResponse['qrContent'];
                         }
                     }
                     $paymentUrl = $returnUrl; // Refresh halaman
+                } else {
+                    return back()->with('error', 'Gagal membuat QRIS BCA: ' . ($bcaResponse['responseMessage'] ?? 'Unknown Error'));
                 }
             }
             // 3. JIKA PILIH PAYPAL
             elseif ($gateway === 'PAYPAL') {
                 $mode = Api::getValue('PAYPAL_MODE', 'global', 'sandbox');
                 $clientId = Api::getValue('PAYPAL_CLIENT_ID', $mode);
-                $secret = Api::getValue('PAYPAL_SECRET', $mode);
+                $secret = Api::getValue('PAYPAL_SECRET_1', $mode) ?: Api::getValue('PAYPAL_SECRET', $mode);
                 $baseUrl = $mode === 'production' ? 'https://api-m.paypal.com' : 'https://api-m.sandbox.paypal.com';
 
-                $usdAmount = round($totalTagihan / 15000, 2);
+                $usdAmount = max(0.01, round($totalTagihan / 15000, 2));
 
                 $response = Http::withBasicAuth($clientId, $secret)
                     ->asForm()->post($baseUrl . '/v1/oauth2/token', ['grant_type' => 'client_credentials']);
@@ -298,7 +355,8 @@ class InvoicePesananController extends Controller
                         'intent' => 'CAPTURE',
                         'purchase_units' => [[
                             'reference_id' => $nomorInvoiceFix,
-                            'amount' => ['currency_code' => 'USD', 'value' => (string) $usdAmount]
+                            'custom_id'    => $nomorInvoiceFix,
+                            'amount'       => ['currency_code' => 'USD', 'value' => number_format($usdAmount, 2, '.', '')]
                         ]],
                         'payment_source' => [
                             'paypal' => [
@@ -497,7 +555,7 @@ class InvoicePesananController extends Controller
                 if ($gateway !== 'BCA_QRIS') {
                     if (!$isAutokirim) {
                         $pesanan->payment_url = $paymentUrl;
-                    } elseif (\Illuminate\Support\Facades\Schema::hasColumn('pesanan_autokirims', 'payment_url')) {
+                    } elseif (Schema::hasColumn('pesanan_autokirims', 'payment_url')) {
                         $pesanan->payment_url = $paymentUrl;
                     }
                 }
@@ -511,5 +569,81 @@ class InvoicePesananController extends Controller
         }
 
         return back()->with('error', 'Gagal mengarahkan ke halaman pembayaran.');
+    }
+
+    /**
+     * Capture pembayaran PayPal & langsung tembak API KiriminAja / Autokirim
+     */
+    private function _captureAndProcessPayPal(string $paypalOrderId, ?Pesanan $pesanan, ?PesananAutokirim $autokirim, bool $isAutokirim): void
+    {
+        try {
+            $mode = Api::getValue('PAYPAL_MODE', 'global', 'sandbox');
+            $clientId = Api::getValue('PAYPAL_CLIENT_ID', $mode);
+            $secret = Api::getValue('PAYPAL_SECRET_1', $mode) ?: Api::getValue('PAYPAL_SECRET', $mode);
+            $baseUrl = $mode === 'production' ? 'https://api-m.paypal.com' : 'https://api-m.sandbox.paypal.com';
+
+            $tokenRes = Http::withBasicAuth($clientId, $secret)
+                ->asForm()->post($baseUrl . '/v1/oauth2/token', ['grant_type' => 'client_credentials']);
+
+            if (!$tokenRes->successful()) {
+                Log::error('PayPal Auto-Capture gagal ambil token: ' . $tokenRes->body());
+                return;
+            }
+
+            $token = $tokenRes->json()['access_token'];
+
+            $captureRes = Http::withToken($token)
+                ->withHeaders(['Content-Type' => 'application/json'])
+                ->withBody('{}', 'application/json')
+                ->post($baseUrl . "/v2/checkout/orders/{$paypalOrderId}/capture");
+
+            $data = $captureRes->json();
+
+            // Jika order sudah ter-capture sebelumnya, cek detail statusnya
+            if (($data['details'][0]['issue'] ?? '') === 'ORDER_ALREADY_CAPTURED') {
+                $checkRes = Http::withToken($token)->get($baseUrl . "/v2/checkout/orders/{$paypalOrderId}");
+                $data = $checkRes->json();
+            }
+
+            if (($data['status'] ?? '') === 'COMPLETED') {
+                if (!$isAutokirim && $pesanan) {
+                    if (strtoupper($pesanan->payment_method) !== 'PAYPAL') {
+                        $pesanan->payment_method = 'PAYPAL';
+                        $pesanan->save();
+                    }
+
+                    \App\Http\Controllers\Admin\PesananController::processPesananCallback(
+                        $pesanan->nomor_invoice,
+                        'PAID',
+                        [
+                            'source'          => 'PAYPAL_INVOICE_RETURN',
+                            'paypal_order_id' => $paypalOrderId
+                        ]
+                    );
+                } elseif ($isAutokirim && $autokirim && empty($autokirim->awb_number) && strtolower($autokirim->status) !== 'booking_created') {
+                    $origin = AutoKirim::where('district_id', $autokirim->pengirim_district_id)
+                        ->orWhere('zip', trim($autokirim->pengirim_kodepos))
+                        ->first();
+                    $destination = AutoKirim::where('district_id', $autokirim->penerima_district_id)
+                        ->orWhere('zip', trim($autokirim->penerima_kodepos))
+                        ->first();
+
+                    if ($origin && $destination) {
+                        $autokirimCtrl = new \App\Http\Controllers\PesananAutokirimController();
+                        $awbResult = $autokirimCtrl->_executeAutokirimApi($autokirim, $origin, $destination, null);
+
+                        $autokirim->awb_number = $awbResult['awb'] ?? null;
+                        $autokirim->tlc_code = $awbResult['reff_2'] ?? null;
+                        $autokirim->reff_1 = $awbResult['reff_1'] ?? null;
+                        $autokirim->pickup_point_code = $awbResult['pickup'] ?? null;
+                        $autokirim->status = 'booking_created';
+                        $autokirim->metode_pembayaran = 'PAYPAL';
+                        $autokirim->save();
+                    }
+                }
+            }
+        } catch (\Exception $e) {
+            Log::error("PayPal Auto-Capture Exception ({$paypalOrderId}): " . $e->getMessage());
+        }
     }
 }
