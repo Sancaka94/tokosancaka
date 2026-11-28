@@ -563,7 +563,7 @@
                         Direct Payment & DANA
                     </li>
 
-                    <li class="payment-option cursor-pointer flex items-center p-3 border border-gray-200 rounded-xl bg-white hover:border-black hover:shadow-md transition-all group" data-value="BCA_QRIS" data-label="BCA QRIS" data-img="https://tokosancaka.com/assets/bca.png">
+                    <li class="payment-option cursor-pointer flex items-center p-3 border border-gray-200 rounded-xl bg-white hover:border-black hover:shadow-md transition-all group" data-value="BCA_QRIS" data-label="BCA QRIS" data-img="https://tokosancaka.com/assets/bca.webp">
                         <img src="https://tokosancaka.com/assets/bca.png" class="w-12 h-auto mr-4 object-contain" alt="BCA">
                         <div class="flex flex-col"><span class="text-[13px] font-bold text-black">BCA QRIS</span><span class="text-[11px] text-gray-500">Generate Barcode</span></div>
                     </li>
