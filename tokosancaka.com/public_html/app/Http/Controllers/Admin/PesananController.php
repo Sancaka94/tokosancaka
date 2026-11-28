@@ -301,7 +301,14 @@ class PesananController extends Controller
 
 
             // 4. Siapkan Data Pesanan
+            $senderAddressData = $this->_getAddressData($request, 'sender');
+            $receiverAddressData = $this->_getAddressData($request, 'receiver');
+
             $pesananData = $this->_preparePesananData($validatedData, $total_paid_ongkir, $request->ip(), $request->userAgent());
+            $pesananData['sender_lat']   = $senderAddressData['lat'];
+            $pesananData['sender_lng']   = $senderAddressData['lng'];
+            $pesananData['receiver_lat'] = $receiverAddressData['lat'];
+            $pesananData['receiver_lng'] = $receiverAddressData['lng'];
             $pesananData['shipping_cost'] = $shipping_cost;
             $pesananData['insurance_cost'] = ($validatedData['ansuransi'] == 'iya') ? $insurance_cost : 0;
             $pesananData['cod_fee'] = ($cod_value > 0) ? $cod_fee : 0;
@@ -1632,6 +1639,27 @@ private function _saveOrUpdateKontak(array $data, string $prefix, string $tipe)
             $senderData['kirimaja_data']['postal_code'] = $senderData['kirimaja_data']['postal_code'] ?? '00000';
             $receiverData['kirimaja_data']['postal_code'] = $receiverData['kirimaja_data']['postal_code'] ?? '00000';
 
+            if (empty($senderData['lat']) || empty($senderData['lng'])) {
+                $queryAlamatPengirim = implode(', ', array_filter([
+                    $order->sender_village ?? $data['sender_village'] ?? '',
+                    $order->sender_district ?? $data['sender_district'] ?? '',
+                    $order->sender_regency ?? $data['sender_regency'] ?? '',
+                    $order->sender_province ?? $data['sender_province'] ?? '',
+                ]));
+
+                Log::info("Fallback Geocode di _createKiriminAjaOrder untuk {$order->nomor_invoice}: {$queryAlamatPengirim}");
+
+                $geoResult = $this->geocode($queryAlamatPengirim);
+                if ($geoResult) {
+                    $senderData['lat'] = $geoResult['lat'];
+                    $senderData['lng'] = $geoResult['lng'];
+
+                    $order->sender_lat = $geoResult['lat'];
+                    $order->sender_lng = $geoResult['lng'];
+                    $order->save();
+                }
+            }
+
             $payload = [
                 'address' => $data['sender_address'], 'phone' => $data['sender_phone'], 'name' => $data['sender_name'],
                 'kecamatan_id' => $senderData['kirimaja_data']['district_id'], 'kelurahan_id' => $senderData['kirimaja_data']['subdistrict_id'],
@@ -2723,11 +2751,23 @@ public function cetakThermal($resi)
         ]);
     }
 
-    private function _sendApiCoId($phone, $message)
+   private function _sendApiCoId($phone, $message)
 {
-    // Sesuaikan endpoint dan parameter wajib dari dokumentasi api.co.id
     $token = env('APICOID_TOKEN');
-    $endpoint = 'https://api.co.id/api/send'; // Ganti dengan URL endpoint yang tepat
+    $endpoint = 'https://chat.api.co.id/api/v1/public/messages/send';
+
+    // Normalisasi nomor HP agar selalu diawali 62
+    $phone = preg_replace('/[^0-9]/', '', $phone);
+    if (Str::startsWith($phone, '0')) {
+        $phone = '62' . substr($phone, 1);
+    }
+
+    $payload = json_encode([
+        'phone_number' => $phone,
+        'channel'      => 'whatsapp',
+        'message_type' => 'text',
+        'content'      => $message,
+    ]);
 
     $curl = curl_init();
     curl_setopt_array($curl, array(
@@ -2739,23 +2779,25 @@ public function cetakThermal($resi)
         CURLOPT_FOLLOWLOCATION => true,
         CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
         CURLOPT_CUSTOMREQUEST => 'POST',
-        CURLOPT_POSTFIELDS => http_build_query([
-            'phone' => $phone,
-            'message' => $message,
-            // Tambahkan parameter lain di sini jika api.co.id memintanya
-        ]),
+        CURLOPT_POSTFIELDS => $payload,
         CURLOPT_HTTPHEADER => array(
-            "Authorization: Bearer $token", // Sesuaikan jika format auth mereka berbeda
-            "Content-Type: application/x-www-form-urlencoded"
+            "Authorization: Bearer $token",
+            "Content-Type: application/json"
         ),
     ));
 
     $response = curl_exec($curl);
+    $httpCode = curl_getinfo($curl, CURLINFO_HTTP_CODE);
     $err = curl_error($curl);
     curl_close($curl);
 
     if ($err) {
         Log::error("API.CO.ID Request Error: $err");
+        return false;
+    }
+
+    if ($httpCode >= 400) {
+        Log::error("API.CO.ID HTTP Error ($httpCode): $response");
         return false;
     }
 

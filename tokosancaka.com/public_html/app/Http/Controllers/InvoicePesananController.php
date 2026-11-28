@@ -207,10 +207,17 @@ class InvoicePesananController extends Controller
                         return back()->with('error', 'Gagal memproses API: ' . $e->getMessage());
                     }
                 } else {
-                    $pesanan->status = 'booking_created';
-                    $pesanan->status_pesanan = 'PAID';
-                    // 🔥 Gunakan payment_method
                     $pesanan->payment_method = 'Cash / Tunai';
+                    $pesanan->save();
+
+                    // Otomatis tembak KiriminAja + catat keuangan lewat callback processor
+                    \App\Http\Controllers\Admin\PesananController::processPesananCallback(
+                        $pesanan->nomor_invoice,
+                        'PAID',
+                        ['source' => 'INVOICE_CASH_ADMIN']
+                    );
+
+                    return redirect($returnUrl)->with('success', 'Pembayaran tunai berhasil diverifikasi oleh Admin & Resi diterbitkan.');
                 }
 
                 $pesanan->save();
