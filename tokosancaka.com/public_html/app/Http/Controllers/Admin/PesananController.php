@@ -1488,13 +1488,52 @@ private function _saveOrUpdateKontak(array $data, string $prefix, string $tipe)
                 }
             }
 
-            // ✅ Simpan nominal tagihan yang sudah kembar ke database Sancaka
+           // ✅ Simpan nominal tagihan yang sudah kembar ke database Sancaka
             // Database Sancaka sekarang resmi mencatat angka yang sudah final
             $order->price = $finalCodValue;
             $order->save();
         }
         // ============================================================
 
+        // Fallback Geocode Pengirim (Wajib untuk Instant/Sameday, Pos Indonesia, Lion Parcel)
+        if (empty($senderData['lat']) || empty($senderData['lng'])) {
+            $queryPengirim = implode(', ', array_filter([
+                $order->sender_village ?? $data['sender_village'] ?? '',
+                $order->sender_district ?? $data['sender_district'] ?? '',
+                $order->sender_regency ?? $data['sender_regency'] ?? '',
+            ]));
+            $geoSender = $this->geocode($queryPengirim) ?: $this->geocode(implode(', ', array_filter([
+                $order->sender_district ?? $data['sender_district'] ?? '',
+                $order->sender_regency ?? $data['sender_regency'] ?? '',
+            ])));
+            if ($geoSender) {
+                $senderData['lat'] = $geoSender['lat'];
+                $senderData['lng'] = $geoSender['lng'];
+                $order->sender_lat = $geoSender['lat'];
+                $order->sender_lng = $geoSender['lng'];
+                $order->save();
+            }
+        }
+
+        // Fallback Geocode Penerima (Wajib untuk Instant/Sameday)
+        if (empty($receiverData['lat']) || empty($receiverData['lng'])) {
+            $queryPenerima = implode(', ', array_filter([
+                $order->receiver_village ?? $data['receiver_village'] ?? '',
+                $order->receiver_district ?? $data['receiver_district'] ?? '',
+                $order->receiver_regency ?? $data['receiver_regency'] ?? '',
+            ]));
+            $geoReceiver = $this->geocode($queryPenerima) ?: $this->geocode(implode(', ', array_filter([
+                $order->receiver_district ?? $data['receiver_district'] ?? '',
+                $order->receiver_regency ?? $data['receiver_regency'] ?? '',
+            ])));
+            if ($geoReceiver) {
+                $receiverData['lat'] = $geoReceiver['lat'];
+                $receiverData['lng'] = $geoReceiver['lng'];
+                $order->receiver_lat = $geoReceiver['lat'];
+                $order->receiver_lng = $geoReceiver['lng'];
+                $order->save();
+            }
+        }
 
         if (in_array($serviceGroup, ['instant', 'sameday'])) {
             if (empty($senderData['lat']) || empty($senderData['lng']) || empty($receiverData['lat']) || empty($receiverData['lng'])) {
