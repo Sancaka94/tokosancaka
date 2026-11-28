@@ -570,7 +570,7 @@
 
                     <li class="payment-option cursor-pointer flex items-center p-3 border border-gray-200 rounded-xl bg-white hover:border-black hover:shadow-md transition-all group" data-value="DOKU_JOKUL" data-label="DOKU Gateway" data-img="https://tokosancaka.com/public/assets/doku.png">
                         <img src="https://tokosancaka.com/public/assets/doku.png" class="w-12 h-auto mr-4 object-contain" alt="DOKU">
-                        <div class="flex flex-col"><span class="text-[13px] font-bold text-black">DOKU Gateway</span><span class="text-[11px] text-gray-500">VA, E-Wallet, CC Lokal</span></div>
+                        <div class="flex flex-col"><span class="text-[13px] font-bold text-black">DOKU PAYMENT</span><span class="text-[11px] text-gray-500">VA, E-Wallet, CC Lokal</span></div>
                     </li>
 
                     @php
